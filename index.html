@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bioapgreid - Главная страница</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 100px 0;
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: #ff6b6b;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s ease;
+        }
+
+        .btn:hover {
+            background: #ff5252;
+        }
+
+        /* Sections */
+        section {
+            padding: 80px 0;
+        }
+
+        .section-dark {
+            background: white;
+        }
+
+        .section-light {
+            background: #f8f9fa;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 50px;
+            font-size: 2.5rem;
+            color: #333;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 50px;
+        }
+
+        .feature-card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .feature-card h3 {
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        /* Footer */
+        footer {
+            background: #333;
+            color: white;
+            text-align: center;
+            padding: 40px 0;
+        }
+
+        .contact-info {
+            margin: 20px 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2rem;
+            }
+            
+            section {
+                padding: 50px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="container">
+            <div class="hero">
+                <h1>Добро пожаловать на Bioapgreid</h1>
+                <p>Ваш надежный партнер в сфере биотехнологий и инновационных решений</p>
+                <a href="#contact" class="btn">Связаться с нами</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- О нас -->
+    <section class="section-dark">
+        <div class="container">
+            <h2>О нас</h2>
+            <div class="features">
+                <div class="feature-card">
+                    <h3>Наша миссия</h3>
+                    <p>Мы стремимся к разработке инновационных решений в области биотехнологий для улучшения качества жизни.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Наш опыт</h3>
+                    <p>Более 10 лет успешной работы в сфере биологических исследований и разработок.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Наши ценности</h3>
+                    <p>Качество, инновации и устойчивое развитие - основа нашей работы.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Услуги -->
+    <section class="section-light">
+        <div class="container">
+            <h2>Наши услуги</h2>
+            <div class="features">
+                <div class="feature-card">
+                    <h3>Биоаналитика</h3>
+                    <p>Современные методы анализа биологических образцов.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Исследования</h3>
+                    <p>Научные исследования и разработка новых технологий.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Консалтинг</h3>
+                    <p>Профессиональные консультации в области биотехнологий.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Контакты -->
+    <section id="contact" class="section-dark">
+        <div class="container">
+            <h2>Контакты</h2>
+            <div class="contact-info">
+                <p>Email: info@bioapgreid.ru</p>
+                <p>Телефон: +7 (XXX) XXX-XX-XX</p>
+                <p>Адрес: Ваш адрес</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 Bioapgreid. Все права защищены.</p>
+            <p>bioapgreid.ru</p>
+        </div>
+    </footer>
+</body>
+</html>
