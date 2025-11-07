@@ -3,13 +3,26 @@
 class GenofondApp {
     constructor() {
         this.components = new Map();
+        this.backgroundIntervals = {};
         this.appState = {
             isInitialized: false,
             isOnline: navigator.onLine,
             currentView: null,
             userProgress: {},
-            settings: {}
+            settings: {},
+            performance: {
+                tier: 'high', // 'high', 'medium', 'low'
+                animationsEnabled: true,
+                cacheEnabled: true
+            }
         };
+        
+        // Привязка методов для корректного удаления событий
+        this.boundOnlineHandler = this.handleOnline.bind(this);
+        this.boundOfflineHandler = this.handleOffline.bind(this);
+        this.boundVisibilityHandler = this.handleVisibilityChange.bind(this);
+        this.boundErrorHandler = this.handleGlobalError.bind(this);
+        this.boundRejectionHandler = this.handleRejection.bind(this);
         
         this.init();
     }
@@ -17,6 +30,12 @@ class GenofondApp {
     async init() {
         try {
             this.showPreloader();
+            
+            // Определяем уровень производительности устройства
+            this.detectPerformanceTier();
+            
+            // Настраиваем Service Worker для кеширования
+            await this.setupServiceWorker();
             
             // Загружаем настройки и данные пользователя
             await this.loadUserData();
@@ -27,12 +46,104 @@ class GenofondApp {
             // Настраиваем межкомпонентное взаимодействие
             this.setupComponentIntegration();
             
+            // Настраиваем оптимизации производительности
+            this.setupPerformanceOptimizations();
+            
             // Запускаем приложение
             await this.startApplication();
             
         } catch (error) {
             this.handleFatalError(error);
         }
+    }
+
+    detectPerformanceTier() {
+        // Определяем возможности устройства для оптимизации
+        const isLowPerf = (
+            navigator.hardwareConcurrency < 4 ||
+            (navigator.deviceMemory && navigator.deviceMemory < 4) ||
+            !this.checkWebGLSupport() ||
+            window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        );
+
+        const isMediumPerf = (
+            navigator.hardwareConcurrency < 6 ||
+            (navigator.deviceMemory && navigator.deviceMemory < 6)
+        );
+
+        if (isLowPerf) {
+            this.appState.performance.tier = 'low';
+            this.appState.performance.animationsEnabled = false;
+            document.body.classList.add('performance-low');
+        } else if (isMediumPerf) {
+            this.appState.performance.tier = 'medium';
+            document.body.classList.add('performance-medium');
+        } else {
+            document.body.classList.add('performance-high');
+        }
+
+        console.log(`🎯 Уровень производительности: ${this.appState.performance.tier}`);
+    }
+
+    checkWebGLSupport() {
+        try {
+            const canvas = document.createElement('canvas');
+            return !!(window.WebGLRenderingContext && 
+                     (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')));
+        } catch (e) {
+            return false;
+        }
+    }
+
+    async setupServiceWorker() {
+        if ('serviceWorker' in navigator && this.appState.performance.cacheEnabled) {
+            try {
+                const registration = await navigator.serviceWorker.register('/sw.js');
+                
+                registration.addEventListener('updatefound', () => {
+                    const newWorker = registration.installing;
+                    console.log('🔄 Обновление Service Worker обнаружено');
+                    
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            this.showNotification(
+                                'Доступно обновление приложения. Перезагрузите страницу.',
+                                'info',
+                                8000
+                            );
+                        }
+                    });
+                });
+
+                console.log('✅ Service Worker зарегистрирован');
+            } catch (error) {
+                console.warn('❌ Ошибка регистрации Service Worker:', error);
+                this.appState.performance.cacheEnabled = false;
+            }
+        }
+    }
+
+    checkBrowserSupport() {
+        const features = {
+            'ES6 Modules': () => typeof Symbol !== 'undefined',
+            'CSS Variables': () => window.CSS && CSS.supports('color', 'var(--test)'),
+            'Flexbox': () => window.CSS && CSS.supports('display', 'flex'),
+            'LocalStorage': () => !!window.localStorage,
+            'Promise': () => !!window.Promise,
+            'Custom Elements': () => !!window.customElements,
+            'Map': () => !!window.Map
+        };
+
+        const unsupported = Object.entries(features)
+            .filter(([name, test]) => !test())
+            .map(([name]) => name);
+
+        if (unsupported.length > 0) {
+            console.warn('Неподдерживаемые функции:', unsupported);
+            return false;
+        }
+
+        return true;
     }
 
     async initializeComponents() {
@@ -43,19 +154,25 @@ class GenofondApp {
             throw new Error('Ваш браузер не поддерживает необходимые функции. Пожалуйста, обновите браузер.');
         }
 
-        // Инициализируем компоненты в правильном порядке
+        // Инициализируем компоненты в правильном порядке с учетом производительности
         const initializationOrder = [
             { name: 'contentManager', component: ContentManager },
             { name: 'dnaNavigation', component: DNAHelix },
             { name: 'cellInteraction', component: CellInteraction }
         ];
 
+        // Последовательная инициализация для снижения пиковой нагрузки
         for (const { name, component } of initializationOrder) {
             try {
                 console.log(`🔄 Инициализация ${name}...`);
                 
                 if (typeof component !== 'function') {
                     throw new Error(`Component ${name} is not available`);
+                }
+                
+                // Добавляем задержку между инициализациями для плавности
+                if (this.appState.performance.tier === 'low') {
+                    await new Promise(resolve => setTimeout(resolve, 100));
                 }
                 
                 const instance = new component();
@@ -68,6 +185,83 @@ class GenofondApp {
                 throw new Error(`Не удалось инициализировать ${name}: ${error.message}`);
             }
         }
+    }
+
+    setupPerformanceOptimizations() {
+        // Оптимизация для слабых устройств
+        if (this.appState.performance.tier === 'low') {
+            this.enableLowPerformanceMode();
+        }
+
+        // Пауза анимаций при бездействии
+        this.setupInactivityHandler();
+
+        // Мониторинг производительности
+        this.setupPerformanceMonitoring();
+    }
+
+    enableLowPerformanceMode() {
+        console.log('🔧 Включен режим низкой производительности');
+        
+        // Отключаем тяжелые анимации
+        document.body.classList.add('reduced-motion');
+        
+        // Уменьшаем частоту обновления статистики
+        if (this.backgroundIntervals.stats) {
+            clearInterval(this.backgroundIntervals.stats);
+            this.backgroundIntervals.stats = setInterval(() => {
+                this.updateUserStats();
+            }, 120000); // 2 минуты вместо 1
+        }
+    }
+
+    setupInactivityHandler() {
+        let inactivityTimer;
+        const pauseAnimations = () => {
+            document.body.classList.add('animations-paused');
+        };
+        const resumeAnimations = () => {
+            document.body.classList.remove('animations-paused');
+        };
+
+        const resetTimer = () => {
+            resumeAnimations();
+            clearTimeout(inactivityTimer);
+            inactivityTimer = setTimeout(pauseAnimations, 10000); // 10 секунд бездействия
+        };
+
+        // События пользовательской активности
+        ['mousemove', 'keypress', 'click', 'touchstart'].forEach(event => {
+            document.addEventListener(event, resetTimer, { passive: true });
+        });
+
+        resetTimer(); // Запускаем таймер
+    }
+
+    setupPerformanceMonitoring() {
+        // Мониторинг FPS
+        let frameCount = 0;
+        let lastTime = performance.now();
+        
+        const checkFPS = () => {
+            frameCount++;
+            const currentTime = performance.now();
+            if (currentTime - lastTime >= 1000) {
+                const fps = Math.round((frameCount * 1000) / (currentTime - lastTime));
+                frameCount = 0;
+                lastTime = currentTime;
+                
+                // Автоматическое снижение качества при низком FPS
+                if (fps < 30 && this.appState.performance.tier !== 'low') {
+                    console.warn(`⚠️ Низкий FPS: ${fps}, включаем оптимизации`);
+                    this.enableLowPerformanceMode();
+                    this.appState.performance.tier = 'low';
+                }
+            }
+            requestAnimationFrame(checkFPS);
+        };
+        
+        checkFPS();
     }
 
     setupComponentIntegration() {
@@ -84,6 +278,9 @@ class GenofondApp {
         
         // Обработка глобальных событий
         this.setupGlobalEventHandlers();
+        
+        // Управление кешем
+        this.setupCacheManagement();
     }
 
     setupDNACellSync() {
@@ -130,27 +327,37 @@ class GenofondApp {
         });
     }
 
-    setupGlobalEventHandlers() {
-        // Обработка онлайн/оффлайн статуса
-        window.addEventListener('online', () => {
-            this.appState.isOnline = true;
-            this.showNotification('Соединение восстановлено', 'success', 3000);
-            this.syncOfflineData();
-        });
-
-        window.addEventListener('offline', () => {
-            this.appState.isOnline = false;
-            this.showNotification('Работаем в оффлайн-режиме', 'warning', 5000);
-        });
-
-        // Обработка видимости страницы
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                this.saveAppState();
-            } else {
-                this.updateUserStats();
+    setupCacheManagement() {
+        // Обработчик для кнопки управления кешем
+        document.addEventListener('click', (e) => {
+            if (e.target.id === 'cacheManager') {
+                this.showCacheManagementDialog();
             }
         });
+    }
+
+    showCacheManagementDialog() {
+        const cacheStats = this.getCacheStatistics();
+        const message = `
+            💾 Управление кешем\n
+            • Уровень производительности: ${this.appState.performance.tier}
+            • Анимации: ${this.appState.performance.animationsEnabled ? 'вкл' : 'выкл'}
+            • Кеш: ${this.appState.performance.cacheEnabled ? 'вкл' : 'выкл'}
+            • Использовано памяти: ${cacheStats.memoryUsage ? cacheStats.memoryUsage.used + 'MB' : 'N/A'}
+        `;
+
+        if (confirm(`${message}\n\nОчистить все кеши?`)) {
+            this.clearAllCaches();
+        }
+    }
+
+    setupGlobalEventHandlers() {
+        // Обработка онлайн/оффлайн статуса
+        window.addEventListener('online', this.boundOnlineHandler);
+        window.addEventListener('offline', this.boundOfflineHandler);
+
+        // Обработка видимости страницы
+        document.addEventListener('visibilitychange', this.boundVisibilityHandler);
 
         // Обработка закрытия страницы
         window.addEventListener('beforeunload', () => {
@@ -158,13 +365,34 @@ class GenofondApp {
         });
 
         // Глобальный обработчик ошибок
-        window.addEventListener('error', (e) => {
-            this.handleGlobalError(e.error);
-        });
+        window.addEventListener('error', this.boundErrorHandler);
+        window.addEventListener('unhandledrejection', this.boundRejectionHandler);
+    }
 
-        window.addEventListener('unhandledrejection', (e) => {
-            this.handleGlobalError(e.reason);
-        });
+    handleOnline() {
+        this.appState.isOnline = true;
+        this.showNotification('Соединение восстановлено', 'success', 3000);
+        this.syncOfflineData();
+    }
+
+    handleOffline() {
+        this.appState.isOnline = false;
+        this.showNotification('Работаем в оффлайн-режиме', 'warning', 5000);
+    }
+
+    handleVisibilityChange() {
+        if (document.hidden) {
+            this.saveAppState();
+            // Приостанавливаем тяжелые операции когда страница не видна
+            document.body.classList.add('background-tab');
+        } else {
+            document.body.classList.remove('background-tab');
+            this.updateUserStats();
+        }
+    }
+
+    handleRejection(event) {
+        this.handleGlobalError(event.reason);
     }
 
     async startApplication() {
@@ -219,8 +447,11 @@ class GenofondApp {
             
             // Обновляем отображение статистики
             const biologicalAge = this.calculateBiologicalAge();
+            const overallProgress = this.calculateOverallProgress();
+            
             const levelElement = statsPanel.querySelector('.progress-level .value');
             const ageElement = statsPanel.querySelector('.biological-age .value');
+            const progressElement = statsPanel.querySelector('.overall-progress .value');
             
             if (levelElement) {
                 levelElement.textContent = levelData?.number ?? '0';
@@ -229,11 +460,15 @@ class GenofondApp {
             if (ageElement) {
                 ageElement.textContent = biologicalAge;
             }
+
+            if (progressElement) {
+                progressElement.textContent = `${overallProgress}%`;
+            }
             
             // Сохраняем в состоянии
             this.appState.userProgress.currentLevel = currentLevel;
             this.appState.userProgress.biologicalAge = biologicalAge;
-            this.appState.userProgress.overallProgress = this.calculateOverallProgress();
+            this.appState.userProgress.overallProgress = overallProgress;
             
         } catch (error) {
             console.warn('Failed to update user stats:', error);
@@ -271,8 +506,12 @@ class GenofondApp {
     }
 
     showNotification(message, type = 'info', duration = 5000) {
+        // Оптимизация: не показывать уведомления когда страница не видна
+        if (document.hidden && type !== 'error') return null;
+
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
+        notification.setAttribute('role', 'alert');
         notification.innerHTML = `
             <div class="notification-content">
                 <span class="notification-message">${message}</span>
@@ -319,6 +558,7 @@ class GenofondApp {
         const preloader = document.getElementById('preloader');
         if (preloader) {
             preloader.style.display = 'flex';
+            preloader.style.opacity = '1';
         }
     }
 
@@ -377,36 +617,19 @@ class GenofondApp {
 
     startBackgroundProcesses() {
         // Периодическое сохранение состояния
-        setInterval(() => {
+        this.backgroundIntervals.save = setInterval(() => {
             this.saveAppState();
         }, 30000); // Каждые 30 секунд
 
-        // Обновление статистики каждую минуту
-        setInterval(() => {
+        // Обновление статистики (частота зависит от производительности)
+        this.backgroundIntervals.stats = setInterval(() => {
             this.updateUserStats();
-        }, 60000);
-    }
+        }, this.appState.performance.tier === 'low' ? 120000 : 60000); // 1 или 2 минуты
 
-    checkBrowserSupport() {
-        const features = {
-            'ES6 Modules': () => typeof Symbol !== 'undefined',
-            'CSS Variables': () => window.CSS && CSS.supports('color', 'var(--test)'),
-            'Flexbox': () => window.CSS && CSS.supports('display', 'flex'),
-            'LocalStorage': () => !!window.localStorage,
-            'Promise': () => !!window.Promise,
-            'Custom Elements': () => !!window.customElements
-        };
-
-        const unsupported = Object.entries(features)
-            .filter(([name, test]) => !test())
-            .map(([name]) => name);
-
-        if (unsupported.length > 0) {
-            console.warn('Неподдерживаемые функции:', unsupported);
-            return false;
-        }
-
-        return true;
+        // Сборка мусора для кеша
+        this.backgroundIntervals.cacheCleanup = setInterval(() => {
+            this.components.get('contentManager')?.cleanupExpiredCache?.();
+        }, 300000); // 5 минут
     }
 
     handleGlobalError(error) {
@@ -447,6 +670,9 @@ class GenofondApp {
                     <button class="btn btn-secondary" onclick="genofondApp.showSupport()">
                         Справка
                     </button>
+                    <button class="btn btn-secondary" onclick="localStorage.clear(); sessionStorage.clear(); window.location.reload()">
+                        Сбросить данные
+                    </button>
                 </div>
             </div>
         `;
@@ -460,7 +686,8 @@ class GenofondApp {
             timestamp: new Date().toISOString(),
             userAgent: navigator.userAgent,
             viewport: `${window.innerWidth}x${window.innerHeight}`,
-            online: this.appState.isOnline
+            online: this.appState.isOnline,
+            performanceTier: this.appState.performance.tier
         });
     }
 
@@ -469,7 +696,8 @@ class GenofondApp {
         console.error('📉 App error:', {
             error: error.message,
             stack: error.stack,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            performanceTier: this.appState.performance.tier
         });
     }
 
@@ -479,6 +707,64 @@ class GenofondApp {
             'info',
             5000
         );
+    }
+
+    // Методы управления кешем
+    clearAllCaches() {
+        // Очистка Service Worker кеша
+        if ('caches' in window) {
+            caches.keys().then(cacheNames => {
+                cacheNames.forEach(cacheName => {
+                    caches.delete(cacheName);
+                });
+            });
+        }
+        
+        // Очистка localStorage (кроме пользовательских данных)
+        const keysToKeep = ['genofond_user_progress', 'genofond_user_settings', 'genofond_welcomed'];
+        Object.keys(localStorage).forEach(key => {
+            if (!keysToKeep.includes(key) && !key.startsWith('section-') && !key.startsWith('progress-')) {
+                localStorage.removeItem(key);
+            }
+        });
+        
+        // Очистка memory cache компонентов
+        this.components.forEach(component => {
+            if (typeof component.clearCache === 'function') {
+                component.clearCache();
+            }
+        });
+        
+        this.showNotification('Кеши успешно очищены', 'success', 3000);
+    }
+
+    getCacheStatistics() {
+        const contentManager = this.components.get('contentManager');
+        const cacheStats = contentManager?.getCacheStats?.() || {};
+        
+        return {
+            contentCache: cacheStats,
+            serviceWorker: this.getSWCacheStatus(),
+            memoryUsage: this.getMemoryUsage(),
+            performanceTier: this.appState.performance.tier
+        };
+    }
+
+    getSWCacheStatus() {
+        if (!('serviceWorker' in navigator)) return 'not_supported';
+        return navigator.serviceWorker.controller ? 'active' : 'inactive';
+    }
+
+    getMemoryUsage() {
+        if (performance.memory) {
+            const memory = performance.memory;
+            return {
+                used: Math.round(memory.usedJSHeapSize / 1048576),
+                total: Math.round(memory.totalJSHeapSize / 1048576),
+                limit: Math.round(memory.jsHeapSizeLimit / 1048576)
+            };
+        }
+        return null;
     }
 
     // Публичные методы API
@@ -517,6 +803,14 @@ class GenofondApp {
 
     // Деструктор для очистки
     destroy() {
+        // Очистка интервалов
+        if (this.backgroundIntervals) {
+            Object.values(this.backgroundIntervals).forEach(interval => {
+                clearInterval(interval);
+            });
+        }
+
+        // Уничтожение компонентов
         this.components.forEach(component => {
             if (typeof component.destroy === 'function') {
                 component.destroy();
@@ -529,12 +823,13 @@ class GenofondApp {
         window.removeEventListener('online', this.boundOnlineHandler);
         window.removeEventListener('offline', this.boundOfflineHandler);
         document.removeEventListener('visibilitychange', this.boundVisibilityHandler);
+        window.removeEventListener('error', this.boundErrorHandler);
+        window.removeEventListener('unhandledrejection', this.boundRejectionHandler);
     }
 }
 
 // ===== ГЛОБАЛЬНАЯ ИНИЦИАЛИЗАЦИЯ =====
 
-// Создаем глобальный экземпляр приложения
 let genofondApp = null;
 
 document.addEventListener('DOMContentLoaded', async function() {
@@ -547,30 +842,45 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         console.log('🧬 Запуск GENOФОНД...');
         
+        // Добавляем класс загрузки
+        document.body.classList.add('app-loading');
+        
         // Создаем экземпляр приложения
         genofondApp = new GenofondApp();
         window.genofondApp = genofondApp;
         
-        // Делаем доступным для консоли отладки
-        if (typeof window !== 'undefined') {
-            window.genofondApp = genofondApp;
-        }
+        // Убираем класс загрузки когда приложение готово
+        setTimeout(() => {
+            document.body.classList.remove('app-loading');
+            document.body.classList.add('app-ready');
+        }, 1000);
 
     } catch (error) {
         console.error('Критическая ошибка при запуске:', error);
+        document.body.classList.add('app-error');
         
         // Показываем сообщение об ошибке
-        document.body.innerHTML = `
-            <div class="fatal-error">
-                <h2>Критическая ошибка</h2>
-                <p>Не удалось запустить приложение. Пожалуйста, обновите страницу.</p>
-                <button onclick="window.location.reload()">Обновить</button>
-            </div>
-        `;
+        const preloader = document.getElementById('preloader');
+        if (preloader) {
+            preloader.innerHTML = `
+                <div class="fatal-error">
+                    <div class="error-icon">⚠️</div>
+                    <h2>Критическая ошибка</h2>
+                    <p>Не удалось запустить приложение. Пожалуйста, обновите страницу.</p>
+                    <p class="error-detail">${error.message}</p>
+                    <button class="btn btn-primary" onclick="window.location.reload()">Обновить страницу</button>
+                    <div class="error-actions">
+                        <button class="btn btn-secondary" onclick="localStorage.clear(); sessionStorage.clear(); window.location.reload()">
+                            Сбросить данные
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
     }
 });
 
-// Обработчик для кнопки быстрого теста
+// Обработчик для кнопок быстрого доступа
 document.addEventListener('DOMContentLoaded', function() {
     const quickTestBtn = document.getElementById('quickTest');
     if (quickTestBtn) {
@@ -594,6 +904,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     'info',
                     4000
                 );
+            }
+        });
+    }
+
+    const exportDataBtn = document.getElementById('exportData');
+    if (exportDataBtn) {
+        exportDataBtn.addEventListener('click', function() {
+            if (window.genofondApp) {
+                window.genofondApp.exportData();
             }
         });
     }
