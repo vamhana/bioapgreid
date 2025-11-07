@@ -6,10 +6,12 @@ class ContentManager {
         this.currentContent = null;
         this.contentCache = new Map();
         this.cacheHits = new Map();
-        this.cacheLimit = 50; // Максимум элементов в кеше
+        this.cacheLimit = 50;
         this.isLoading = false;
+        this.intersectionObserver = null;
+        this.cacheCleanupInterval = null;
         
-        // Структура контента с улучшенной организацией
+        // Улучшенная структура контента
         this.contentStructure = {
             level0: {
                 id: 'level0',
@@ -59,13 +61,28 @@ class ContentManager {
                 progress: 0,
                 unlocked: false
             },
-            // ... остальные уровни с аналогичной структурой
+            level3: {
+                id: 'level3',
+                title: "Уровень 3: Оптимизация",
+                description: "Продвинутые методы оптимизации организма",
+                icon: '⚡',
+                color: 'var(--color-dna-primary)',
+                difficulty: 'intermediate',
+                sections: [
+                    { id: 'biohacking', title: "Биохакинг и ноотропы", duration: 12 },
+                    { id: 'hormones', title: "Гормональная оптимизация", duration: 10 },
+                    { id: 'metabolism', title: "Метаболическая гибкость", duration: 8 },
+                    { id: 'detox', title: "Детокс и очищение", duration: 6 }
+                ],
+                progress: 0,
+                unlocked: false
+            },
             knowledge: {
                 id: 'knowledge',
                 title: "База знаний",
                 description: "Полная библиотека исследований и материалов",
                 icon: '📚',
-                color: 'var(--color-dna-primary)',
+                color: 'var(--color-dna-secondary)',
                 difficulty: 'all',
                 sections: [
                     { id: 'publications', title: "Научные публикации", duration: 0 },
@@ -90,7 +107,7 @@ class ContentManager {
             this.progressFill = document.querySelector('.progress-fill');
 
             if (!this.contentViewport || !this.contentBody) {
-                throw new Error('Required DOM elements not found');
+                throw new Error('Required DOM elements not found for ContentManager');
             }
 
             this.bindEvents();
@@ -98,7 +115,7 @@ class ContentManager {
             this.setupCacheCleanup();
             this.preloadCriticalContent();
             
-            console.log('✅ ContentManager initialized');
+            console.log('✅ ContentManager initialized successfully');
         } catch (error) {
             console.error('❌ ContentManager init failed:', error);
             throw error;
@@ -107,9 +124,11 @@ class ContentManager {
 
     bindEvents() {
         // Закрытие контента
-        this.closeContent?.addEventListener('click', () => {
-            this.hideContent();
-        });
+        if (this.closeContent) {
+            this.closeContent.addEventListener('click', () => {
+                this.hideContent();
+            });
+        }
 
         // Закрытие по ESC
         document.addEventListener('keydown', (e) => {
@@ -152,9 +171,13 @@ class ContentManager {
                         if (levelId && !this.contentCache.has(levelId)) {
                             this.preloadContent(levelId);
                         }
+                        this.intersectionObserver.unobserve(entry.target);
                     }
                 });
-            }, { rootMargin: '100px' });
+            }, { 
+                rootMargin: '100px',
+                threshold: 0.1 
+            });
         }
     }
 
@@ -165,6 +188,11 @@ class ContentManager {
             this.isLoading = true;
             this.showLoadingState();
             
+            // Проверяем существование уровня
+            if (!this.contentStructure[levelId]) {
+                throw new Error(`Level "${levelId}" not found in content structure`);
+            }
+
             // Загружаем контент с приоритетом
             const content = await this.loadContent(levelId);
             
@@ -187,6 +215,11 @@ class ContentManager {
     }
 
     async loadContent(levelId, priority = 'high') {
+        // Проверяем существование уровня
+        if (!this.contentStructure[levelId]) {
+            throw new Error(`Content level "${levelId}" does not exist`);
+        }
+
         // Проверяем кэш в памяти
         if (this.contentCache.has(levelId)) {
             this.cacheHits.set(levelId, (this.cacheHits.get(levelId) || 0) + 1);
@@ -235,23 +268,26 @@ class ContentManager {
     }
 
     removeLeastUsed() {
-        let leastUsed = null;
+        if (this.contentCache.size === 0) return;
+
+        let leastUsedKey = null;
         let minScore = Infinity;
+        const now = Date.now();
         
         for (let [key, value] of this.contentCache) {
-            // Score based on access count and age
-            const age = Date.now() - value.lastAccessed;
-            const score = value.accessCount / (age / 1000); // accesses per second
+            // Score based on access count and age (чем старше и реже используется - тем выше шанс удаления)
+            const age = now - value.lastAccessed;
+            const score = value.accessCount / (age / 1000 + 1); // accesses per second + 1 to avoid division by zero
             
             if (score < minScore) {
                 minScore = score;
-                leastUsed = key;
+                leastUsedKey = key;
             }
         }
         
-        if (leastUsed) {
-            this.contentCache.delete(leastUsed);
-            console.log('🗑️ Удален из кеша:', leastUsed);
+        if (leastUsedKey) {
+            this.contentCache.delete(leastUsedKey);
+            console.log('🗑️ Удален из кеша:', leastUsedKey);
         }
     }
 
@@ -259,30 +295,35 @@ class ContentManager {
         // Имитация загрузки с сервера с разным приоритетом
         const delay = priority === 'high' ? 300 : 1000 + Math.random() * 2000;
         
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             setTimeout(() => {
-                const levelData = this.contentStructure[levelId];
-                
-                if (!levelData) {
-                    throw new Error(`Content not found for level: ${levelId}`);
+                try {
+                    const levelData = this.contentStructure[levelId];
+                    
+                    if (!levelData) {
+                        reject(new Error(`Content not found for level: ${levelId}`));
+                        return;
+                    }
+                    
+                    // Генерируем демо-контент на основе структуры
+                    const content = {
+                        id: levelId,
+                        title: levelData.title,
+                        description: levelData.description,
+                        icon: levelData.icon,
+                        color: levelData.color,
+                        difficulty: levelData.difficulty,
+                        sections: levelData.sections,
+                        html: this.generateContentHTML(levelId, levelData),
+                        lastUpdated: new Date().toISOString(),
+                        estimatedReadTime: this.calculateReadTime(levelData.sections),
+                        version: '1.0'
+                    };
+                    
+                    resolve(content);
+                } catch (error) {
+                    reject(error);
                 }
-                
-                // Генерируем демо-контент на основе структуры
-                const content = {
-                    id: levelId,
-                    title: levelData.title,
-                    description: levelData.description,
-                    icon: levelData.icon,
-                    color: levelData.color,
-                    difficulty: levelData.difficulty,
-                    sections: levelData.sections,
-                    html: this.generateContentHTML(levelId, levelData),
-                    lastUpdated: new Date().toISOString(),
-                    estimatedReadTime: this.calculateReadTime(levelData.sections),
-                    version: '1.0'
-                };
-                
-                resolve(content);
             }, delay);
         });
     }
@@ -337,7 +378,8 @@ class ContentManager {
                             <div class="section-progress">
                                 <label class="progress-checkbox">
                                     <input type="checkbox" 
-                                           data-section="${levelId}-${index}" 
+                                           data-level="${levelId}" 
+                                           data-section="${index}" 
                                            ${this.isSectionCompleted(levelId, index) ? 'checked' : ''}
                                            aria-label="Отметить раздел '${section.title}' как пройденный">
                                     <span class="checkmark"></span>
@@ -375,16 +417,48 @@ class ContentManager {
     generateSectionContent(levelId, section, index) {
         const templates = {
             level0: {
-                intro: `<p>Концепция бессмертия всегда волновала человечество. Современная наука позволяет нам приблизиться к этой мечте через понимание биологических процессов старения.</p>`,
-                ethics: `<p>Этические вопросы продления жизни требуют тщательного рассмотрения. Мы должны балансировать между научным прогрессом и моральными принципами.</p>`,
-                science: `<p>Научный подход к бессмертию основан на исследованиях теломер, клеточного старения и регенеративных технологий.</p>`,
-                history: `<p>От алхимиков до современных крионических компаний - поиск бессмертия имеет богатую историю.</p>`
+                intro: `<div class="section-text">
+                    <h3>Введение в концепцию бессмертия</h3>
+                    <p>Концепция бессмертия всегда волновала человечество. Современная наука позволяет нам приблизиться к этой мечте через понимание биологических процессов старения.</p>
+                    <p>Исследования показывают, что старение - это не неизбежный процесс, а совокупность биологических механизмов, которые можно замедлить и даже обратить вспять.</p>
+                </div>`,
+                ethics: `<div class="section-text">
+                    <h3>Этическая основа проекта</h3>
+                    <p>Этические вопросы продления жизни требуют тщательного рассмотрения. Мы должны балансировать между научным прогрессом и моральными принципами.</p>
+                    <p>Основные этические принципы GENOФОНД: доступность, добровольность, прозрачность и уважение к человеческому достоинству.</p>
+                </div>`,
+                science: `<div class="section-text">
+                    <h3>Научная парадигма</h3>
+                    <p>Научный подход к бессмертию основан на исследованиях теломер, клеточного старения и регенеративных технологий.</p>
+                    <p>Современные направления включают генную терапию, клеточное reprogramming и наномедицину.</p>
+                </div>`,
+                history: `<div class="section-text">
+                    <h3>Исторический контекст</h3>
+                    <p>От алхимиков до современных крионических компаний - поиск бессмертия имеет богатую историю.</p>
+                    <p>Каждая эпоха вносила свой вклад в понимание процессов старения и возможностей их преодоления.</p>
+                </div>`
             },
             level1: {
-                genetics: `<p>Генетический анализ выявляет ваши уникальные особенности и предрасположенности к различным заболеваниям.</p>`,
-                biomarkers: `<p>Биомаркеры старения помогают определить ваш биологический возраст и темпы старения.</p>`,
-                functional: `<p>Функциональная диагностика оценивает текущее состояние органов и систем организма.</p>`,
-                psychological: `<p>Психологическое состояние напрямую влияет на процессы старения и общее здоровье.</p>`
+                genetics: `<div class="section-text">
+                    <h3>Генетический анализ</h3>
+                    <p>Генетический анализ выявляет ваши уникальные особенности и предрасположенности к различным заболеваниям.</p>
+                    <p>Современные технологии позволяют секвенировать весь геном и выявлять маркеры, связанные с долголетием.</p>
+                </div>`,
+                biomarkers: `<div class="section-text">
+                    <h3>Биомаркеры старения</h3>
+                    <p>Биомаркеры старения помогают определить ваш биологический возраст и темпы старения.</p>
+                    <p>Ключевые биомаркеры включают длину теломер, эпигенетические часы и уровень воспалительных маркеров.</p>
+                </div>`,
+                functional: `<div class="section-text">
+                    <h3>Функциональная диагностика</h3>
+                    <p>Функциональная диагностика оценивает текущее состояние органов и систем организма.</p>
+                    <p>Комплексное обследование включает оценку сердечно-сосудистой системы, когнитивных функций и метаболического здоровья.</p>
+                </div>`,
+                psychological: `<div class="section-text">
+                    <h3>Психологический профиль</h3>
+                    <p>Психологическое состояние напрямую влияет на процессы старения и общее здоровье.</p>
+                    <p>Оценка включает тесты на стрессоустойчивость, когнитивные способности и эмоциональное благополучие.</p>
+                </div>`
             }
         };
 
@@ -406,6 +480,7 @@ class ContentManager {
         
         let links = '';
         
+        // Предыдущий уровень
         if (currentIndex > 0) {
             const prevLevel = levels[currentIndex - 1];
             const prevData = this.contentStructure[prevLevel];
@@ -418,6 +493,7 @@ class ContentManager {
             }
         }
         
+        // Следующий уровень
         if (currentIndex < levels.length - 1) {
             const nextLevel = levels[currentIndex + 1];
             const nextData = this.contentStructure[nextLevel];
@@ -434,7 +510,10 @@ class ContentManager {
     }
 
     updateContentViewport(content) {
-        if (!this.contentTitle || !this.contentBody) return;
+        if (!this.contentTitle || !this.contentBody) {
+            console.warn('Content viewport elements not found');
+            return;
+        }
 
         this.contentTitle.textContent = content.title;
         this.contentBody.innerHTML = content.html;
@@ -451,6 +530,8 @@ class ContentManager {
     }
 
     bindContentEvents() {
+        if (!this.contentBody) return;
+
         // Навигация по секциям
         this.contentBody.addEventListener('click', (e) => {
             const sectionLink = e.target.closest('.section-link');
@@ -507,10 +588,14 @@ class ContentManager {
             case 'preload-all':
                 this.preloadAllContent();
                 break;
+            default:
+                console.warn('Unknown cache action:', action);
         }
     }
 
     scrollToSection(sectionId) {
+        if (!this.contentBody) return;
+
         const section = this.contentBody.querySelector(sectionId);
         if (section) {
             section.scrollIntoView({ 
@@ -561,33 +646,51 @@ class ContentManager {
         }
         
         // Обновляем прогресс в структуре
-        this.contentStructure[levelId].progress = progress;
+        if (this.contentStructure[levelId]) {
+            this.contentStructure[levelId].progress = progress;
+        }
     }
 
     getLevelProgress(levelId) {
-        const savedProgress = localStorage.getItem(`progress-${levelId}`);
-        return savedProgress ? parseInt(savedProgress) : 0;
+        try {
+            const savedProgress = localStorage.getItem(`progress-${levelId}`);
+            return savedProgress ? parseInt(savedProgress) : 0;
+        } catch (error) {
+            console.warn('Error reading progress from localStorage:', error);
+            return 0;
+        }
     }
 
     isSectionCompleted(levelId, sectionIndex) {
-        return localStorage.getItem(`section-${levelId}-${sectionIndex}`) === 'completed';
+        try {
+            return localStorage.getItem(`section-${levelId}-${sectionIndex}`) === 'completed';
+        } catch (error) {
+            console.warn('Error reading section progress:', error);
+            return false;
+        }
     }
 
     updateSectionProgress(checkbox) {
-        const sectionId = checkbox.getAttribute('data-section');
+        const levelId = checkbox.getAttribute('data-level');
+        const sectionIndex = checkbox.getAttribute('data-section');
         const isCompleted = checkbox.checked;
         
-        // Сохраняем прогресс
-        localStorage.setItem(`section-${sectionId}`, isCompleted ? 'completed' : 'incomplete');
-        
-        // Обновляем UI
-        const sectionLink = this.contentBody.querySelector(`[href="#section-${sectionId.split('-')[1]}"]`);
-        if (sectionLink) {
-            sectionLink.classList.toggle('completed', isCompleted);
+        try {
+            // Сохраняем прогресс с правильным форматом ключа
+            localStorage.setItem(`section-${levelId}-${sectionIndex}`, isCompleted ? 'completed' : 'incomplete');
+            
+            // Обновляем UI
+            const sectionLink = this.contentBody.querySelector(`[href="#section-${this.contentStructure[levelId]?.sections[sectionIndex]?.id}"]`);
+            if (sectionLink) {
+                sectionLink.classList.toggle('completed', isCompleted);
+            }
+            
+            // Пересчитываем общий прогресс уровня
+            this.calculateAndSaveLevelProgress(levelId);
+        } catch (error) {
+            console.error('Error saving section progress:', error);
+            this.showNotification('Ошибка сохранения прогресса', 'error');
         }
-        
-        // Пересчитываем общий прогресс уровня
-        this.calculateAndSaveLevelProgress(sectionId.split('-')[0]);
     }
 
     calculateAndSaveLevelProgress(levelId) {
@@ -604,7 +707,12 @@ class ContentManager {
         }
         
         const progress = Math.round((completedSections / totalSections) * 100);
-        localStorage.setItem(`progress-${levelId}`, progress.toString());
+        
+        try {
+            localStorage.setItem(`progress-${levelId}`, progress.toString());
+        } catch (error) {
+            console.warn('Error saving level progress:', error);
+        }
         
         // Обновляем отображение
         this.updateProgress(levelId);
@@ -629,11 +737,13 @@ class ContentManager {
 
     showCompletionMessage(levelId) {
         const levelData = this.contentStructure[levelId];
-        this.showNotification(
-            `🎉 Уровень "${levelData.title}" завершен! Доступ открыт к следующему этапу.`,
-            'success',
-            5000
-        );
+        if (levelData) {
+            this.showNotification(
+                `🎉 Уровень "${levelData.title}" завершен! Доступ открыт к следующему этапу.`,
+                'success',
+                5000
+            );
+        }
     }
 
     showIncompleteMessage(levelId, progress) {
@@ -651,14 +761,20 @@ class ContentManager {
         
         if (currentIndex < levels.length - 1) {
             const nextLevel = levels[currentIndex + 1];
-            this.contentStructure[nextLevel].unlocked = true;
-            localStorage.setItem(`unlocked-${nextLevel}`, 'true');
-            
-            this.showNotification(
-                `🔓 Доступен новый уровень: ${this.contentStructure[nextLevel].title}`,
-                'info',
-                6000
-            );
+            if (this.contentStructure[nextLevel]) {
+                this.contentStructure[nextLevel].unlocked = true;
+                try {
+                    localStorage.setItem(`unlocked-${nextLevel}`, 'true');
+                } catch (error) {
+                    console.warn('Error saving unlocked level:', error);
+                }
+                
+                this.showNotification(
+                    `🔓 Доступен новый уровень: ${this.contentStructure[nextLevel].title}`,
+                    'info',
+                    6000
+                );
+            }
         }
     }
 
@@ -717,7 +833,7 @@ class ContentManager {
 
     setupCacheCleanup() {
         // Очистка устаревшего кеша каждые 30 минут
-        setInterval(() => {
+        this.cacheCleanupInterval = setInterval(() => {
             this.cleanupExpiredCache();
         }, 30 * 60 * 1000);
     }
@@ -758,6 +874,7 @@ class ContentManager {
         // Предзагрузка первых двух уровней
         this.preloadContent('level0', 'low');
         this.preloadContent('level1', 'low');
+        this.preloadContent('knowledge', 'low');
     }
 
     async preloadContent(levelId, priority = 'low') {
@@ -787,16 +904,22 @@ class ContentManager {
     async preloadAllContent() {
         console.log('🔄 Предзагрузка всего контента...');
         const levels = Object.keys(this.contentStructure);
+        let loadedCount = 0;
         
         for (const levelId of levels) {
             if (!this.contentCache.has(levelId)) {
-                await this.preloadContent(levelId, 'low');
-                // Задержка для предотвращения блокировки UI
-                await new Promise(resolve => setTimeout(resolve, 100));
+                try {
+                    await this.preloadContent(levelId, 'low');
+                    loadedCount++;
+                    // Задержка для предотвращения блокировки UI
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                } catch (error) {
+                    console.warn(`Failed to preload ${levelId}:`, error);
+                }
             }
         }
         
-        this.showNotification('Весь контент предзагружен в кеш', 'success');
+        this.showNotification(`Предзагружено ${loadedCount} уровней в кеш`, 'success');
     }
 
     // Вспомогательные методы
@@ -806,7 +929,12 @@ class ContentManager {
     }
 
     calculateContentSize(content) {
-        return new Blob([JSON.stringify(content)]).size;
+        try {
+            return new Blob([JSON.stringify(content)]).size;
+        } catch (error) {
+            console.warn('Error calculating content size:', error);
+            return 0;
+        }
     }
 
     getDifficultyText(difficulty) {
@@ -821,6 +949,8 @@ class ContentManager {
 
     // UI состояния
     showLoadingState() {
+        if (!this.contentBody) return;
+
         this.contentBody.innerHTML = `
             <div class="loading-state">
                 <div class="dna-loader">
@@ -835,11 +965,16 @@ class ContentManager {
     }
 
     showErrorState(levelId, error) {
+        if (!this.contentBody) return;
+
+        const levelData = this.contentStructure[levelId];
+        const levelTitle = levelData ? levelData.title : levelId;
+        
         this.contentBody.innerHTML = `
             <div class="error-state">
                 <div class="error-icon">⚠️</div>
                 <h3>Ошибка загрузки контента</h3>
-                <p>Не удалось загрузить контент для уровня "${this.contentStructure[levelId]?.title || levelId}"</p>
+                <p>Не удалось загрузить контент для уровня "${levelTitle}"</p>
                 <div class="error-actions">
                     <button class="btn btn-primary retry-loading" data-level="${levelId}">
                         Попробовать снова
@@ -856,18 +991,25 @@ class ContentManager {
         `;
 
         // Обработчики для кнопок ошибки
-        this.contentBody.querySelector('.retry-loading')?.addEventListener('click', () => {
-            this.showContent(levelId);
-        });
+        const retryBtn = this.contentBody.querySelector('.retry-loading');
+        const offlineBtn = this.contentBody.querySelector('.use-offline');
+        
+        if (retryBtn) {
+            retryBtn.addEventListener('click', () => {
+                this.showContent(levelId);
+            });
+        }
 
-        this.contentBody.querySelector('.use-offline')?.addEventListener('click', () => {
-            const cached = this.restoreFromLocalStorage(levelId);
-            if (cached) {
-                this.updateContentViewport(cached);
-            } else {
-                this.showNotification('Оффлайн-версия не найдена', 'error');
-            }
-        });
+        if (offlineBtn) {
+            offlineBtn.addEventListener('click', () => {
+                const cached = this.restoreFromLocalStorage(levelId);
+                if (cached) {
+                    this.updateContentViewport(cached);
+                } else {
+                    this.showNotification('Оффлайн-версия не найдена', 'error');
+                }
+            });
+        }
     }
 
     showNotification(message, type = 'info', duration = 5000) {
@@ -878,10 +1020,14 @@ class ContentManager {
     }
 
     trackContentViewed(levelId) {
-        // Статистика просмотров
-        const views = JSON.parse(localStorage.getItem('contentViews') || '{}');
-        views[levelId] = (views[levelId] || 0) + 1;
-        localStorage.setItem('contentViews', JSON.stringify(views));
+        try {
+            // Статистика просмотров
+            const views = JSON.parse(localStorage.getItem('contentViews') || '{}');
+            views[levelId] = (views[levelId] || 0) + 1;
+            localStorage.setItem('contentViews', JSON.stringify(views));
+        } catch (error) {
+            console.warn('Error tracking content view:', error);
+        }
     }
 
     // Публичные методы
@@ -895,7 +1041,7 @@ class ContentManager {
 
     getCacheStats() {
         const totalSize = Array.from(this.contentCache.values())
-            .reduce((sum, item) => sum + item.size, 0);
+            .reduce((sum, item) => sum + (item.size || 0), 0);
             
         const hits = Array.from(this.cacheHits.values()).reduce((a, b) => a + b, 0);
         const hitRate = this.contentCache.size > 0 ? (hits / (hits + this.contentCache.size)) : 0;
@@ -917,7 +1063,11 @@ class ContentManager {
         // Очищаем localStorage кеш
         Object.keys(localStorage).forEach(key => {
             if (key.startsWith('content-cache-')) {
-                localStorage.removeItem(key);
+                try {
+                    localStorage.removeItem(key);
+                } catch (error) {
+                    console.warn('Error removing cache key:', key, error);
+                }
             }
         });
         
@@ -938,6 +1088,7 @@ class ContentManager {
 
     // Деструктор
     destroy() {
+        // Отключаем Intersection Observer
         if (this.intersectionObserver) {
             this.intersectionObserver.disconnect();
         }
@@ -946,6 +1097,12 @@ class ContentManager {
         if (this.cacheCleanupInterval) {
             clearInterval(this.cacheCleanupInterval);
         }
+        
+        // Очищаем кеш
+        this.contentCache.clear();
+        this.cacheHits.clear();
+        
+        console.log('🧹 ContentManager destroyed');
     }
 }
 
