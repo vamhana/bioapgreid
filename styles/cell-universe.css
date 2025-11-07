@@ -8,6 +8,9 @@
   background: var(--gradient-deep-space);
   transform-style: preserve-3d;
   perspective: 1000px;
+  /* Оптимизация */
+  isolation: isolate;
+  contain: layout style paint;
 }
 
 /* ===== КЛЕТОЧНАЯ МЕМБРАНА ===== */
@@ -20,9 +23,12 @@
   height: 90vmin;
   border: 2px solid var(--color-membrane);
   border-radius: 50%;
-  animation: membrane-pulse 8s ease-in-out infinite;
+  animation: membrane-pulse calc(var(--animation-multiplier) * 8s) ease-in-out infinite;
   pointer-events: none;
   z-index: var(--z-background);
+  /* Оптимизация */
+  will-change: box-shadow;
+  backface-visibility: hidden;
 }
 
 .membrane-glow {
@@ -33,8 +39,10 @@
   height: 100%;
   border-radius: 50%;
   background: radial-gradient(circle, rgba(78, 205, 196, 0.1) 0%, transparent 70%);
-  animation: membrane-glow-pulse 12s ease-in-out infinite alternate;
+  animation: membrane-glow-pulse calc(var(--animation-multiplier) * 12s) ease-in-out infinite alternate;
   filter: blur(10px);
+  /* Оптимизация */
+  will-change: transform, opacity;
 }
 
 .membrane-particles {
@@ -44,6 +52,8 @@
   width: 100%;
   height: 100%;
   border-radius: 50%;
+  /* Оптимизация */
+  contain: layout;
 }
 
 .membrane-particle {
@@ -52,7 +62,9 @@
   height: 4px;
   background: var(--color-dna-primary);
   border-radius: 50%;
-  animation: membrane-particle-float 6s linear infinite;
+  animation: membrane-particle-float calc(var(--animation-multiplier) * 6s) linear infinite;
+  /* Оптимизация */
+  will-change: transform;
 }
 
 @keyframes membrane-pulse {
@@ -96,6 +108,21 @@
   }
 }
 
+/* Упрощения для низкого режима производительности */
+.performance-low .cell-membrane {
+  animation: none;
+  border: 1px solid var(--color-membrane);
+}
+
+.performance-low .membrane-glow {
+  animation: none;
+  opacity: 0.3;
+}
+
+.performance-low .membrane-particle {
+  display: none;
+}
+
 /* ===== КОНТЕЙНЕР ОРГАНЕЛЛ ===== */
 .organelles-container {
   position: absolute;
@@ -105,19 +132,35 @@
   height: 100%;
   pointer-events: none;
   z-index: var(--z-base);
+  /* Оптимизация */
+  contain: layout style;
 }
 
 .organelles-container * {
   pointer-events: auto;
 }
 
+/* Состояния контейнера */
+.organelles-container.animations-paused .organelle {
+  animation-play-state: paused !important;
+}
+
+.organelles-container.idle-mode .organelle {
+  animation-duration: calc(var(--animation-multiplier) * 3s) !important;
+  opacity: 0.8;
+}
+
 /* ===== БАЗОВЫЕ СТИЛИ ОРГАНЕЛЛ ===== */
 .organelle {
   position: absolute;
   cursor: pointer;
-  transition: all var(--transition-normal);
+  transition: all calc(var(--animation-multiplier) * var(--transition-normal));
   transform-style: preserve-3d;
   filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.5));
+  /* Оптимизация */
+  will-change: transform, filter;
+  backface-visibility: hidden;
+  contain: layout style;
 }
 
 .organelle-glow {
@@ -131,6 +174,8 @@
   opacity: 0.5;
   transition: inherit;
   z-index: -1;
+  /* Оптимизация */
+  will-change: opacity, filter;
 }
 
 .organelle-label {
@@ -144,7 +189,7 @@
   font-weight: 600;
   text-align: center;
   opacity: 0;
-  transition: all var(--transition-normal);
+  transition: all calc(var(--animation-multiplier) * var(--transition-normal));
   text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
   white-space: nowrap;
   background: rgba(0, 0, 0, 0.8);
@@ -153,6 +198,9 @@
   border: 1px solid rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(10px);
   pointer-events: none;
+  /* Оптимизация */
+  will-change: transform, opacity;
+  z-index: var(--z-tooltip);
 }
 
 .organelle-label span {
@@ -166,7 +214,7 @@
 /* === ИНТЕРАКТИВНЫЕ СОСТОЯНИЯ ОРГАНЕЛЛ === */
 .organelle:hover {
   transform: scale(1.2);
-  filter: brightness(1.3);
+  filter: brightness(1.3) drop-shadow(0 0 15px rgba(0, 0, 0, 0.7));
 }
 
 .organelle:hover .organelle-label {
@@ -183,16 +231,37 @@
 .organelle-hover {
   transform: scale(1.2);
   filter: brightness(1.3);
-  transition: all var(--transition-normal);
+  transition: all calc(var(--animation-multiplier) * var(--transition-normal));
 }
 
 .organelle-pulse {
-  animation: organelle-pulse-animation 0.5s ease-in-out 3;
+  animation: organelle-pulse-animation calc(var(--animation-multiplier) * 0.5s) ease-in-out 3;
 }
 
 @keyframes organelle-pulse-animation {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.1); }
+}
+
+/* Состояние тач-активации */
+.organelle.touch-active {
+  transform: scale(1.15);
+  transition: transform 0.1s ease;
+}
+
+/* Упрощения для низкого режима */
+.performance-low .organelle-glow {
+  filter: blur(8px);
+  opacity: 0.3;
+}
+
+.performance-low .organelle:hover {
+  transform: scale(1.1);
+  filter: brightness(1.2);
+}
+
+.performance-low .organelle-label {
+  backdrop-filter: none;
 }
 
 /* ===== ЯДРО КЛЕТКИ ===== */
@@ -203,11 +272,15 @@
   left: 40%;
   background: radial-gradient(circle, var(--color-nucleus), #FF8E8E);
   border-radius: 50%;
-  animation: nucleus-pulse 4s ease-in-out infinite, nucleus-float 8s ease-in-out infinite;
+  animation: 
+    nucleus-pulse calc(var(--animation-multiplier) * 4s) ease-in-out infinite,
+    nucleus-float calc(var(--animation-multiplier) * 8s) ease-in-out infinite;
   box-shadow: 
     inset 0 0 20px rgba(255, 255, 255, 0.3),
     0 0 30px rgba(255, 107, 107, 0.4);
   z-index: var(--z-base);
+  /* Оптимизация */
+  will-change: transform, box-shadow;
 }
 
 .nucleus::before {
@@ -220,6 +293,8 @@
   background: radial-gradient(circle, rgba(255, 255, 255, 0.2), transparent);
   border-radius: 50%;
   filter: blur(5px);
+  /* Оптимизация */
+  will-change: transform;
 }
 
 .nucleus::after {
@@ -231,7 +306,7 @@
   height: 40%;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 50%;
-  animation: nucleus-inner-pulse 3s ease-in-out infinite alternate;
+  animation: nucleus-inner-pulse calc(var(--animation-multiplier) * 3s) ease-in-out infinite alternate;
 }
 
 @keyframes nucleus-pulse {
@@ -272,6 +347,18 @@
   }
 }
 
+/* Упрощения ядра для низкого режима */
+.performance-low .organelle.nucleus {
+  animation: nucleus-float calc(var(--animation-multiplier) * 10s) ease-in-out infinite;
+  box-shadow: 
+    inset 0 0 10px rgba(255, 255, 255, 0.2),
+    0 0 20px rgba(255, 107, 107, 0.3);
+}
+
+.performance-low .nucleus::after {
+  animation: none;
+}
+
 /* ===== МИТОХОНДРИИ ===== */
 .organelle.mitochondria {
   width: 12vmin;
@@ -280,11 +367,15 @@
   right: 25%;
   background: linear-gradient(45deg, var(--color-mitochondria), #A8E6CF);
   border-radius: 50% / 60%;
-  animation: mitochondria-float 6s ease-in-out infinite, mitochondria-pulse 4s ease-in-out infinite;
+  animation: 
+    mitochondria-float calc(var(--animation-multiplier) * 6s) ease-in-out infinite,
+    mitochondria-pulse calc(var(--animation-multiplier) * 4s) ease-in-out infinite;
   transform: rotate(45deg);
   box-shadow: 
     inset 0 0 10px rgba(255, 255, 255, 0.2),
     0 0 20px rgba(199, 244, 100, 0.4);
+  /* Оптимизация */
+  will-change: transform, filter;
 }
 
 .mitochondria::before {
@@ -296,7 +387,7 @@
   height: 60%;
   background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.3) 50%, transparent 70%);
   border-radius: inherit;
-  animation: mitochondria-cristae 3s ease-in-out infinite;
+  animation: mitochondria-cristae calc(var(--animation-multiplier) * 3s) ease-in-out infinite;
 }
 
 @keyframes mitochondria-float {
@@ -328,6 +419,16 @@
   }
 }
 
+/* Упрощения митохондрий для низкого режима */
+.performance-low .organelle.mitochondria {
+  animation: mitochondria-float calc(var(--animation-multiplier) * 8s) ease-in-out infinite;
+}
+
+.performance-low .mitochondria::before {
+  animation: none;
+  opacity: 0.3;
+}
+
 /* ===== РИБОСОМЫ ===== */
 .organelle.ribosome {
   width: 8vmin;
@@ -336,10 +437,14 @@
   left: 30%;
   background: radial-gradient(circle, var(--color-ribosome), #FFD3D3);
   border-radius: 50%;
-  animation: ribosome-float 5s ease-in-out infinite, ribosome-spin 20s linear infinite;
+  animation: 
+    ribosome-float calc(var(--animation-multiplier) * 5s) ease-in-out infinite,
+    ribosome-spin calc(var(--animation-multiplier) * 20s) linear infinite;
   box-shadow: 
     inset 0 0 10px rgba(255, 255, 255, 0.2),
     0 0 15px rgba(255, 165, 165, 0.4);
+  /* Оптимизация */
+  will-change: transform;
 }
 
 .ribosome::before {
@@ -351,7 +456,7 @@
   height: 50%;
   background: rgba(255, 255, 255, 0.3);
   border-radius: 50%;
-  animation: ribosome-inner-spin 10s linear infinite reverse;
+  animation: ribosome-inner-spin calc(var(--animation-multiplier) * 10s) linear infinite reverse;
 }
 
 .ribosome::after {
@@ -363,7 +468,7 @@
   height: 30%;
   background: rgba(255, 255, 255, 0.2);
   border-radius: 50%;
-  animation: ribosome-inner-spin 15s linear infinite;
+  animation: ribosome-inner-spin calc(var(--animation-multiplier) * 15s) linear infinite;
 }
 
 @keyframes ribosome-float {
@@ -396,6 +501,16 @@
   }
 }
 
+/* Упрощения рибосом для низкого режима */
+.performance-low .organelle.ribosome {
+  animation: ribosome-float calc(var(--animation-multiplier) * 7s) ease-in-out infinite;
+}
+
+.performance-low .ribosome::before,
+.performance-low .ribosome::after {
+  animation: none;
+}
+
 /* ===== ЭНДОПЛАЗМАТИЧЕСКИЙ РЕТИКУЛУМ ===== */
 .organelle.reticulum {
   width: 15vmin;
@@ -406,8 +521,10 @@
     radial-gradient(circle at 30% 30%, var(--color-dna-primary), transparent 50%),
     radial-gradient(circle at 70% 70%, var(--color-dna-secondary), transparent 50%);
   border-radius: 50%;
-  animation: reticulum-pulse 7s ease-in-out infinite;
+  animation: reticulum-pulse calc(var(--animation-multiplier) * 7s) ease-in-out infinite;
   opacity: 0.7;
+  /* Оптимизация */
+  will-change: transform, opacity;
 }
 
 .reticulum::before {
@@ -421,7 +538,7 @@
     radial-gradient(circle at 30% 70%, rgba(255, 255, 255, 0.3), transparent 30%),
     radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.2), transparent 30%);
   border-radius: 50%;
-  animation: reticulum-float 10s ease-in-out infinite;
+  animation: reticulum-float calc(var(--animation-multiplier) * 10s) ease-in-out infinite;
 }
 
 @keyframes reticulum-pulse {
@@ -450,18 +567,31 @@
   }
 }
 
+/* Упрощения ретикулума для низкого режима */
+.performance-low .organelle.reticulum {
+  animation: reticulum-float calc(var(--animation-multiplier) * 12s) ease-in-out infinite;
+  background: radial-gradient(circle, var(--color-dna-primary), transparent 60%);
+}
+
+.performance-low .reticulum::before {
+  animation: none;
+}
+
 /* ===== АКТИВАЦИЯ ОРГАНЕЛЛ ===== */
 .organelle.active {
   z-index: var(--z-overlay);
   animation-play-state: paused;
   transform: scale(20);
   opacity: 0.9;
+  /* Оптимизация */
+  will-change: transform;
+  transition: all calc(var(--animation-multiplier) * 0.8s) var(--transition-bounce);
 }
 
 .organelle.active .organelle-glow {
   opacity: 1;
   filter: blur(30px);
-  animation: organelle-active-glow 1s ease-in-out infinite alternate;
+  animation: organelle-active-glow calc(var(--animation-multiplier) * 1s) ease-in-out infinite alternate;
 }
 
 @keyframes organelle-active-glow {
@@ -476,7 +606,9 @@
 }
 
 .organelle.entering {
-  animation: organelle-enter 0.8s var(--transition-bounce) forwards;
+  animation: organelle-enter calc(var(--animation-multiplier) * 0.8s) var(--transition-bounce) forwards;
+  /* Оптимизация */
+  will-change: transform;
 }
 
 @keyframes organelle-enter {
@@ -490,6 +622,17 @@
   }
 }
 
+/* Упрощения активации для низкого режима */
+.performance-low .organelle.active {
+  transform: scale(15);
+  transition: all calc(var(--animation-multiplier) * 0.6s) ease;
+}
+
+.performance-low .organelle.active .organelle-glow {
+  filter: blur(20px);
+  animation: none;
+}
+
 /* ===== ИНФОРМАЦИОННЫЕ ПАНЕЛИ ===== */
 .info-panels {
   position: absolute;
@@ -500,6 +643,8 @@
   gap: var(--space-md);
   z-index: var(--z-overlay);
   max-width: 300px;
+  /* Оптимизация */
+  will-change: transform;
 }
 
 .panel {
@@ -509,7 +654,9 @@
   border-radius: 12px;
   padding: var(--space-md);
   color: white;
-  animation: panel-slide-in 0.5s ease-out;
+  animation: panel-slide-in calc(var(--animation-multiplier) * 0.5s) ease-out;
+  /* Оптимизация */
+  will-change: transform, opacity;
 }
 
 @keyframes panel-slide-in {
@@ -558,13 +705,26 @@
   font-family: var(--font-primary);
   font-size: var(--text-sm);
   cursor: pointer;
-  transition: all var(--transition-normal);
+  transition: all calc(var(--animation-multiplier) * var(--transition-normal));
+  /* Оптимизация */
+  transform: translateZ(0);
+  will-change: transform, background-color;
 }
 
 .action-btn:hover {
   background: rgba(78, 205, 196, 0.2);
   transform: translateY(-2px);
   box-shadow: var(--shadow-glow);
+}
+
+/* Упрощения панелей для низкого режима */
+.performance-low .panel {
+  backdrop-filter: none;
+  background: rgba(0, 0, 0, 0.9);
+}
+
+.performance-low .action-btn:hover {
+  transform: none;
 }
 
 /* ===== ОКНО КОНТЕНТА ===== */
@@ -585,10 +745,13 @@
   z-index: var(--z-modal);
   opacity: 0;
   visibility: hidden;
-  transition: all var(--transition-normal);
+  transition: all calc(var(--animation-multiplier) * var(--transition-normal));
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  /* Оптимизация */
+  will-change: transform, opacity;
+  contain: layout style paint;
 }
 
 .content-viewport.active {
@@ -604,6 +767,8 @@
   padding: var(--space-lg);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(0, 0, 0, 0.5);
+  /* Оптимизация */
+  flex-shrink: 0;
 }
 
 .close-content {
@@ -614,7 +779,9 @@
   cursor: pointer;
   padding: var(--space-xs);
   border-radius: 4px;
-  transition: all var(--transition-fast);
+  transition: all calc(var(--animation-multiplier) * var(--transition-fast));
+  /* Оптимизация */
+  transform: translateZ(0);
 }
 
 .close-content:hover {
@@ -643,8 +810,10 @@
   height: 100%;
   background: var(--color-dna-primary);
   border-radius: 2px;
-  transition: width var(--transition-normal);
+  transition: width calc(var(--animation-multiplier) * var(--transition-normal));
   box-shadow: 0 0 10px var(--color-dna-primary);
+  /* Оптимизация */
+  will-change: width;
 }
 
 .content-body {
@@ -652,6 +821,19 @@
   padding: var(--space-lg);
   overflow-y: auto;
   color: white;
+  /* Оптимизация */
+  contain: layout style;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Упрощения контентного окна для низкого режима */
+.performance-low .content-viewport {
+  backdrop-filter: none;
+  background: rgba(0, 0, 0, 0.95);
+}
+
+.performance-low .close-content:hover {
+  transform: none;
 }
 
 /* ===== ЦЕНТР УВЕДОМЛЕНИЙ ===== */
@@ -664,6 +846,8 @@
   gap: var(--space-sm);
   z-index: var(--z-tooltip);
   max-width: 300px;
+  /* Оптимизация */
+  contain: layout style;
 }
 
 .notification {
@@ -674,8 +858,10 @@
   border-radius: 8px;
   padding: var(--space-md);
   color: white;
-  animation: notification-slide-in 0.3s ease-out;
+  animation: notification-slide-in calc(var(--animation-multiplier) * 0.3s) ease-out;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  /* Оптимизация */
+  will-change: transform, opacity;
 }
 
 .notification.success {
@@ -704,6 +890,12 @@
     opacity: 1;
     transform: translateX(0);
   }
+}
+
+/* Упрощения уведомлений для низкого режима */
+.performance-low .notification {
+  backdrop-filter: none;
+  background: rgba(0, 0, 0, 0.9);
 }
 
 /* ===== АДАПТИВНОСТЬ ===== */
@@ -749,6 +941,11 @@
     width: 100%;
     order: 3;
   }
+
+  /* Дополнительные оптимизации для мобильных */
+  .performance-low .organelle {
+    animation-duration: calc(var(--animation-multiplier) * 2s) !important;
+  }
 }
 
 @media (max-width: 480px) {
@@ -769,6 +966,12 @@
     left: var(--space-sm);
     max-width: 250px;
   }
+
+  /* Максимальные упрощения для маленьких экранов */
+  .performance-low .organelle::before,
+  .performance-low .organelle::after {
+    display: none;
+  }
 }
 
 /* ===== ТАЧ-УСТРОЙСТВА ===== */
@@ -785,6 +988,11 @@
   .organelle-label {
     opacity: 0.8;
     transform: translateX(-50%) translateY(10px);
+  }
+
+  /* Улучшение производительности для тач */
+  .organelle {
+    -webkit-tap-highlight-color: transparent;
   }
 }
 
@@ -810,12 +1018,22 @@
     animation: none;
     outline: 2px solid var(--color-nucleus);
   }
+
+  .content-viewport {
+    transition: opacity 0.1s ease;
+  }
 }
 
 /* ===== ЭФФЕКТЫ ДЛЯ СОВРЕМЕННЫХ БРАУЗЕРОВ ===== */
 @supports (backdrop-filter: blur(10px)) {
   .panel, .notification, .content-viewport {
     backdrop-filter: blur(20px);
+  }
+}
+
+@supports not (backdrop-filter: blur(10px)) {
+  .panel, .notification, .content-viewport {
+    background: rgba(0, 0, 0, 0.95);
   }
 }
 
@@ -849,4 +1067,85 @@
 .fatal-error .error-icon {
   font-size: 4rem;
   margin-bottom: var(--space-lg);
+}
+
+/* ===== ОПТИМИЗАЦИЯ ДЛЯ РАЗЛИЧНЫХ УСТРОЙСТВ ===== */
+
+/* Высоко-DPI экраны */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .organelle-glow {
+    filter: blur(12px); /* Более мягкое размытие для Retina */
+  }
+}
+
+/* Планшеты в альбомной ориентации */
+@media (orientation: landscape) and (max-height: 500px) {
+  .cell-membrane {
+    width: 80vmin;
+    height: 80vmin;
+  }
+  
+  .organelle.nucleus {
+    width: 12vmin;
+    height: 12vmin;
+  }
+  
+  .info-panels {
+    max-width: 220px;
+  }
+}
+
+/* Очень большие экраны */
+@media (min-width: 2000px) {
+  .cell-membrane {
+    width: 70vmin;
+    height: 70vmin;
+  }
+  
+  .organelle {
+    transform: scale(1.2);
+  }
+}
+
+/* Поддержка Hover-устройств */
+@media (hover: hover) and (pointer: fine) {
+  .organelle:hover .organelle-glow {
+    opacity: 0.8;
+    filter: blur(25px);
+  }
+}
+
+/* Оптимизация для устройств с ограниченной цветопередачей */
+@media (prefers-color-scheme: light) {
+  .cell-universe {
+    background: radial-gradient(circle at 20% 80%, #2c5a7a 0%, #1a3658 70%);
+  }
+}
+
+/* Оптимизация для пользователей с мигренью/светочувствительностью */
+@media (prefers-reduced-motion: reduce) and (prefers-contrast: high) {
+  .organelle-glow {
+    display: none;
+  }
+  
+  .organelle {
+    filter: none;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+  }
+}
+
+/* Улучшение производительности при скролле */
+.content-body {
+  scroll-behavior: smooth;
+}
+
+/* Оптимизация для старых браузеров */
+@supports not (contain: layout) {
+  .cell-universe {
+    overflow: hidden;
+  }
+  
+  .organelles-container {
+    position: absolute;
+  }
 }
