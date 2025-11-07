@@ -8,24 +8,55 @@
   width: 40vmin;
   height: 70vmin;
   transform-style: preserve-3d;
-  animation: dna-float 20s infinite linear;
+  animation: dna-rotate 30s infinite linear;
   z-index: var(--z-base);
+  /* Оптимизация производительности */
+  backface-visibility: hidden;
+  perspective: 1000px;
+  will-change: transform;
 }
 
-/* Плавное плавание ДНК в пространстве */
-@keyframes dna-float {
+/* Плавное вращение ДНК в пространстве */
+@keyframes dna-rotate {
+  from {
+    transform: translate(-50%, -50%) rotateX(60deg) rotateY(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotateX(60deg) rotateY(360deg);
+  }
+}
+
+/* Альтернативная анимация для среднего режима */
+@keyframes dna-rotate-medium {
+  from {
+    transform: translate(-50%, -50%) rotateX(60deg) rotateY(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotateX(60deg) rotateY(180deg);
+  }
+}
+
+/* Упрощенная анимация для низкого режима */
+@keyframes dna-rotate-low {
   0%, 100% {
     transform: translate(-50%, -50%) rotateX(60deg) rotateY(0deg);
   }
-  25% {
-    transform: translate(-50%, -50%) rotateX(60deg) rotateY(10deg);
-  }
   50% {
-    transform: translate(-50%, -50%) rotateX(60deg) rotateY(0deg);
+    transform: translate(-50%, -50%) rotateX(60deg) rotateY(90deg);
   }
-  75% {
-    transform: translate(-50%, -50%) rotateX(60deg) rotateY(-10deg);
-  }
+}
+
+/* Применяем разные анимации в зависимости от режима производительности */
+.performance-high .dna-navigation {
+  animation: dna-rotate 30s infinite linear;
+}
+
+.performance-medium .dna-navigation {
+  animation: dna-rotate-medium 20s infinite linear;
+}
+
+.performance-low .dna-navigation {
+  animation: dna-rotate-low 15s infinite ease-in-out;
 }
 
 /* Цепи ДНК */
@@ -42,16 +73,19 @@
     transparent
   );
   transform-style: preserve-3d;
+  /* Оптимизация */
+  backface-visibility: hidden;
+  will-change: transform;
 }
 
 .strand-1 {
   left: 30%;
-  animation: strand-pulse 4s ease-in-out infinite;
+  animation: strand-pulse calc(var(--animation-multiplier) * 4s) ease-in-out infinite;
 }
 
 .strand-2 {
   right: 30%;
-  animation: strand-pulse 4s ease-in-out infinite reverse;
+  animation: strand-pulse calc(var(--animation-multiplier) * 4s) ease-in-out infinite reverse;
 }
 
 /* Пульсация цепей */
@@ -64,6 +98,12 @@
     opacity: 1;
     filter: drop-shadow(0 0 15px var(--color-dna-primary));
   }
+}
+
+/* Упрощенная пульсация для низкого режима */
+.performance-low .dna-strand {
+  animation: none;
+  opacity: 0.8;
 }
 
 /* Контейнер для базовых пар */
@@ -85,21 +125,32 @@
   background: var(--color-dna-primary);
   transform-origin: left center;
   cursor: pointer;
-  transition: all var(--transition-normal);
+  transition: all calc(var(--animation-multiplier) * var(--transition-normal));
   transform-style: preserve-3d;
   z-index: var(--z-base);
+  /* Оптимизация */
+  backface-visibility: hidden;
+  will-change: transform, background-color;
+  border-radius: 2px;
+}
+
+/* Упрощаем базовые пары для низкого режима */
+.performance-low .base-pair {
+  height: 3px;
+  background: var(--color-dna-primary);
+  box-shadow: none;
 }
 
 /* Позиционирование базовых пар по высоте ДНК */
-.base-pair[data-level="0"] { top: 5%; }
-.base-pair[data-level="1"] { top: 15%; }
-.base-pair[data-level="2"] { top: 25%; }
-.base-pair[data-level="3"] { top: 35%; }
-.base-pair[data-level="4"] { top: 45%; }
-.base-pair[data-level="5"] { top: 55%; }
-.base-pair[data-level="6"] { top: 65%; }
-.base-pair[data-level="7"] { top: 75%; }
-.base-pair[data-level="8"] { top: 85%; }
+.base-pair[data-level="level0"] { top: 5%; }
+.base-pair[data-level="level1"] { top: 15%; }
+.base-pair[data-level="level2"] { top: 25%; }
+.base-pair[data-level="level3"] { top: 35%; }
+.base-pair[data-level="level4"] { top: 45%; }
+.base-pair[data-level="level5"] { top: 55%; }
+.base-pair[data-level="level6"] { top: 65%; }
+.base-pair[data-level="level7"] { top: 75%; }
+.base-pair[data-level="level8"] { top: 85%; }
 .base-pair[data-level="knowledge"] { top: 95%; }
 
 /* Эффект при наведении на базовую пару */
@@ -112,6 +163,12 @@
   z-index: var(--z-overlay);
 }
 
+/* Упрощаем ховер для низкого режима */
+.performance-low .base-pair:hover {
+  transform: scale(1.3);
+  box-shadow: 0 0 10px var(--color-mitochondria);
+}
+
 /* Активная базовая пара */
 .base-pair.active {
   background: var(--color-nucleus);
@@ -119,7 +176,8 @@
   box-shadow: 
     0 0 15px var(--color-nucleus),
     0 0 30px var(--color-nucleus);
-  animation: base-pair-glow 2s ease-in-out infinite;
+  animation: base-pair-glow calc(var(--animation-multiplier) * 2s) ease-in-out infinite;
+  z-index: var(--z-overlay);
 }
 
 @keyframes base-pair-glow {
@@ -135,6 +193,22 @@
   }
 }
 
+/* Упрощаем активное состояние для низкого режима */
+.performance-low .base-pair.active {
+  animation: none;
+  box-shadow: 0 0 20px var(--color-nucleus);
+}
+
+/* Пульсация при выделении */
+.base-pair.pulsing {
+  animation: base-pair-pulse 0.5s ease-in-out 3;
+}
+
+@keyframes base-pair-pulse {
+  0%, 100% { transform: scale(1.3); }
+  50% { transform: scale(1.5); }
+}
+
 /* Метки уровней */
 .level-label {
   position: absolute;
@@ -147,7 +221,7 @@
   font-weight: 600;
   text-align: center;
   opacity: 0;
-  transition: all var(--transition-normal);
+  transition: all calc(var(--animation-multiplier) * var(--transition-normal));
   text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
   white-space: nowrap;
   pointer-events: none;
@@ -155,11 +229,21 @@
   padding: var(--space-xs) var(--space-sm);
   border-radius: 4px;
   border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  /* Оптимизация */
+  will-change: transform, opacity;
 }
 
 .base-pair:hover .level-label {
   opacity: 1;
   transform: translateX(-50%) rotateX(-60deg) translateY(-5px);
+}
+
+/* Упрощаем метки для низкого режима */
+.performance-low .level-label {
+  font-size: 10px;
+  padding: 2px 6px;
+  backdrop-filter: none;
 }
 
 /* Индикатор текущего уровня */
@@ -173,13 +257,15 @@
   background: var(--color-nucleus);
   border-radius: 50%;
   opacity: 0;
-  transition: opacity var(--transition-normal);
+  transition: opacity calc(var(--animation-multiplier) * var(--transition-normal));
   box-shadow: 0 0 10px var(--color-nucleus);
+  /* Оптимизация */
+  will-change: transform, opacity;
 }
 
 .base-pair.active .level-indicator {
   opacity: 1;
-  animation: indicator-pulse 1.5s ease-in-out infinite;
+  animation: indicator-pulse calc(var(--animation-multiplier) * 1.5s) ease-in-out infinite;
 }
 
 @keyframes indicator-pulse {
@@ -189,6 +275,18 @@
   50% {
     transform: translateX(-50%) rotateX(-60deg) scale(1.5);
   }
+}
+
+/* Прогресс уровня */
+.level-progress {
+  position: absolute;
+  bottom: -6px;
+  left: 0;
+  height: 2px;
+  background: var(--color-mitochondria);
+  border-radius: 1px;
+  transition: width var(--transition-normal);
+  box-shadow: 0 0 5px var(--color-mitochondria);
 }
 
 /* Эффект соединения базовых пар с цепями */
@@ -202,6 +300,8 @@
   background: inherit;
   transform: translateY(-50%);
   transition: inherit;
+  /* Оптимизация */
+  backface-visibility: hidden;
 }
 
 .base-pair::before {
@@ -222,6 +322,12 @@
   background: var(--color-mitochondria);
 }
 
+/* Упрощаем соединения для низкого режима */
+.performance-low .base-pair::before,
+.performance-low .base-pair::after {
+  display: none;
+}
+
 /* Анимация появления ДНК */
 @keyframes dna-appear {
   from {
@@ -235,12 +341,13 @@
 }
 
 .dna-navigation.animate-in {
-  animation: dna-appear 2s var(--transition-bounce), dna-float 20s infinite linear 2s;
+  animation: dna-appear calc(var(--animation-multiplier) * 2s) var(--transition-bounce), 
+             dna-rotate 30s infinite linear calc(var(--animation-multiplier) * 2s);
 }
 
 /* Эффект выделения при активации уровня */
-.dna-navigation.level-active {
-  animation: dna-float 20s infinite linear, dna-highlight 1s ease;
+.dna-navigation.transitioning {
+  animation: dna-rotate 30s infinite linear, dna-highlight calc(var(--animation-multiplier) * 1s) ease;
 }
 
 @keyframes dna-highlight {
@@ -249,6 +356,20 @@
   }
   50% {
     filter: brightness(1.3);
+  }
+}
+
+/* Эффект пульсации ДНК */
+.dna-navigation.dna-pulse {
+  animation: dna-rotate 30s infinite linear, dna-pulse-effect calc(var(--animation-multiplier) * 1s) ease;
+}
+
+@keyframes dna-pulse-effect {
+  0%, 100% {
+    transform: translate(-50%, -50%) rotateX(60deg) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -50%) rotateX(60deg) scale(1.05);
   }
 }
 
@@ -268,8 +389,10 @@
   height: 2px;
   background: var(--color-dna-primary);
   border-radius: 50%;
-  animation: particle-float 4s ease-in-out infinite;
+  animation: particle-float calc(var(--animation-multiplier) * 4s) ease-in-out infinite;
   opacity: 0;
+  /* Оптимизация */
+  will-change: transform, opacity;
 }
 
 @keyframes particle-float {
@@ -290,15 +413,63 @@
 }
 
 /* Генерация частиц в разных позициях */
-.particle:nth-child(1) { left: 20%; animation-delay: 0s; }
-.particle:nth-child(2) { left: 50%; animation-delay: 0.5s; }
-.particle:nth-child(3) { left: 80%; animation-delay: 1s; }
-.particle:nth-child(4) { left: 30%; animation-delay: 1.5s; }
-.particle:nth-child(5) { left: 70%; animation-delay: 2s; }
-.particle:nth-child(6) { left: 10%; animation-delay: 2.5s; }
-.particle:nth-child(7) { left: 90%; animation-delay: 3s; }
-.particle:nth-child(8) { left: 40%; animation-delay: 3.5s; }
-.particle:nth-child(9) { left: 60%; animation-delay: 4s; }
+.particle:nth-child(1) { left: 20%; animation-delay: calc(var(--animation-multiplier) * 0s); }
+.particle:nth-child(2) { left: 50%; animation-delay: calc(var(--animation-multiplier) * 0.5s); }
+.particle:nth-child(3) { left: 80%; animation-delay: calc(var(--animation-multiplier) * 1s); }
+.particle:nth-child(4) { left: 30%; animation-delay: calc(var(--animation-multiplier) * 1.5s); }
+.particle:nth-child(5) { left: 70%; animation-delay: calc(var(--animation-multiplier) * 2s); }
+.particle:nth-child(6) { left: 10%; animation-delay: calc(var(--animation-multiplier) * 2.5s); }
+.particle:nth-child(7) { left: 90%; animation-delay: calc(var(--animation-multiplier) * 3s); }
+.particle:nth-child(8) { left: 40%; animation-delay: calc(var(--animation-multiplier) * 3.5s); }
+.particle:nth-child(9) { left: 60%; animation-delay: calc(var(--animation-multiplier) * 4s); }
+
+/* Скрываем частицы в низком режиме */
+.performance-low .dna-particles {
+  display: none;
+}
+
+/* Состояния ДНК */
+.dna-navigation.organelle-active {
+  animation: dna-rotate 30s infinite linear, dna-organelle-pulse calc(var(--animation-multiplier) * 3s) ease-in-out;
+}
+
+@keyframes dna-organelle-pulse {
+  0%, 100% {
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    filter: hue-rotate(60deg);
+  }
+}
+
+/* Состояние загрузки контента */
+.dna-navigation.loading {
+  animation-play-state: paused;
+  opacity: 0.7;
+}
+
+.dna-navigation.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--color-dna-primary);
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: dna-loading-spin calc(var(--animation-multiplier) * 1s) linear infinite;
+}
+
+@keyframes dna-loading-spin {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
 
 /* Адаптивность для мобильных устройств */
 @media (max-width: 768px) {
@@ -321,6 +492,13 @@
   .base-pair:hover {
     transform: scale(1.3) rotateZ(5deg);
   }
+
+  /* Упрощаем для мобильных в низком режиме */
+  .performance-low .dna-navigation {
+    width: 50vmin;
+    height: 70vmin;
+    transform: translate(-50%, -50%) rotateX(45deg);
+  }
 }
 
 @media (max-width: 480px) {
@@ -337,6 +515,11 @@
   
   .base-pair[data-level] {
     height: 2px;
+  }
+
+  /* Дополнительные упрощения для маленьких экранов */
+  .performance-low .dna-navigation {
+    animation: dna-rotate-low 20s infinite ease-in-out;
   }
 }
 
@@ -358,64 +541,17 @@
     opacity: 0.7;
     transform: translateX(-50%) rotateX(-60deg);
   }
+
+  /* Улучшаем обратную связь для тач */
+  .base-pair.touch-active {
+    transform: scale(1.3);
+    transition: transform 0.1s ease;
+  }
 }
 
 /* Подсветка при взаимодействии с органеллами */
 .dna-navigation.organelle-active {
-  animation: dna-float 20s infinite linear, dna-organelle-pulse 3s ease-in-out;
-}
-
-@keyframes dna-organelle-pulse {
-  0%, 100% {
-    filter: hue-rotate(0deg);
-  }
-  50% {
-    filter: hue-rotate(60deg);
-  }
-}
-
-/* Состояние загрузки контента */
-.dna-navigation.loading * {
-  animation-play-state: paused;
-}
-
-.dna-navigation.loading::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--color-dna-primary);
-  border-top: 2px solid transparent;
-  border-radius: 50%;
-  animation: dna-loading-spin 1s linear infinite;
-}
-
-@keyframes dna-loading-spin {
-  0% {
-    transform: translate(-50%, -50%) rotate(0deg);
-  }
-  100% {
-    transform: translate(-50%, -50%) rotate(360deg);
-  }
-}
-
-/* Эффект для высокопроизводительных устройств */
-@media (prefers-reduced-motion: no-preference) {
-  .dna-navigation {
-    animation: dna-float-smooth 30s infinite linear;
-  }
-  
-  @keyframes dna-float-smooth {
-    0% {
-      transform: translate(-50%, -50%) rotateX(60deg) rotateY(0deg) rotateZ(0deg);
-    }
-    100% {
-      transform: translate(-50%, -50%) rotateX(60deg) rotateY(360deg) rotateZ(5deg);
-    }
-  }
+  animation: dna-rotate 30s infinite linear, dna-organelle-pulse calc(var(--animation-multiplier) * 3s) ease-in-out;
 }
 
 /* Режим с ограниченной анимацией */
@@ -431,6 +567,14 @@
   
   .particle {
     display: none;
+  }
+  
+  .dna-strand {
+    animation: none;
+  }
+  
+  .base-pair.active {
+    animation: none;
   }
 }
 
@@ -466,4 +610,78 @@
   background: radial-gradient(circle at center, transparent 30%, rgba(0, 0, 0, 0.5) 100%);
   pointer-events: none;
   z-index: -1;
+}
+
+/* Состояния оптимизации */
+.animations-paused .dna-navigation {
+  animation-play-state: paused !important;
+}
+
+.background-tab .dna-navigation {
+  animation-duration: 60s !important; /* Замедляем в фоновой вкладке */
+}
+
+.idle-mode .dna-navigation {
+  opacity: 0.8;
+  animation-duration: 45s !important;
+}
+
+/* Улучшение доступности для высококонтрастного режима */
+@media (prefers-contrast: high) {
+  .base-pair {
+    border: 1px solid white;
+  }
+  
+  .base-pair.active {
+    border: 2px solid var(--color-nucleus);
+  }
+  
+  .level-label {
+    background: black;
+    border: 1px solid white;
+  }
+}
+
+/* Поддержка различных ориентаций экрана */
+@media (orientation: portrait) and (max-height: 600px) {
+  .dna-navigation {
+    width: 50vmin;
+    height: 65vmin;
+    transform: translate(-50%, -50%) rotateX(40deg);
+  }
+  
+  .performance-low .dna-navigation {
+    animation: dna-rotate-low 25s infinite ease-in-out;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 400px) {
+  .dna-navigation {
+    width: 35vmin;
+    height: 55vmin;
+  }
+  
+  .base-pair[data-level] {
+    height: 2px;
+  }
+}
+
+/* Оптимизация для старых браузеров */
+@supports not (transform-style: preserve-3d) {
+  .dna-navigation {
+    transform: translate(-50%, -50%);
+    animation: none;
+  }
+  
+  .base-pair {
+    transform: none !important;
+  }
+  
+  .level-label {
+    transform: translateX(-50%) !important;
+  }
+  
+  .dna-particles {
+    display: none;
+  }
 }
