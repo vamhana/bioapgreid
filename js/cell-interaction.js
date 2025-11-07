@@ -6,13 +6,6 @@ class CellInteraction {
         this.activeOrganelle = null;
         this.isAnimating = false;
         this.organellesContainer = null;
-        this.performanceMode = 'high';
-        this.animationCache = new Map();
-        this.interactionState = {
-            lastInteraction: Date.now(),
-            isIdle: false,
-            hoveredOrganelle: null
-        };
         
         // Привязка методов для корректного удаления событий
         this.boundClickHandler = this.handleOrganelleClick.bind(this);
@@ -20,17 +13,13 @@ class CellInteraction {
         this.boundMouseOutHandler = this.handleOrganelleHover.bind(this, false);
         this.boundKeyHandler = this.handleKeyboard.bind(this);
         this.boundDNAChangeHandler = this.syncWithDNA.bind(this);
-        this.boundVisibilityHandler = this.handleVisibilityChange.bind(this);
-        this.boundIdleHandler = this.handleIdleState.bind(this);
         
         this.init();
     }
 
     init() {
         try {
-            this.detectPerformanceMode();
             this.organellesContainer = document.querySelector('.organelles-container');
-            
             if (!this.organellesContainer) {
                 throw new Error('Organelles container not found');
             }
@@ -38,24 +27,11 @@ class CellInteraction {
             this.registerOrganelles();
             this.bindEvents();
             this.createMembraneParticles();
-            this.setupIdleDetection();
             this.restoreState();
-            
-            console.log('✅ CellInteraction initialized');
             
         } catch (error) {
             console.error('CellInteraction initialization failed:', error);
         }
-    }
-
-    detectPerformanceMode() {
-        const isLowPerf = (
-            navigator.hardwareConcurrency < 4 ||
-            window.matchMedia('(prefers-reduced-motion: reduce)').matches
-        );
-
-        this.performanceMode = isLowPerf ? 'low' : 'high';
-        console.log(`🎯 Cell Performance Mode: ${this.performanceMode}`);
     }
 
     registerOrganelles() {
@@ -75,46 +51,18 @@ class CellInteraction {
                 return;
             }
 
-            const organelleData = {
+            this.organelles.set(type, {
                 element: org,
                 type: type,
                 level: level,
-                isActive: false,
-                progress: this.getOrganelleProgress(level),
-                transformCache: this.getCachedTransform(type, 'default')
-            };
+                isActive: false
+            });
 
-            this.organelles.set(type, organelleData);
-
-            // Добавляем ARIA-атрибуты и оптимизированные стили
-            this.setupOrganelleAccessibility(org, type, level);
-            
-            // Предварительно вычисляем трансформации
-            this.precomputeTransforms(type);
+            // Добавляем ARIA-атрибуты
+            org.setAttribute('role', 'button');
+            org.setAttribute('tabindex', '0');
+            org.setAttribute('aria-label', `${type} органелла, уровень ${level}`);
         });
-
-        console.log(`📊 Registered ${this.organelles.size} organelles`);
-    }
-
-    setupOrganelleAccessibility(organelle, type, level) {
-        organelle.setAttribute('role', 'button');
-        organelle.setAttribute('tabindex', '0');
-        organelle.setAttribute('aria-label', `${this.getOrganelleName(type)} органелла, уровень ${level}`);
-        organelle.setAttribute('aria-expanded', 'false');
-        
-        // Оптимизация: добавляем CSS переменные для плавных анимаций
-        organelle.style.setProperty('--organelle-type', type);
-        organelle.style.setProperty('--organelle-level', level);
-    }
-
-    getOrganelleName(type) {
-        const names = {
-            'nucleus': 'Ядро',
-            'mitochondria': 'Митохондрии',
-            'ribosome': 'Рибосомы',
-            'reticulum': 'Эндоплазматический ретикулум'
-        };
-        return names[type] || type;
     }
 
     bindEvents() {
@@ -122,14 +70,8 @@ class CellInteraction {
         this.organellesContainer.addEventListener('click', this.boundClickHandler);
         this.organellesContainer.addEventListener('mouseover', this.boundMouseOverHandler);
         this.organellesContainer.addEventListener('mouseout', this.boundMouseOutHandler);
-        
-        // Оптимизация: используем passive события для тач-взаимодействий
-        this.organellesContainer.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: true });
-        this.organellesContainer.addEventListener('touchend', this.handleTouchEnd.bind(this), { passive: true });
-        
         document.addEventListener('keydown', this.boundKeyHandler);
         document.addEventListener('dnaLevelChange', this.boundDNAChangeHandler);
-        document.addEventListener('visibilitychange', this.boundVisibilityHandler);
 
         // Обработка клавиши Enter для доступности
         this.organellesContainer.addEventListener('keydown', (e) => {
@@ -142,36 +84,6 @@ class CellInteraction {
                 }
             }
         });
-
-        // Оптимизация: отложенная загрузка тяжелых ресурсов
-        this.setupLazyLoading();
-    }
-
-    setupLazyLoading() {
-        // Ленивая загрузка дополнительных эффектов после основного взаимодействия
-        if ('IntersectionObserver' in window) {
-            this.lazyObserver = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        const organelle = entry.target;
-                        this.loadOrganelleEffects(organelle);
-                        this.lazyObserver.unobserve(organelle);
-                    }
-                });
-            }, { rootMargin: '50px' });
-
-            // Наблюдаем за всеми органеллами
-            this.organelles.forEach(organelle => {
-                this.lazyObserver.observe(organelle.element);
-            });
-        }
-    }
-
-    loadOrganelleEffects(organelle) {
-        // Загружаем дополнительные эффекты только когда органелла становится видимой
-        if (this.performanceMode === 'high') {
-            organelle.classList.add('effects-loaded');
-        }
     }
 
     handleOrganelleClick(e) {
@@ -185,39 +97,7 @@ class CellInteraction {
     handleOrganelleHover(isHovering, e) {
         const organelle = e.target.closest('.organelle');
         if (organelle) {
-            this.updateInteractionState();
-            
-            if (isHovering) {
-                this.onOrganelleHover(organelle, true);
-                this.interactionState.hoveredOrganelle = organelle;
-            } else {
-                this.onOrganelleHover(organelle, false);
-                if (this.interactionState.hoveredOrganelle === organelle) {
-                    this.interactionState.hoveredOrganelle = null;
-                }
-            }
-        }
-    }
-
-    handleTouchStart(e) {
-        const organelle = e.target.closest('.organelle');
-        if (organelle) {
-            organelle.classList.add('touch-active');
-            this.updateInteractionState();
-        }
-    }
-
-    handleTouchEnd(e) {
-        const organelle = e.target.closest('.organelle');
-        if (organelle) {
-            organelle.classList.remove('touch-active');
-            
-            // Активируем органеллу по тапу (с небольшой задержкой для отличия от скролла)
-            setTimeout(() => {
-                if (organelle.classList.contains('touch-active')) return;
-                const type = organelle.getAttribute('data-organelle');
-                this.activateOrganelle(type);
-            }, 150);
+            this.onOrganelleHover(organelle, isHovering);
         }
     }
 
@@ -240,7 +120,6 @@ class CellInteraction {
             }
 
             this.validateOrganelleType(organelleType);
-            this.updateInteractionState();
             
             this.isAnimating = true;
             const organelle = this.organelles.get(organelleType);
@@ -262,14 +141,8 @@ class CellInteraction {
                 this.deactivateOrganelle(current);
             }
 
-            // Используем кешированные трансформации для плавности
-            const activeTransform = this.getCachedTransform(organelle.type, 'active');
-            const enteringTransform = this.getCachedTransform(organelle.type, 'entering');
-
             // Добавляем классы для анимации
             organelle.element.classList.add('active', 'entering');
-            organelle.element.style.transform = enteringTransform;
-            
             organelle.isActive = true;
             this.activeOrganelle = organelle.type;
 
@@ -280,20 +153,12 @@ class CellInteraction {
             this.saveState();
             this.dispatchOrganelleActivation(organelle.type, organelle.level);
 
-            // Анимация активации с учетом производительности
-            const animationDuration = this.performanceMode === 'low' ? 600 : 1000;
-            
-            setTimeout(() => {
-                organelle.element.style.transform = activeTransform;
-            }, 50);
-
             // Завершаем анимацию
             setTimeout(() => {
                 organelle.element.classList.remove('entering');
-                organelle.element.style.transform = ''; // Убираем inline стили
                 this.isAnimating = false;
                 this.showOrganelleContent(organelle.level);
-            }, animationDuration);
+            }, 1000);
 
         } catch (error) {
             console.error('Organelle activation animation failed:', error);
@@ -304,85 +169,21 @@ class CellInteraction {
     deactivateOrganelle(organelle) {
         if (!organelle) return;
 
-        const defaultTransform = this.getCachedTransform(organelle.type, 'default');
-        
         organelle.element.classList.remove('active');
-        organelle.element.style.transform = defaultTransform;
         organelle.isActive = false;
         
         // Сбрасываем ARIA-атрибуты
         organelle.element.removeAttribute('aria-current');
         organelle.element.setAttribute('aria-expanded', 'false');
-
-        // Возвращаем к исходному состоянию
-        setTimeout(() => {
-            if (!organelle.isActive) {
-                organelle.element.style.transform = '';
-            }
-        }, 300);
     }
 
     onOrganelleHover(organelleElement, isHovering) {
-        if (this.isAnimating) return;
-
-        const type = organelleElement.getAttribute('data-organelle');
-        const transform = isHovering ? 
-            this.getCachedTransform(type, 'hover') : 
-            this.getCachedTransform(type, 'default');
-
-        // Используем CSS transitions вместо прямого изменения стилей когда возможно
-        if (this.performanceMode === 'high') {
-            organelleElement.classList.toggle('organelle-hover', isHovering);
+        // Используем CSS классы вместо прямого стиля
+        if (isHovering) {
+            organelleElement.classList.add('organelle-hover');
         } else {
-            organelleElement.style.transform = transform;
+            organelleElement.classList.remove('organelle-hover');
         }
-    }
-
-    getCachedTransform(type, state) {
-        const cacheKey = `${type}-${state}`;
-        
-        if (this.animationCache.has(cacheKey)) {
-            return this.animationCache.get(cacheKey);
-        }
-        
-        const transform = this.calculateTransform(type, state);
-        this.animationCache.set(cacheKey, transform);
-        
-        return transform;
-    }
-
-    precomputeTransforms(type) {
-        // Предварительно вычисляем все возможные трансформации для органеллы
-        const states = ['default', 'hover', 'active', 'entering'];
-        states.forEach(state => {
-            this.getCachedTransform(type, state);
-        });
-    }
-
-    calculateTransform(type, state) {
-        const transforms = {
-            'nucleus-default': 'scale(1)',
-            'nucleus-hover': 'scale(1.2)',
-            'nucleus-active': 'scale(20)',
-            'nucleus-entering': 'scale(0) rotate(180deg)',
-            
-            'mitochondria-default': 'scale(1) rotate(45deg)',
-            'mitochondria-hover': 'scale(1.3) rotate(45deg)',
-            'mitochondria-active': 'scale(15) rotate(45deg)',
-            'mitochondria-entering': 'scale(0) rotate(225deg)',
-            
-            'ribosome-default': 'scale(1)',
-            'ribosome-hover': 'scale(1.4)',
-            'ribosome-active': 'scale(18)',
-            'ribosome-entering': 'scale(0) rotate(-180deg)',
-            
-            'reticulum-default': 'scale(1)',
-            'reticulum-hover': 'scale(1.3)',
-            'reticulum-active': 'scale(16)',
-            'reticulum-entering': 'scale(0) rotate(90deg)'
-        };
-
-        return transforms[`${type}-${state}`] || 'scale(1)';
     }
 
     handleKeyboard(e) {
@@ -406,27 +207,6 @@ class CellInteraction {
             this.activeOrganelle = null;
             this.saveState();
         }
-
-        // Tab навигация между органеллами
-        if (e.key === 'Tab' && this.interactionState.hoveredOrganelle) {
-            this.updateInteractionState();
-        }
-    }
-
-    handleVisibilityChange() {
-        if (document.hidden) {
-            this.pauseAnimations();
-        } else {
-            this.resumeAnimations();
-        }
-    }
-
-    pauseAnimations() {
-        this.organellesContainer.classList.add('animations-paused');
-    }
-
-    resumeAnimations() {
-        this.organellesContainer.classList.remove('animations-paused');
     }
 
     syncWithDNA(e) {
@@ -453,8 +233,7 @@ class CellInteraction {
             detail: {
                 levelId: levelId,
                 source: 'organelle',
-                timestamp: Date.now(),
-                performanceMode: this.performanceMode
+                timestamp: Date.now()
             }
         });
         document.dispatchEvent(event);
@@ -465,8 +244,7 @@ class CellInteraction {
             detail: {
                 organelleType: organelleType,
                 levelId: levelId,
-                timestamp: Date.now(),
-                performanceMode: this.performanceMode
+                timestamp: Date.now()
             }
         });
         document.dispatchEvent(event);
@@ -479,9 +257,8 @@ class CellInteraction {
             return;
         }
 
-        // Меньше частиц для низкопроизводительного режима
-        const particleCount = this.performanceMode === 'high' ? 12 : 6;
-        membrane.innerHTML = '';
+        const particleCount = 12;
+        membrane.innerHTML = ''; // Очищаем существующие частицы
 
         for (let i = 0; i < particleCount; i++) {
             const particle = document.createElement('div');
@@ -489,41 +266,6 @@ class CellInteraction {
             particle.style.animationDelay = `${i * 0.5}s`;
             membrane.appendChild(particle);
         }
-    }
-
-    setupIdleDetection() {
-        // Снижаем качество анимаций при бездействии пользователя
-        this.idleTimer = setInterval(() => {
-            const timeSinceInteraction = Date.now() - this.interactionState.lastInteraction;
-            const isNowIdle = timeSinceInteraction > 30000; // 30 секунд
-            
-            if (isNowIdle !== this.interactionState.isIdle) {
-                this.interactionState.isIdle = isNowIdle;
-                this.organellesContainer.classList.toggle('idle-mode', isNowIdle);
-                
-                if (isNowIdle) {
-                    console.log('🔇 Cell interaction: idle mode activated');
-                }
-            }
-        }, 5000);
-    }
-
-    updateInteractionState() {
-        this.interactionState.lastInteraction = Date.now();
-        
-        if (this.interactionState.isIdle) {
-            this.interactionState.isIdle = false;
-            this.organellesContainer.classList.remove('idle-mode');
-        }
-    }
-
-    handleIdleState() {
-        this.updateInteractionState();
-    }
-
-    getOrganelleProgress(levelId) {
-        const savedProgress = localStorage.getItem(`progress-${levelId}`);
-        return savedProgress ? parseInt(savedProgress) : 0;
     }
 
     showErrorNotification(message) {
@@ -541,7 +283,6 @@ class CellInteraction {
         try {
             if (this.activeOrganelle) {
                 localStorage.setItem('cellActiveOrganelle', this.activeOrganelle);
-                localStorage.setItem('cellPerformanceMode', this.performanceMode);
             }
         } catch (error) {
             console.warn('Failed to save cell state:', error);
@@ -551,12 +292,6 @@ class CellInteraction {
     restoreState() {
         try {
             const savedOrganelle = localStorage.getItem('cellActiveOrganelle');
-            const savedPerformance = localStorage.getItem('cellPerformanceMode');
-            
-            if (savedPerformance) {
-                this.performanceMode = savedPerformance;
-            }
-            
             if (savedOrganelle && this.organelles.has(savedOrganelle)) {
                 setTimeout(() => {
                     this.activateOrganelle(savedOrganelle);
@@ -597,46 +332,13 @@ class CellInteraction {
         }
     }
 
-    setPerformanceMode(mode) {
-        if (['high', 'low'].includes(mode) && mode !== this.performanceMode) {
-            this.performanceMode = mode;
-            this.createMembraneParticles(); // Пересоздаем частицы
-            this.saveState();
-        }
-    }
-
-    getPerformanceStats() {
-        return {
-            performanceMode: this.performanceMode,
-            activeOrganelle: this.activeOrganelle,
-            totalOrganelles: this.organelles.size,
-            cacheSize: this.animationCache.size,
-            isIdle: this.interactionState.isIdle
-        };
-    }
-
     // Деструктор для очистки
     destroy() {
-        // Очищаем интервалы
-        if (this.idleTimer) {
-            clearInterval(this.idleTimer);
-        }
-
-        // Отключаем observers
-        if (this.lazyObserver) {
-            this.lazyObserver.disconnect();
-        }
-
-        // Удаляем обработчики событий
         this.organellesContainer?.removeEventListener('click', this.boundClickHandler);
         this.organellesContainer?.removeEventListener('mouseover', this.boundMouseOverHandler);
         this.organellesContainer?.removeEventListener('mouseout', this.boundMouseOutHandler);
         document.removeEventListener('keydown', this.boundKeyHandler);
         document.removeEventListener('dnaLevelChange', this.boundDNAChangeHandler);
-        document.removeEventListener('visibilitychange', this.boundVisibilityHandler);
-
-        // Очищаем кеш
-        this.animationCache.clear();
     }
 }
 
