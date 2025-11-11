@@ -1,483 +1,545 @@
-/* ===== CSS ПЕРЕМЕННЫЕ - ДИЗАЙН-СИСТЕМА GENOФОНД ===== */
 :root {
-  /* Цветовая палитра - Биологическая тематика */
-  --color-dna-primary: #4ECDC4;      /* Голубой - цвет ДНК */
-  --color-dna-secondary: #556270;    /* Темно-синий */
-  --color-mitochondria: #C7F464;     /* Зеленый - энергия митохондрий */
-  --color-nucleus: #FF6B6B;          /* Красный - ядро клетки */
-  --color-ribosome: #FFA5A5;         /* Розовый - синтез белка */
-  --color-membrane: rgba(255, 255, 255, 0.1); /* Полупрозрачная мембрана */
+  /* 🎨 ЦВЕТОВАЯ ПАЛИТРА */
+  --color-star-primary: #4ECDC4;
+  --color-star-secondary: #C7F464;
+  --color-planet: #4ECDC4;
+  --color-moon: #FF6B6B;
+  --color-asteroid: #FFA5A5;
+  --color-debris: #A8E6CF;
+  --color-blackhole: #06D6A0;
   
-  /* Градиенты */
-  --gradient-bioluminescent: linear-gradient(135deg, #4ECDC4, #556270, #FF6B6B);
-  --gradient-cellular: radial-gradient(circle, rgba(78, 205, 196, 0.2) 0%, transparent 70%);
-  --gradient-deep-space: radial-gradient(circle at 20% 80%, #0f2b46 0%, #000 70%);
+  /* 🌈 Акцентные цвета */
+  --color-accent-primary: #4ECDC4;
+  --color-accent-secondary: #FF6B6B;
+  --color-accent-tertiary: #C7F464;
   
-  /* Тени и свечения */
-  --shadow-glow: 0 0 20px rgba(78, 205, 196, 0.5);
-  --shadow-glow-strong: 0 0 40px rgba(78, 205, 196, 0.8);
-  --shadow-organic: 0 4px 20px rgba(0, 0, 0, 0.3);
+  /* 📝 Текст и фон */
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #B0B0B0;
+  --color-text-muted: #888888;
+  --color-background-primary: #0A0A0F;
+  --color-background-secondary: #1A1A2E;
+  --color-background-tertiary: #2A2A3E;
   
-  /* Типографика */
-  --font-primary: 'Exo 2', sans-serif;     /* Основной текст */
-  --font-heading: 'Orbitron', sans-serif;  /* Заголовки */
-  --font-mono: 'Courier New', monospace;   /* Код/данные */
+  /* 📐 РАЗМЕРНАЯ СИСТЕМА СУЩНОСТЕЙ */
+  --size-planet: 12vmin;
+  --size-moon: 6vmin;
+  --size-asteroid: 4vmin;
+  --size-debris: 2vmin;
+  --size-blackhole: 15vmin;
   
-  /* Размеры шрифтов */
-  --text-xs: 0.75rem;    /* 12px */
-  --text-sm: 0.875rem;   /* 14px */
-  --text-base: 1rem;     /* 16px */
-  --text-lg: 1.125rem;   /* 18px */
-  --text-xl: 1.25rem;    /* 20px */
-  --text-2xl: 1.5rem;    /* 24px */
-  --text-3xl: 1.875rem;  /* 30px */
-  --text-4xl: 2.25rem;   /* 36px */
+  /* 📏 ОТСТУПЫ И ПРОСТРАНСТВО */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-xxl: 3rem;
   
-  /* Пространства */
-  --space-xs: 0.25rem;   /* 4px */
-  --space-sm: 0.5rem;    /* 8px */
-  --space-md: 1rem;      /* 16px */
-  --space-lg: 1.5rem;    /* 24px */
-  --space-xl: 2rem;      /* 32px */
-  --space-2xl: 3rem;     /* 48px */
-  
-  /* Анимации и переходы */
+  /* 🕒 ВРЕМЕННЫЕ КОНСТАНТЫ */
   --transition-fast: 0.2s ease;
   --transition-normal: 0.3s ease;
   --transition-slow: 0.5s ease;
-  --transition-bounce: 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --transition-very-slow: 1s ease;
   
-  /* Z-индексы */
+  /* 📊 СИСТЕМА ГЛУБИНЫ */
+  --z-deep-space: -10;
   --z-background: -1;
-  --z-base: 1;
-  --z-overlay: 10;
-  --z-modal: 100;
-  --z-tooltip: 1000;
+  --z-celestial: 10;
+  --z-overlay: 100;
+  --z-modal: 1000;
+  --z-tooltip: 10000;
+  
+  /* 🎯 ТИПОГРАФИЧЕСКАЯ СИСТЕМА */
+  --font-family-primary: 'Orbitron', monospace;
+  --font-family-secondary: 'Exo 2', sans-serif;
+  
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-xxl: 1.5rem;
+  --font-size-xxxl: 2rem;
+  
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-black: 900;
+  
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+  
+  /* 🎪 ЭФФЕКТЫ И ФИЛЬТРЫ */
+  --blur-small: blur(8px);
+  --blur-medium: blur(16px);
+  --blur-large: blur(24px);
+  
+  --shadow-small: 0 2px 4px rgba(0, 0, 0, 0.4);
+  --shadow-medium: 0 4px 8px rgba(0, 0, 0, 0.3);
+  --shadow-large: 0 8px 16px rgba(0, 0, 0, 0.2);
+  --shadow-glow: 0 0 20px rgba(78, 205, 196, 0.3);
+  
+  /* 📱 БРЕЙКПОИНТЫ */
+  --breakpoint-mobile: 480px;
+  --breakpoint-tablet: 768px;
+  --breakpoint-desktop: 1024px;
+  --breakpoint-wide: 1440px;
 }
 
-/* ===== БАЗОВЫЕ СБРОСЫ И ГЛОБАЛЬНЫЕ СТИЛИ ===== */
-* {
+/* 🔄 CSS RESET И БАЗОВЫЕ СТИЛИ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
   margin: 0;
   padding: 0;
-  box-sizing: border-box;
 }
 
 html {
   font-size: 16px;
   scroll-behavior: smooth;
+  height: 100%;
 }
 
 body {
-  font-family: var(--font-primary);
-  font-weight: 300;
-  line-height: 1.6;
-  color: white;
-  background: var(--gradient-deep-space);
+  font-family: var(--font-family-secondary);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-primary);
+  background-color: var(--color-background-primary);
   overflow: hidden;
+  height: 100vh;
   position: relative;
 }
 
-/* Псевдо-элемент для создания текстуры клетки */
-body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-image: 
-    radial-gradient(circle at 25% 25%, rgba(78, 205, 196, 0.1) 2px, transparent 2px),
-    radial-gradient(circle at 75% 75%, rgba(255, 107, 107, 0.1) 2px, transparent 2px);
-  background-size: 50px 50px, 30px 30px;
-  background-position: 0 0, 25px 25px;
-  pointer-events: none;
-  z-index: var(--z-background);
-  animation: cellular-float 20s infinite linear;
+/* 🎯 ТИПОГРАФИКА */
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-family-primary);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  margin-bottom: var(--space-md);
+  color: var(--color-text-primary);
 }
 
-/* ===== ТИПОГРАФИКА ===== */
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-heading);
-  font-weight: 700;
-  line-height: 1.2;
-  margin-bottom: var(--space-md);
-  background: var(--gradient-bioluminescent);
+h1 {
+  font-size: var(--font-size-xxxl);
+  font-weight: var(--font-weight-black);
+  background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-h1 {
-  font-size: var(--text-4xl);
-  text-transform: uppercase;
-  letter-spacing: 2px;
-}
-
 h2 {
-  font-size: var(--text-3xl);
-  letter-spacing: 1.5px;
+  font-size: var(--font-size-xxl);
+  color: var(--color-accent-primary);
 }
 
 h3 {
-  font-size: var(--text-2xl);
-  letter-spacing: 1px;
+  font-size: var(--font-size-xl);
+  color: var(--color-accent-secondary);
+}
+
+h4 {
+  font-size: var(--font-size-lg);
+  color: var(--color-accent-tertiary);
 }
 
 p {
   margin-bottom: var(--space-md);
-  font-weight: 300;
+  color: var(--color-text-secondary);
 }
 
-.lead {
-  font-size: var(--text-lg);
-  font-weight: 400;
-  opacity: 0.9;
+a {
+  color: var(--color-accent-primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
 }
 
-/* ===== БИОЛЮМИНЕСЦЕНТНЫЕ ТЕКСТЫ ===== */
-.glow-text {
-  text-shadow: var(--shadow-glow);
-  animation: text-pulse 3s ease-in-out infinite alternate;
+a:hover, a:focus {
+  color: var(--color-accent-secondary);
+  text-decoration: underline;
 }
 
-.hologram-text {
-  background: var(--gradient-bioluminescent);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-shadow: 0 0 30px rgba(78, 205, 196, 0.5);
-  position: relative;
-}
+/* 🎪 БАЗОВЫЕ КОМПОНЕНТЫ ИНТЕРФЕЙСА */
 
-.hologram-text::after {
-  content: attr(data-text);
-  position: absolute;
-  top: 0;
-  left: 0;
-  background: var(--gradient-bioluminescent);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  filter: blur(5px);
-  opacity: 0.7;
-  z-index: -1;
-}
-
-/* ===== КНОПКИ И ИНТЕРАКТИВНЫЕ ЭЛЕМЕНТЫ ===== */
-.btn {
+.button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: var(--space-sm) var(--space-lg);
-  border: none;
+  font-family: var(--font-family-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 8px;
-  font-family: var(--font-primary);
-  font-size: var(--text-base);
-  font-weight: 600;
-  text-decoration: none;
   cursor: pointer;
   transition: all var(--transition-normal);
+  backdrop-filter: var(--blur-small);
   position: relative;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.btn::before {
+.button::before {
   content: '';
   position: absolute;
   top: 0;
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
   transition: left var(--transition-slow);
 }
 
-.btn:hover::before {
+.button:hover::before {
   left: 100%;
 }
 
-.btn:hover {
+.button:hover, .button:focus {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: var(--color-accent-primary);
+  box-shadow: var(--shadow-glow);
   transform: translateY(-2px);
+}
+
+.button:active {
+  transform: translateY(0);
+}
+
+.button--primary {
+  background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary));
+  border: none;
+  color: var(--color-background-primary);
+}
+
+.button--primary:hover, .button--primary:focus {
+  background: linear-gradient(135deg, var(--color-accent-secondary), var(--color-accent-primary));
   box-shadow: var(--shadow-glow);
-  border-color: var(--color-dna-primary);
 }
 
-.btn-primary {
-  background: linear-gradient(135deg, var(--color-dna-primary), var(--color-dna-secondary));
-  border: 1px solid var(--color-dna-primary);
+/* 📦 УТИЛИТАРНЫЕ КЛАССЫ */
+
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+.flex { display: flex; }
+.flex-center { 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+}
+.flex-between { 
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between; 
+}
+.flex-column { flex-direction: column; }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
-.btn-secondary {
-  background: linear-gradient(135deg, var(--color-mitochondria), #556270);
-  border: 1px solid var(--color-mitochondria);
+/* 🎪 ГЛОБАЛЬНЫЕ АНИМАЦИИ И ПЕРЕХОДЫ */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-.btn-bio {
-  background: transparent;
-  border: 2px solid var(--color-dna-primary);
-  color: var(--color-dna-primary);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-size: var(--text-sm);
-}
-
-/* ===== ФОРМЫ И ИНПУТЫ ===== */
-.input-group {
-  position: relative;
-  margin-bottom: var(--space-lg);
-}
-
-.input-bio {
-  width: 100%;
-  padding: var(--space-md);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
-  color: white;
-  font-family: var(--font-primary);
-  font-size: var(--text-base);
-  transition: all var(--transition-normal);
-  backdrop-filter: blur(10px);
-}
-
-.input-bio:focus {
-  outline: none;
-  border-color: var(--color-dna-primary);
-  box-shadow: var(--shadow-glow);
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.input-bio::placeholder {
-  color: rgba(255, 255, 255, 0.5);
-}
-
-/* ===== УТИЛИТАРНЫЕ КЛАССЫ ===== */
-.container {
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 var(--space-md);
-}
-
-.flex {
-  display: flex;
-}
-
-.flex-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.flex-between {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.grid {
-  display: grid;
-}
-
-.text-center {
-  text-align: center;
-}
-
-.text-right {
-  text-align: right;
-}
-
-.mb-0 { margin-bottom: 0; }
-.mb-sm { margin-bottom: var(--space-sm); }
-.mb-md { margin-bottom: var(--space-md); }
-.mb-lg { margin-bottom: var(--space-lg); }
-
-.mt-0 { margin-top: 0; }
-.mt-sm { margin-top: var(--space-sm); }
-.mt-md { margin-top: var(--space-md); }
-.mt-lg { margin-top: var(--space-lg); }
-
-.p-0 { padding: 0; }
-.p-sm { padding: var(--space-sm); }
-.p-md { padding: var(--space-md); }
-.p-lg { padding: var(--space-lg); }
-
-.relative { position: relative; }
-.absolute { position: absolute; }
-.fixed { position: fixed; }
-
-.overflow-hidden { overflow: hidden; }
-
-/* ===== АНИМАЦИИ ===== */
-@keyframes cellular-float {
-  0% {
-    background-position: 0 0, 25px 25px;
+@keyframes slideInUp {
+  from { 
+    opacity: 0;
+    transform: translateY(30px);
   }
-  100% {
-    background-position: 50px 50px, 75px 75px;
-  }
-}
-
-@keyframes text-pulse {
-  0%, 100% {
-    text-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
-  }
-  50% {
-    text-shadow: 0 0 20px rgba(78, 205, 196, 0.8), 0 0 30px rgba(78, 205, 196, 0.6);
-  }
-}
-
-@keyframes bio-glow {
-  0%, 100% {
-    box-shadow: 0 0 5px rgba(78, 205, 196, 0.3);
-  }
-  50% {
-    box-shadow: 0 0 20px rgba(78, 205, 196, 0.6), 0 0 30px rgba(78, 205, 196, 0.4);
-  }
-}
-
-@keyframes float {
-  0%, 100% {
+  to { 
+    opacity: 1;
     transform: translateY(0);
   }
-  50% {
-    transform: translateY(-10px);
+}
+
+@keyframes slideInDown {
+  from { 
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
+@keyframes scaleIn {
+  from { 
+    opacity: 0;
+    transform: scale(0.8);
   }
-  to {
-    transform: rotate(360deg);
+  to { 
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
 @keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
-/* ===== КЛАССЫ АНИМАЦИЙ ===== */
-.animate-float {
-  animation: float 3s ease-in-out infinite;
-}
+.fade-in { animation: fadeIn var(--transition-slow); }
+.slide-in-up { animation: slideInUp var(--transition-normal); }
+.slide-in-down { animation: slideInDown var(--transition-normal); }
+.scale-in { animation: scaleIn var(--transition-normal); }
+.pulse { animation: pulse 2s infinite; }
 
-.animate-pulse {
-  animation: pulse 2s ease-in-out infinite;
-}
+/* 📱 АДАПТИВНОСТЬ И МЕДИА-ЗАПРОСЫ */
 
-.animate-spin {
-  animation: spin 1s linear infinite;
-}
-
-.animate-glow {
-  animation: bio-glow 2s ease-in-out infinite;
-}
-
-/* ===== ОСНОВНЫЕ КОМПОНЕНТЫ ===== */
-.cell-universe {
-  position: relative;
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-  perspective: 1000px;
-}
-
-.preloader {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: var(--gradient-deep-space);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  z-index: var(--z-modal);
-  transition: opacity var(--transition-slow);
-}
-
-.dna-loader {
-  display: flex;
-  gap: var(--space-sm);
-  margin-bottom: var(--space-lg);
-}
-
-.base-pair {
-  width: 8px;
-  height: 30px;
-  background: var(--color-dna-primary);
-  animation: pulse 1.2s ease-in-out infinite;
-}
-
-.base-pair:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.base-pair:nth-child(3) {
-  animation-delay: 0.4s;
-}
-
-/* ===== АДАПТИВНОСТЬ ===== */
 @media (max-width: 768px) {
   :root {
-    --text-4xl: 1.75rem;
-    --text-3xl: 1.5rem;
-    --text-2xl: 1.25rem;
-    --space-xl: 1.5rem;
-    --space-2xl: 2rem;
+    --size-planet: 15vmin;
+    --size-moon: 8vmin;
+    --size-asteroid: 5vmin;
+    --size-debris: 3vmin;
+    --size-blackhole: 18vmin;
+    
+    --font-size-xxxl: 1.75rem;
+    --font-size-xxl: 1.25rem;
+    --font-size-xl: 1.125rem;
+    --font-size-lg: 1rem;
   }
   
-  body {
-    font-size: var(--text-sm);
-  }
-  
-  .container {
-    padding: 0 var(--space-sm);
-  }
+  h1 { font-size: var(--font-size-xxl); }
+  h2 { font-size: var(--font-size-xl); }
+  h3 { font-size: var(--font-size-lg); }
 }
 
 @media (max-width: 480px) {
   :root {
-    --text-4xl: 1.5rem;
-    --text-3xl: 1.25rem;
-  }
-  
-  .btn {
-    padding: var(--space-xs) var(--space-md);
-    font-size: var(--text-sm);
+    --size-planet: 18vmin;
+    --size-moon: 9vmin;
+    --size-asteroid: 6vmin;
+    --size-debris: 3vmin;
+    --size-blackhole: 20vmin;
   }
 }
 
-/* ===== ПОДДЕРЖКА РЕДКИХ СВОЙСТВ ===== */
-@supports (backdrop-filter: blur(10px)) {
-  .glass {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
+/* ♿ ДОСТУПНОСТЬ */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
+
+/* 🎯 ФОКУС-СТИЛИ ДЛЯ КЛАВИАТУРНОЙ НАВИГАЦИИ */
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+}
+
+/* 🔧 СПЕЦИФИЧЕСКИЕ СТИЛИ ДЛЯ КОМПОНЕНТОВ ГАЛАКТИКИ */
+
+.galaxy-universe {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--color-background-primary);
+}
+
+/* 📱 ОСНОВНЫЕ СТИЛИ ДЛЯ РАЗЛИЧНЫХ СОСТОЯНИЙ */
+
+.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.invisible {
+  visibility: hidden;
+}
+
+.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+/* 🎪 СПЕЦИАЛЬНЫЕ ЭФФЕКТЫ */
+
+.glass-effect {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: var(--blur-medium);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+}
+
+.glow-effect {
+  box-shadow: var(--shadow-glow);
+}
+
+.text-glow {
+  text-shadow: 0 0 10px currentColor;
+}
+
+/* 📊 СТИЛИ ДЛЯ СКРОЛЛБАРА (Webkit браузеры) */
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-accent-primary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent-secondary);
+}
+
+/* 🎯 СТИЛИ ДЛЯ ВЫДЕЛЕНИЯ ТЕКСТА */
+
+::selection {
+  background: rgba(78, 205, 196, 0.3);
+  color: var(--color-text-primary);
+}
+
+::-moz-selection {
+  background: rgba(78, 205, 196, 0.3);
+  color: var(--color-text-primary);
+}
+
+/* 🔧 ДОПОЛНИТЕЛЬНЫЕ УТИЛИТЫ ДЛЯ РАЗМЕЩЕНИЯ */
+
+.absolute-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.full-viewport {
+  width: 100vw;
+  height: 100vh;
+}
+
+.no-scroll {
+  overflow: hidden;
+}
+
+/* 🎪 АНИМАЦИИ ДЛЯ ИНТЕРАКТИВНЫХ ЭЛЕМЕНТОВ */
+
+.hover-lift {
+  transition: transform var(--transition-normal);
+}
+
+.hover-lift:hover {
+  transform: translateY(-5px);
+}
+
+.hover-scale {
+  transition: transform var(--transition-normal);
+}
+
+.hover-scale:hover {
+  transform: scale(1.05);
+}
+
+/* 📱 ОПТИМИЗАЦИЯ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ */
+
+.touch-optimized {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* 🎯 СТИЛИ ДЛЯ ФОРМ И ИНПУТОВ */
+
+input, textarea, select {
+  font-family: var(--font-family-secondary);
+  font-size: var(--font-size-md);
+  padding: var(--space-sm);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: var(--color-text-primary);
+  transition: all var(--transition-fast);
+  backdrop-filter: var(--blur-small);
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--color-accent-primary);
+  box-shadow: var(--shadow-glow);
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* 🔧 ФИКСЫ ДЛЯ РАЗЛИЧНЫХ БРАУЗЕРОВ */
 
 @supports not (backdrop-filter: blur(10px)) {
-  .glass {
-    background: rgba(255, 255, 255, 0.1);
+  .glass-effect {
+    background: rgba(26, 26, 46, 0.95);
   }
 }
 
-/* ===== ВСПОМОГАТЕЛЬНЫЕ СТИЛИ ДЛЯ РАЗРАБОТКИ ===== */
-.debug-outline * {
-  outline: 1px solid red;
+/* 🎪 ДОПОЛНИТЕЛЬНЫЕ АНИМАЦИОННЫЕ КЛАССЫ */
+
+.animate-on-scroll {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all var(--transition-slow);
 }
 
-/* Скрыть элементы с атрибутом hidden */
-[hidden] {
-  display: none !important;
+.animate-on-scroll.animated {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 📊 СТИЛИ ДЛЯ ПРОГРЕСС-БАРОВ */
+
+.progress-bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-accent-primary), var(--color-accent-secondary));
+  border-radius: 2px;
+  transition: width var(--transition-slow);
 }
