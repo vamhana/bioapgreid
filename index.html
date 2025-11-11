@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌌 Галактика GENOФОНД</title>
+    
+    <!-- Подключение стилей -->
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/galaxy-universe.css">
+    <link rel="stylesheet" href="styles/galaxy-components.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Основная структура галактики -->
+    <div class="galaxy-universe">
+        <div class="galaxy-background">
+            <div class="stars-layer"></div>
+            <div class="nebula-layer"></div>
+            <div class="particles-layer"></div>
+        </div>
+        
+        <!-- Контейнер для небесных тел -->
+        <div class="celestial-bodies" id="celestialBodies">
+            <!-- Автогенерация через galaxy-builder.js -->
+        </div>
+        
+        <!-- Панели управления -->
+        <div class="info-panels">
+            <div class="panel user-stats">📊 Статистика генофонда</div>
+            <div class="panel quick-actions">🚀 Быстрые команды</div>
+        </div>
+        
+        <!-- Окно контента -->
+        <div class="content-viewport" id="contentViewport">
+            <div class="content-viewport-header">
+                <h2 class="content-viewport-title">Добро пожаловать в Галактику GENOФОНД</h2>
+                <button class="close-button">✕</button>
+            </div>
+            <div class="content-wrapper">
+                <p>Выберите планету для изучения контента...</p>
+            </div>
+        </div>
+        
+        <!-- Система уведомлений -->
+        <div class="notification-center" id="notifications"></div>
+        
+        <!-- Прелоадер -->
+        <div class="preloader" id="preloader">
+            <div class="preloader-spinner"></div>
+            <div class="preloader-text">⏳ Инициализация вселенной GENOФОНД</div>
+            <div class="preloader-progress">
+                <div class="preloader-progress-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Подключение JavaScript в правильном порядке -->
+    <script src="js/meta-parser.js"></script>
+    <script src="js/adaptive-positioning.js"></script>
+    <script src="js/galaxy-builder.js"></script>
+    <script src="js/visibility-manager.js"></script>
+    <script src="js/content-manager.js"></script>
+    <script src="js/galaxy-navigation.js"></script>
+    <script src="js/galaxy-interaction.js"></script>
+    <script src="js/app.js"></script>
+
+    <!-- Инициализация приложения -->
+    <script>
+        // Ждем загрузки DOM
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Запуск Галактики GENOФОНД...');
+            
+            // Создаем и инициализируем приложение
+            const app = new GenofondApp();
+            
+            app.init().then(() => {
+                console.log('✅ Галактика GENOФОНД успешно запущена!');
+                
+                // Скрываем прелоадер
+                const preloader = document.getElementById('preloader');
+                if (preloader) {
+                    setTimeout(() => {
+                        preloader.classList.add('hidden');
+                    }, 1000);
+                }
+            }).catch(error => {
+                console.error('❌ Ошибка запуска галактики:', error);
+                
+                // Показываем сообщение об ошибке
+                const preloader = document.getElementById('preloader');
+                if (preloader) {
+                    preloader.innerHTML = `
+                        <div style="text-align: center; color: #ff6b6b;">
+                            <div style="font-size: 48px;">💥</div>
+                            <div style="font-size: 24px; margin: 20px 0;">Ошибка загрузки</div>
+                            <div>${error.message}</div>
+                            <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #ff6b6b; border: none; border-radius: 5px; color: white; cursor: pointer;">
+                                Перезагрузить
+                            </button>
+                        </div>
+                    `;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
