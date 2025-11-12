@@ -5,14 +5,18 @@
       "src": "package.json",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "public"
+        "distDir": "."
       }
     }
   ],
-  "rewrites": [
+  "routes": [
     {
-      "source": "/(.*)",
-      "destination": "/$1"
+      "src": "/(.*\\.(html|css|js|json|svg|png|jpg))",
+      "dest": "/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ],
   "cleanUrls": true,
