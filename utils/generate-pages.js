@@ -1,6 +1,15 @@
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
+// galaxy-genofond/utils/generate-pages.js
+// СТАТУС: АКТУАЛЬНЫЙ (ОБНОВЛЕННЫЙ ДЛЯ GITHUB PAGES И ES MODULES)
+// ТИП: JavaScript (Автоматический генератор шлюзов/Сканер папки pages)
+// НАЗНАЧЕНИЕ ФАЙЛА: Автоматически сканирует папку pages/, обнаруживает все HTML-файлы и генерирует соответствующие специализированные шлюзы. Извлекает мета-теги из исходных страниц для построения конфигурации. Обеспечивает полную автоматизацию создания шлюзов без ручного редактирования конфигурации. Адаптирован для GitHub Pages и домена bioapgreid.ru.
+
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class PageGenerator {
     constructor() {
@@ -971,7 +980,7 @@ ${additionalMetaTags}
 const pageGenerator = new PageGenerator();
 
 // Запуск генерации при прямом вызове
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
     pageGenerator.generateAllPages().catch(console.error);
     
     // Запускаем отслеживание изменений, если включено
@@ -987,10 +996,13 @@ if (require.main === module) {
     }
 }
 
-module.exports = { 
+export { 
     PageGenerator,
+    pageGenerator,
     generateAllPages: () => pageGenerator.generateAllPages(),
     autoDiscoverPages: () => pageGenerator.autoDiscoverPages(),
     createHTMLTemplate: (config) => pageGenerator.createHTMLTemplate(config),
     generateSiteMap: (config) => pageGenerator.generateSiteMap(config)
 };
+
+export default PageGenerator;
