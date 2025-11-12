@@ -1007,11 +1007,13 @@ if (import.meta.url === `file://${process.argv[1]}` || isVercel) {
 
 export { 
     PageGenerator,
-    pageGenerator,
-    generateAllPages: () => pageGenerator.generateAllPages(),
-    autoDiscoverPages: () => pageGenerator.autoDiscoverPages(),
-    createHTMLTemplate: (config) => pageGenerator.createHTMLTemplate(config),
-    generateSiteMap: (config) => pageGenerator.generateSiteMap(config)
+    pageGenerator
 };
+
+// И ДОБАВЬТЕ ОТДЕЛЬНЫЕ ЭКСПОРТЫ:
+export const generateAllPages = () => pageGenerator.generateAllPages();
+export const autoDiscoverPages = () => pageGenerator.autoDiscoverPages();
+export const createHTMLTemplate = (config) => pageGenerator.createHTMLTemplate(config);
+export const generateSiteMap = (config) => pageGenerator.generateSiteMap(config);
 
 export default PageGenerator;
