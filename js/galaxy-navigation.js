@@ -112,7 +112,6 @@ class NavigationQueue {
 
     async executeNavigation(levelId) {
         // Имитация асинхронной навигации
-        // В реальной реализации здесь будет интеграция с GalaxyNavigation.switchLevel
         return new Promise((resolve) => {
             setTimeout(() => {
                 resolve({ levelId, success: true });
@@ -155,13 +154,15 @@ class GalaxyNavigation {
         this.sessionId = this.generateSessionId();
         this.predictionCache = new Map();
         
-        // Конфигурация для GitHub Pages и bioapgreid.ru
+        // ИСПРАВЛЕНО: Динамическая конфигурация для всех хостингов
         this.config = {
-            baseUrl: 'https://www.bioapgreid.ru/',
+            // Автоматическое определение baseUrl
+            baseUrl: this.calculateBaseUrl(),
             isGitHubPages: window.location.hostname.includes('github.io'),
             isBioapgreid: window.location.hostname.includes('bioapgreid.ru'),
-            useHashRouting: true, // Используем hash-based routing для GitHub Pages
-            localStorageKey: 'genofond-navigation-state'
+            isVercel: window.location.hostname.includes('vercel.app'),
+            useHashRouting: true, // Всегда используем hash-based routing для SPA
+            localStorageKey: 'genofond-navigation-state-v2'
         };
         
         // Инициализация
@@ -170,7 +171,37 @@ class GalaxyNavigation {
         this.setupAutoSave();
         this.setupPredictiveNavigation();
         
-        console.log('🎯 Навигационная система v2.1 инициализирована для bioapgreid.ru');
+        console.log('🎯 Навигационная система v2.1 инициализирована');
+        console.log('📍 Base URL:', this.config.baseUrl);
+        console.log('📍 Hosting:', this.getHostingType());
+    }
+
+    /**
+     * Расчет базового URL для любого хостинга
+     */
+    calculateBaseUrl() {
+        // Для Vercel, GitHub Pages и локальной разработки
+        const origin = window.location.origin;
+        const pathname = window.location.pathname;
+        
+        // Если мы в корне, используем просто origin
+        if (pathname === '/' || pathname === '/index.html') {
+            return origin + '/';
+        }
+        
+        // Если в подпапке, убираем имя файла из пути
+        return origin + pathname.replace(/\/[^\/]*$/, '') + '/';
+    }
+
+    /**
+     * Определение типа хостинга для диагностики
+     */
+    getHostingType() {
+        if (this.config.isVercel) return 'Vercel';
+        if (this.config.isGitHubPages) return 'GitHub Pages';
+        if (this.config.isBioapgreid) return 'bioapgreid.ru';
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return 'Local Development';
+        return 'Unknown';
     }
 
     /**
@@ -331,6 +362,10 @@ class GalaxyNavigation {
      * Санитизация данных уровня
      */
     sanitizeLevelData(levelData) {
+        if (!levelData || typeof levelData !== 'object') {
+            return this.getFallbackLevelData('unknown');
+        }
+
         const allowedFields = [
             'id', 'title', 'description', 'type', 'color', 'icon', 
             'parent', 'orbitRadius', 'orbitAngle', 'importance', 
@@ -350,6 +385,11 @@ class GalaxyNavigation {
                 }
             }
         });
+        
+        // Гарантируем наличие обязательных полей
+        sanitized.id = sanitized.id || levelData.id || 'unknown';
+        sanitized.title = sanitized.title || 'Неизвестный уровень';
+        sanitized.unlocked = sanitized.unlocked !== false;
         
         return sanitized;
     }
@@ -372,7 +412,7 @@ class GalaxyNavigation {
             console.error(`❌ Ошибка получения данных уровня ${levelId}:`, error);
         }
         
-        // Ultimate fallback
+        // Fallback данные
         return this.getFallbackLevelData(levelId);
     }
 
@@ -463,29 +503,29 @@ class GalaxyNavigation {
      * Генерация URL для уровня с параметрами
      */
     generateLevelURL(levelId, levelData, options = {}) {
-        // Для GitHub Pages и bioapgreid.ru используем hash-based навигацию
-        let baseUrl;
+        // ИСПРАВЛЕНО: Единый подход для всех хостингов - hash routing
+        let url = this.config.baseUrl;
         
-        if (this.config.isGitHubPages || this.config.isBioapgreid) {
-            // SPA-навигация для хостинга - используем hash routing
-            baseUrl = `${window.location.origin}${window.location.pathname}#${levelId}`;
-        } else {
-            // Локальная разработка
-            baseUrl = `${window.location.origin}/#${levelId}`;
+        // Убедимся, что baseUrl заканчивается на '/'
+        if (!url.endsWith('/')) {
+            url += '/';
         }
-
+        
+        // Добавляем hash
+        url += `#${levelId}`;
+        
         // Добавляем параметры если есть
         if (Object.keys(options).length > 0) {
-            const url = new URL(baseUrl);
+            const urlObj = new URL(url);
             Object.keys(options).forEach(key => {
                 if (options[key]) {
-                    url.searchParams.set(key, options[key]);
+                    urlObj.searchParams.set(key, options[key]);
                 }
             });
-            return url.toString();
+            return urlObj.toString();
         }
 
-        return baseUrl;
+        return url;
     }
 
     /**
@@ -556,10 +596,13 @@ class GalaxyNavigation {
             if (window.history && window.history.pushState) {
                 window.history.pushState({ levelId, levelData }, '', newUrl);
             } else {
+                // Fallback для старых браузеров
                 window.location.hash = levelId;
             }
         } catch (error) {
             console.warn('⚠️ Не удалось обновить URL браузера:', error);
+            // Ultimate fallback
+            window.location.hash = levelId;
         }
     }
 
@@ -594,37 +637,15 @@ class GalaxyNavigation {
      */
     handleBrowserNavigation(event) {
         try {
-            // Обрабатываем hash-based навигацию для SPA
+            // Упрощенная обработка hash-навигации для SPA
             const hash = window.location.hash.replace('#', '');
             if (hash && hash !== this.currentLevel) {
+                console.log('🔗 Hash navigation detected:', hash);
                 this.switchLevel(hash, 'browser_navigation');
-            }
-            
-            // Для GitHub Pages и bioapgreid.ru - дополнительная обработка
-            if (this.config.isGitHubPages || this.config.isBioapgreid) {
-                const pathLevel = this.extractLevelFromPath();
-                if (pathLevel && pathLevel !== this.currentLevel) {
-                    this.switchLevel(pathLevel, 'deep_link');
-                }
             }
         } catch (error) {
             console.error('❌ Ошибка обработки навигации браузера:', error);
         }
-    }
-
-    /**
-     * Извлечение уровня из пути для SPA
-     */
-    extractLevelFromPath() {
-        const path = window.location.pathname;
-        
-        // Для bioapgreid.ru и GitHub Pages - используем только hash routing
-        // Оставляем этот метод для будущего расширения
-        if (path === '/' || path === '/index.html') {
-            return null; // Главная страница
-        }
-        
-        return null; // По умолчанию не используем path-based routing
     }
 
     /**
@@ -639,7 +660,8 @@ class GalaxyNavigation {
                 previousLevel,
                 levelData: levelDataToSend,
                 timestamp: Date.now(),
-                sessionId: this.sessionId
+                sessionId: this.sessionId,
+                hosting: this.getHostingType()
             }
         });
 
@@ -656,7 +678,8 @@ class GalaxyNavigation {
                 history: this.history,
                 currentIndex: this.historyIndex,
                 canGoBack: this.historyIndex > 0,
-                canGoForward: this.historyIndex < this.history.length - 1
+                canGoForward: this.historyIndex < this.history.length - 1,
+                hosting: this.getHostingType()
             }
         });
 
@@ -679,8 +702,8 @@ class GalaxyNavigation {
             sessionId: this.sessionId,
             userAgent: navigator.userAgent,
             url: window.location.href,
-            domain: this.config.isBioapgreid ? 'bioapgreid.ru' : 
-                   this.config.isGitHubPages ? 'github.io' : 'local'
+            hosting: this.getHostingType(),
+            cacheHitRate: this.levelDataCache.hitRate
         };
 
         // Добавляем запись
@@ -709,7 +732,13 @@ class GalaxyNavigation {
     saveAnalyticsData() {
         try {
             const analyticsKey = `genofond-analytics-${this.sessionId}`;
-            sessionStorage.setItem(analyticsKey, JSON.stringify(this.analyticsData));
+            const dataToSave = {
+                analytics: this.analyticsData,
+                sessionId: this.sessionId,
+                timestamp: Date.now(),
+                hosting: this.getHostingType()
+            };
+            sessionStorage.setItem(analyticsKey, JSON.stringify(dataToSave));
         } catch (error) {
             console.warn('⚠️ Не удалось сохранить аналитику:', error);
         }
@@ -824,14 +853,20 @@ class GalaxyNavigation {
                 historyIndex: this.historyIndex,
                 timestamp: Date.now(),
                 version: '2.1',
-                domain: this.config.isBioapgreid ? 'bioapgreid.ru' : 
-                       this.config.isGitHubPages ? 'github.io' : 'local'
+                hosting: this.getHostingType(),
+                baseUrl: this.config.baseUrl
             };
 
+            // Основное сохранение
             localStorage.setItem(this.config.localStorageKey, JSON.stringify(state));
             
+            // Резервное сохранение в sessionStorage
+            sessionStorage.setItem(this.config.localStorageKey + '-session', JSON.stringify(state));
+            
             // Отправка события о сохранении состояния
-            document.dispatchEvent(new CustomEvent('navigationStateSaved'));
+            document.dispatchEvent(new CustomEvent('navigationStateSaved', {
+                detail: { hosting: this.getHostingType() }
+            }));
             
             console.log('💾 Состояние навигации сохранено');
         } catch (error) {
@@ -847,6 +882,16 @@ class GalaxyNavigation {
             const saved = localStorage.getItem(this.config.localStorageKey);
             if (!saved) {
                 console.log('ℹ️ Сохраненное состояние навигации не найдено');
+                
+                // Проверяем hash в URL для deep linking
+                const hash = window.location.hash.replace('#', '');
+                if (hash) {
+                    console.log('🔗 Deep link detected:', hash);
+                    this.currentLevel = hash;
+                    setTimeout(() => {
+                        this.dispatchLevelChange(hash);
+                    }, 100);
+                }
                 return;
             }
 
@@ -866,11 +911,42 @@ class GalaxyNavigation {
                         this.dispatchLevelChange(this.currentLevel);
                     }, 100);
                 }
+            } else {
+                this.handleLoadError(new Error('Invalid state structure'));
             }
         } catch (error) {
-            console.warn('⚠️ Не удалось загрузить состояние навигации:', error);
-            this.clearCorruptedState();
+            this.handleLoadError(error);
         }
+    }
+
+    /**
+     * Обработка ошибок загрузки состояния
+     */
+    handleLoadError(error) {
+        console.warn('⚠️ Ошибка загрузки состояния навигации:', error);
+        
+        // Пытаемся восстановить из sessionStorage как fallback
+        try {
+            const sessionState = sessionStorage.getItem(this.config.localStorageKey + '-session');
+            if (sessionState) {
+                const state = JSON.parse(sessionState);
+                if (this.validateState(state)) {
+                    this.currentLevel = state.currentLevel;
+                    this.history = state.history || [];
+                    this.historyIndex = state.historyIndex || 0;
+                    console.log('💾 Состояние восстановлено из sessionStorage');
+                    return;
+                }
+            }
+        } catch (fallbackError) {
+            console.warn('⚠️ Не удалось восстановить из sessionStorage:', fallbackError);
+        }
+        
+        // Ultimate fallback - сброс к начальному состоянию
+        this.currentLevel = null;
+        this.history = [];
+        this.historyIndex = -1;
+        console.log('🔄 Навигация сброшена к начальному состоянию');
     }
 
     /**
@@ -893,27 +969,10 @@ class GalaxyNavigation {
             // Проверка корректности индекса истории
             if (state.historyIndex < -1 || state.historyIndex >= state.history.length) return false;
             
-            // Проверка версии (опционально)
-            if (state.version && state.version !== '2.1') {
-                console.warn('⚠️ Версия состояния отличается, требуется миграция');
-            }
-            
             return true;
         } catch (error) {
             console.warn('❌ Ошибка валидации состояния:', error);
             return false;
-        }
-    }
-
-    /**
-     * Очистка поврежденного состояния
-     */
-    clearCorruptedState() {
-        try {
-            localStorage.removeItem(this.config.localStorageKey);
-            console.log('🧹 Поврежденное состояние навигации очищено');
-        } catch (error) {
-            console.error('❌ Не удалось очистить поврежденное состояние:', error);
         }
     }
 
@@ -941,15 +1000,41 @@ class GalaxyNavigation {
             canGoBack: this.historyIndex > 0,
             canGoForward: this.historyIndex < this.history.length - 1,
             cacheSize: this.levelDataCache.size,
+            cacheHitRate: this.levelDataCache.hitRate,
             queueLength: this.navigationQueue.length,
             analyticsEntries: this.analyticsData.length,
             sessionId: this.sessionId,
-            config: this.config,
+            hosting: this.getHostingType(),
+            baseUrl: this.config.baseUrl,
             history: this.history.map(entry => ({
                 levelId: entry.levelId,
                 title: entry.levelData?.title || entry.levelId,
                 timestamp: new Date(entry.timestamp).toLocaleTimeString()
             }))
+        };
+    }
+
+    /**
+     * Диагностика состояния навигации
+     */
+    diagnose() {
+        return {
+            config: this.config,
+            currentLevel: this.currentLevel,
+            historyLength: this.history.length,
+            historyIndex: this.historyIndex,
+            cacheSize: this.levelDataCache.size,
+            queueLength: this.navigationQueue.length,
+            analyticsCount: this.analyticsData.length,
+            sessionId: this.sessionId,
+            hosting: this.getHostingType(),
+            url: window.location.href,
+            hash: window.location.hash,
+            localStorage: {
+                main: localStorage.getItem(this.config.localStorageKey) ? 'exists' : 'empty',
+                session: sessionStorage.getItem(this.config.localStorageKey + '-session') ? 'exists' : 'empty'
+            },
+            performance: this.getPerformanceMetrics()
         };
     }
 
@@ -970,8 +1055,7 @@ class GalaxyNavigation {
             cacheHitRate: this.levelDataCache.hitRate,
             mostVisitedLevels: this.getMostVisitedLevels(),
             navigationTypes: this.getNavigationTypeDistribution(),
-            domain: this.config.isBioapgreid ? 'bioapgreid.ru' : 
-                   this.config.isGitHubPages ? 'github.io' : 'local'
+            hosting: this.getHostingType()
         };
     }
 
@@ -1047,7 +1131,12 @@ class GalaxyNavigation {
     }
 }
 
-// Экспорт класса
+// Экспорт для использования в других модулях
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { GalaxyNavigation, LevelDataCache, NavigationQueue };
+} else {
+    // Для использования в браузере
+    window.GalaxyNavigation = GalaxyNavigation;
+    window.LevelDataCache = LevelDataCache;
+    window.NavigationQueue = NavigationQueue;
 }
