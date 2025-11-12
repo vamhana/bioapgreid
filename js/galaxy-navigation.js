@@ -1,3 +1,142 @@
+class LevelDataCache {
+    constructor(maxSize = 50, timeout = 30000) {
+        this.maxSize = maxSize;
+        this.timeout = timeout;
+        this.cache = new Map();
+        this.hits = 0;
+        this.misses = 0;
+    }
+
+    get(levelId) {
+        if (!this.cache.has(levelId)) {
+            this.misses++;
+            return null;
+        }
+        
+        const item = this.cache.get(levelId);
+        
+        // Проверка таймаута
+        if (Date.now() - item.timestamp > this.timeout) {
+            this.cache.delete(levelId);
+            this.misses++;
+            return null;
+        }
+        
+        // Обновляем порядок использования (перемещаем в конец)
+        this.cache.delete(levelId);
+        this.cache.set(levelId, item);
+        this.hits++;
+        
+        return item.data;
+    }
+
+    set(levelId, data) {
+        // Если достигли максимального размера, удаляем самый старый элемент
+        if (this.cache.size >= this.maxSize) {
+            const firstKey = this.cache.keys().next().value;
+            this.cache.delete(firstKey);
+        }
+        
+        this.cache.set(levelId, {
+            data,
+            timestamp: Date.now()
+        });
+    }
+
+    delete(levelId) {
+        this.cache.delete(levelId);
+    }
+
+    clear() {
+        this.cache.clear();
+        this.hits = 0;
+        this.misses = 0;
+    }
+
+    get size() {
+        return this.cache.size;
+    }
+
+    get hitRate() {
+        const total = this.hits + this.misses;
+        return total > 0 ? this.hits / total : 0;
+    }
+}
+
+class NavigationQueue {
+    constructor() {
+        this.queue = [];
+        this.processing = false;
+        this.pendingNavigation = null;
+    }
+
+    async addNavigation(levelId, priority = 'normal') {
+        return new Promise((resolve, reject) => {
+            const task = { 
+                levelId, 
+                priority, 
+                resolve, 
+                reject,
+                timestamp: Date.now()
+            };
+            
+            if (priority === 'high') {
+                this.queue.unshift(task);
+            } else {
+                this.queue.push(task);
+            }
+            
+            this.processQueue();
+        });
+    }
+
+    async processQueue() {
+        if (this.processing || this.queue.length === 0) return;
+        
+        this.processing = true;
+        const task = this.queue.shift();
+        
+        try {
+            // Сохраняем текущую навигацию для возможной отмены
+            this.pendingNavigation = task.levelId;
+            const result = await this.executeNavigation(task.levelId);
+            task.resolve(result);
+        } catch (error) {
+            task.reject(error);
+        } finally {
+            this.processing = false;
+            this.pendingNavigation = null;
+            setTimeout(() => this.processQueue(), 0);
+        }
+    }
+
+    async executeNavigation(levelId) {
+        // Имитация асинхронной навигации
+        // В реальной реализации здесь будет интеграция с GalaxyNavigation.switchLevel
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                resolve({ levelId, success: true });
+            }, 10);
+        });
+    }
+
+    cancelPending() {
+        if (this.pendingNavigation) {
+            this.pendingNavigation = null;
+        }
+    }
+
+    clear() {
+        this.queue = [];
+        this.processing = false;
+        this.pendingNavigation = null;
+    }
+
+    get length() {
+        return this.queue.length;
+    }
+}
+
 class GalaxyNavigation {
     constructor(app) {
         this.app = app;
@@ -6,13 +145,39 @@ class GalaxyNavigation {
         this.historyIndex = -1;
         this.maxHistoryDepth = 50;
         this.autoSaveInterval = null;
-        this.levelDataCache = new Map();
-        this.cacheTimeout = 30000; // 30 секунд
+        
+        // Новые компоненты
+        this.levelDataCache = new LevelDataCache(50, 30000);
+        this.navigationQueue = new NavigationQueue();
+        this.analyticsData = [];
+        this.maxAnalyticsSize = 100;
+        this.lastNavigationTime = Date.now();
+        this.sessionId = this.generateSessionId();
+        this.predictionCache = new Map();
+        
+        // Конфигурация для GitHub Pages и bioapgreid.ru
+        this.config = {
+            baseUrl: 'https://www.bioapgreid.ru/',
+            isGitHubPages: window.location.hostname.includes('github.io'),
+            isBioapgreid: window.location.hostname.includes('bioapgreid.ru'),
+            useHashRouting: true, // Используем hash-based routing для GitHub Pages
+            localStorageKey: 'genofond-navigation-state'
+        };
         
         // Инициализация
         this.setupEventListeners();
         this.loadState();
         this.setupAutoSave();
+        this.setupPredictiveNavigation();
+        
+        console.log('🎯 Навигационная система v2.1 инициализирована для bioapgreid.ru');
+    }
+
+    /**
+     * Генерация ID сессии для аналитики
+     */
+    generateSessionId() {
+        return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     }
 
     /**
@@ -28,7 +193,7 @@ class GalaxyNavigation {
         document.addEventListener('entityActivated', (event) => {
             const { entity } = event.detail;
             if (entity && entity.level) {
-                this.switchLevel(entity.level);
+                this.switchLevel(entity.level, 'entity_click');
             }
         });
 
@@ -36,7 +201,7 @@ class GalaxyNavigation {
         document.addEventListener('goBack', () => this.goBack());
         document.addEventListener('goForward', () => this.goForward());
         document.addEventListener('switchLevel', (event) => {
-            this.switchLevel(event.detail.levelId);
+            this.switchLevel(event.detail.levelId, 'programmatic');
         });
 
         // Реагируем на изменения прогресса
@@ -51,72 +216,142 @@ class GalaxyNavigation {
             }
         });
 
+        // Обработка видимости страницы для аналитики
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                this.saveAnalyticsData();
+            }
+        });
+
         console.log('🎯 Навигационная система: обработчики событий установлены');
     }
 
     /**
-     * Переключение на указанный уровень
+     * Переключение на указанный уровень с улучшенной обработкой
      */
-    async switchLevel(levelId) {
-        // Получаем данные уровня перед переключением
-        const levelData = this.getLevelData(levelId);
-        
-        if (!levelData) {
-            console.error(`❌ Уровень ${levelId} не найден`);
-            return false;
-        }
-        
-        if (!levelData.unlocked) {
-            console.warn(`🔒 Уровень ${levelId} заблокирован`);
-            this.dispatchEvent('levelLocked', { levelId, levelData });
+    async switchLevel(levelId, navigationType = 'direct') {
+        // Санитизация входных данных
+        levelId = this.sanitizeLevelId(levelId);
+        if (!levelId) {
+            console.error('❌ Неверный ID уровня:', levelId);
             return false;
         }
 
-        // Проверка на тот же уровень
-        if (this.currentLevel === levelId) {
-            console.log(`ℹ️ Уровень ${levelId} уже активен`);
-            return true;
-        }
+        // Используем очередь для обработки навигации
+        return this.navigationQueue.addNavigation(levelId, 'high')
+            .then(async () => {
+                // Получаем данные уровня перед переключением
+                const levelData = this.getLevelData(levelId);
+                
+                if (!levelData) {
+                    console.error(`❌ Уровень ${levelId} не найден`);
+                    return false;
+                }
+                
+                if (!levelData.unlocked) {
+                    console.warn(`🔒 Уровень ${levelId} заблокирован`);
+                    this.dispatchEvent('levelLocked', { levelId, levelData });
+                    return false;
+                }
 
-        const previousLevel = this.currentLevel;
-        this.currentLevel = levelId;
+                // Проверка на тот же уровень
+                if (this.currentLevel === levelId) {
+                    console.log(`ℹ️ Уровень ${levelId} уже активен`);
+                    return true;
+                }
 
-        // Добавляем данные уровня в историю
-        this.addToHistory(levelId, previousLevel, levelData);
+                const previousLevel = this.currentLevel;
+                this.currentLevel = levelId;
 
-        // Обновление URL в браузере
-        this.updateBrowserURL(levelId, levelData);
+                // Сбор аналитики
+                this.collectNavigationAnalytics(previousLevel, levelId, navigationType);
 
-        // Отправка события с полными данными
-        this.dispatchLevelChange(levelId, previousLevel, levelData);
+                // Добавляем данные уровня в историю
+                this.addToHistory(levelId, previousLevel, levelData);
 
-        // Автосохранение
-        this.saveState();
+                // Обновление URL в браузере
+                this.updateBrowserURL(levelId, levelData);
 
-        console.log(`🎯 Переключение на уровень: ${levelData.title} (${levelId})`);
-        return true;
+                // Отправка события с полными данными
+                this.dispatchLevelChange(levelId, previousLevel, levelData);
+
+                // Автосохранение
+                this.saveState();
+
+                // Предзагрузка связанного контента
+                this.preloadRelatedContent(levelId);
+
+                console.log(`🎯 Переключение на уровень: ${levelData.title} (${levelId})`);
+                return true;
+            })
+            .catch(error => {
+                console.error('❌ Ошибка навигации:', error);
+                return false;
+            });
     }
 
     /**
-     * Получение данных уровня с кэшированием
+     * Санитизация ID уровня
+     */
+    sanitizeLevelId(levelId) {
+        if (typeof levelId !== 'string') return null;
+        
+        // Удаляем потенциально опасные символы
+        const sanitized = levelId.replace(/[^a-zA-Z0-9\-_]/g, '');
+        
+        // Проверяем длину
+        if (sanitized.length > 100 || sanitized.length === 0) return null;
+        
+        return sanitized;
+    }
+
+    /**
+     * Получение данных уровня с улучшенным кэшированием
      */
     getLevelData(levelId) {
         // Проверяем кэш
         const cached = this.levelDataCache.get(levelId);
-        if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
-            return cached.data;
+        if (cached) {
+            return cached;
         }
         
         // Получаем свежие данные
         const levelData = this.fetchLevelData(levelId);
         
+        // Санитизируем данные перед кэшированием
+        const sanitizedData = this.sanitizeLevelData(levelData);
+        
         // Сохраняем в кэш
-        this.levelDataCache.set(levelId, {
-            data: levelData,
-            timestamp: Date.now()
+        this.levelDataCache.set(levelId, sanitizedData);
+        
+        return sanitizedData;
+    }
+
+    /**
+     * Санитизация данных уровня
+     */
+    sanitizeLevelData(levelData) {
+        const allowedFields = [
+            'id', 'title', 'description', 'type', 'color', 'icon', 
+            'parent', 'orbitRadius', 'orbitAngle', 'importance', 
+            'sizeModifier', 'unlocked', 'completed', 'score', 'url',
+            'completionDate', 'lastAccessed'
+        ];
+        
+        const sanitized = {};
+        
+        allowedFields.forEach(field => {
+            if (levelData[field] !== undefined && levelData[field] !== null) {
+                // Базовая санитизация строковых полей
+                if (typeof levelData[field] === 'string') {
+                    sanitized[field] = levelData[field].replace(/[<>]/g, '');
+                } else {
+                    sanitized[field] = levelData[field];
+                }
+            }
         });
         
-        return levelData;
+        return sanitized;
     }
 
     /**
@@ -161,7 +396,7 @@ class GalaxyNavigation {
             completed: false,
             score: 0,
             completionDate: null,
-            url: `pages/${levelId}.html`,
+            url: `#${levelId}`,
             lastAccessed: new Date().toISOString()
         };
     }
@@ -200,7 +435,7 @@ class GalaxyNavigation {
         const historyEntry = {
             levelId,
             previousLevel,
-            levelData, // Сохраняем данные уровня
+            levelData,
             timestamp: Date.now(),
             url: this.generateLevelURL(levelId, levelData)
         };
@@ -225,21 +460,38 @@ class GalaxyNavigation {
     }
 
     /**
-     * Генерация URL для уровня
+     * Генерация URL для уровня с параметрами
      */
-    generateLevelURL(levelId, levelData) {
-        // Для специализированных шлюзов используем прямой URL
-        if (levelData.type === 'planet') {
-            return `${window.location.origin}/${levelId}.html`;
+    generateLevelURL(levelId, levelData, options = {}) {
+        // Для GitHub Pages и bioapgreid.ru используем hash-based навигацию
+        let baseUrl;
+        
+        if (this.config.isGitHubPages || this.config.isBioapgreid) {
+            // SPA-навигация для хостинга - используем hash routing
+            baseUrl = `${window.location.origin}${window.location.pathname}#${levelId}`;
+        } else {
+            // Локальная разработка
+            baseUrl = `${window.location.origin}/#${levelId}`;
         }
-        // Для остальных - hash-based навигация
-        return `${window.location.origin}/#${levelId}`;
+
+        // Добавляем параметры если есть
+        if (Object.keys(options).length > 0) {
+            const url = new URL(baseUrl);
+            Object.keys(options).forEach(key => {
+                if (options[key]) {
+                    url.searchParams.set(key, options[key]);
+                }
+            });
+            return url.toString();
+        }
+
+        return baseUrl;
     }
 
     /**
      * Возврат к предыдущему уровню
      */
-    goBack() {
+    async goBack() {
         if (this.historyIndex <= 0) {
             console.log('ℹ️ Нет предыдущих уровней в истории');
             return false;
@@ -253,6 +505,13 @@ class GalaxyNavigation {
         this.updateBrowserURL(targetEntry.levelId, targetEntry.levelData);
         this.dispatchLevelChange(targetEntry.levelId, this.history[this.historyIndex + 1].levelId, targetEntry.levelData);
 
+        // Сбор аналитики
+        this.collectNavigationAnalytics(
+            this.history[this.historyIndex + 1].levelId, 
+            targetEntry.levelId, 
+            'back'
+        );
+
         console.log(`↩️ Возврат к уровню: ${targetEntry.levelData.title}`);
         return true;
     }
@@ -260,7 +519,7 @@ class GalaxyNavigation {
     /**
      * Переход к следующему уровню в истории
      */
-    goForward() {
+    async goForward() {
         if (this.historyIndex >= this.history.length - 1) {
             console.log('ℹ️ Нет следующих уровней в истории');
             return false;
@@ -274,24 +533,24 @@ class GalaxyNavigation {
         this.updateBrowserURL(targetEntry.levelId, targetEntry.levelData);
         this.dispatchLevelChange(targetEntry.levelId, this.history[this.historyIndex - 1].levelId, targetEntry.levelData);
 
+        // Сбор аналитики
+        this.collectNavigationAnalytics(
+            this.history[this.historyIndex - 1].levelId, 
+            targetEntry.levelId, 
+            'forward'
+        );
+
         console.log(`↪️ Переход вперед к уровню: ${targetEntry.levelData.title}`);
         return true;
     }
 
     /**
-     * Обновление URL браузера для deep linking
+     * Обновление URL браузера для deep linking с параметрами
      */
     updateBrowserURL(levelId, levelData) {
         try {
-            let newUrl;
-            
-            if (levelData.type === 'planet') {
-                // Для планет используем прямой URL к специализированному шлюзу
-                newUrl = `${window.location.origin}/${levelId}.html`;
-            } else {
-                // Для остальных - hash-based навигация на главной странице
-                newUrl = `${window.location.origin}/#${levelId}`;
-            }
+            const options = this.parseURLParameters();
+            const newUrl = this.generateLevelURL(levelId, levelData, options);
 
             // Используем History API для изменения URL без перезагрузки страницы
             if (window.history && window.history.pushState) {
@@ -305,27 +564,67 @@ class GalaxyNavigation {
     }
 
     /**
+     * Парсинг параметров URL
+     */
+    parseURLParameters() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const params = {};
+        
+        // Обработка параметров навигации
+        if (urlParams.has('focus')) {
+            params.focus = this.sanitizeLevelId(urlParams.get('focus'));
+        }
+        
+        if (urlParams.has('view')) {
+            const view = urlParams.get('view');
+            if (['minimal', 'detailed', 'full'].includes(view)) {
+                params.view = view;
+            }
+        }
+        
+        if (urlParams.has('preview')) {
+            params.preview = 'true';
+        }
+        
+        return params;
+    }
+
+    /**
      * Обработка навигации браузера (кнопки назад/вперед)
      */
     handleBrowserNavigation(event) {
         try {
-            // Обрабатываем hash-based навигацию
+            // Обрабатываем hash-based навигацию для SPA
             const hash = window.location.hash.replace('#', '');
             if (hash && hash !== this.currentLevel) {
-                this.switchLevel(hash);
+                this.switchLevel(hash, 'browser_navigation');
             }
             
-            // Обрабатываем прямой доступ к специализированным шлюзам
-            const currentPath = window.location.pathname;
-            if (currentPath.endsWith('.html') && currentPath !== '/index.html') {
-                const levelId = currentPath.split('/').pop().replace('.html', '');
-                if (levelId && levelId !== this.currentLevel) {
-                    this.switchLevel(levelId);
+            // Для GitHub Pages и bioapgreid.ru - дополнительная обработка
+            if (this.config.isGitHubPages || this.config.isBioapgreid) {
+                const pathLevel = this.extractLevelFromPath();
+                if (pathLevel && pathLevel !== this.currentLevel) {
+                    this.switchLevel(pathLevel, 'deep_link');
                 }
             }
         } catch (error) {
             console.error('❌ Ошибка обработки навигации браузера:', error);
         }
+    }
+
+    /**
+     * Извлечение уровня из пути для SPA
+     */
+    extractLevelFromPath() {
+        const path = window.location.pathname;
+        
+        // Для bioapgreid.ru и GitHub Pages - используем только hash routing
+        // Оставляем этот метод для будущего расширения
+        if (path === '/' || path === '/index.html') {
+            return null; // Главная страница
+        }
+        
+        return null; // По умолчанию не используем path-based routing
     }
 
     /**
@@ -339,7 +638,8 @@ class GalaxyNavigation {
                 levelId,
                 previousLevel,
                 levelData: levelDataToSend,
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                sessionId: this.sessionId
             }
         });
 
@@ -364,6 +664,125 @@ class GalaxyNavigation {
     }
 
     /**
+     * Сбор аналитики навигации
+     */
+    collectNavigationAnalytics(fromLevel, toLevel, navigationType) {
+        const navigationTime = Date.now() - this.lastNavigationTime;
+        
+        const analyticsEntry = {
+            fromLevel,
+            toLevel,
+            navigationType,
+            timestamp: Date.now(),
+            duration: navigationTime,
+            historyDepth: this.history.length,
+            sessionId: this.sessionId,
+            userAgent: navigator.userAgent,
+            url: window.location.href,
+            domain: this.config.isBioapgreid ? 'bioapgreid.ru' : 
+                   this.config.isGitHubPages ? 'github.io' : 'local'
+        };
+
+        // Добавляем запись
+        this.analyticsData.push(analyticsEntry);
+        
+        // Ограничиваем размер
+        if (this.analyticsData.length > this.maxAnalyticsSize) {
+            this.analyticsData.shift();
+        }
+
+        // Обновляем время последней навигации
+        this.lastNavigationTime = Date.now();
+
+        // Отправка события аналитики
+        this.dispatchEvent('navigationAnalytics', analyticsEntry);
+
+        // Автосохранение аналитики каждые 10 записей
+        if (this.analyticsData.length % 10 === 0) {
+            this.saveAnalyticsData();
+        }
+    }
+
+    /**
+     * Сохранение данных аналитики
+     */
+    saveAnalyticsData() {
+        try {
+            const analyticsKey = `genofond-analytics-${this.sessionId}`;
+            sessionStorage.setItem(analyticsKey, JSON.stringify(this.analyticsData));
+        } catch (error) {
+            console.warn('⚠️ Не удалось сохранить аналитику:', error);
+        }
+    }
+
+    /**
+     * Настройка предсказательной навигации
+     */
+    setupPredictiveNavigation() {
+        this.predictionTimeout = null;
+        
+        // Слушаем события взаимодействия для предсказаний
+        document.addEventListener('entityHovered', (event) => {
+            const { entity } = event.detail;
+            if (entity && entity.level) {
+                this.schedulePreload(entity.level);
+            }
+        });
+
+        document.addEventListener('galacticLevelChange', (event) => {
+            const { levelId } = event.detail;
+            this.preloadChildLevels(levelId);
+        });
+    }
+
+    /**
+     * Планирование предзагрузки
+     */
+    schedulePreload(levelId) {
+        // Отменяем предыдущий таймаут
+        if (this.predictionTimeout) {
+            clearTimeout(this.predictionTimeout);
+        }
+
+        // Устанавливаем новый таймаут
+        this.predictionTimeout = setTimeout(() => {
+            this.preloadLevelContent(levelId);
+        }, 500); // 500ms задержка
+    }
+
+    /**
+     * Предзагрузка контента уровня
+     */
+    preloadLevelContent(levelId) {
+        if (this.app && this.app.contentManager) {
+            this.app.contentManager.preloadLevel(levelId).catch(error => {
+                console.warn(`⚠️ Не удалось предзагрузить уровень ${levelId}:`, error);
+            });
+        }
+    }
+
+    /**
+     * Предзагрузка дочерних уровней
+     */
+    preloadChildLevels(parentLevelId) {
+        const children = this.getChildLevels(parentLevelId);
+        children.forEach(child => {
+            this.preloadLevelContent(child.id);
+        });
+    }
+
+    /**
+     * Предзагрузка связанного контента
+     */
+    preloadRelatedContent(levelId) {
+        // Предзагружаем соседние уровни
+        const siblings = this.getSiblingLevels(levelId);
+        siblings.forEach(sibling => {
+            this.preloadLevelContent(sibling.id);
+        });
+    }
+
+    /**
      * Получение дочерних уровней для построения навигации
      */
     getChildLevels(parentLevelId) {
@@ -379,6 +798,22 @@ class GalaxyNavigation {
     }
 
     /**
+     * Получение соседних уровней
+     */
+    getSiblingLevels(levelId) {
+        try {
+            const levelData = this.getLevelData(levelId);
+            if (levelData && levelData.parent) {
+                return this.getChildLevels(levelData.parent).filter(child => child.id !== levelId);
+            }
+            return [];
+        } catch (error) {
+            console.warn(`⚠️ Ошибка получения соседних уровней для ${levelId}:`, error);
+            return [];
+        }
+    }
+
+    /**
      * Сохранение состояния навигации
      */
     saveState() {
@@ -387,10 +822,13 @@ class GalaxyNavigation {
                 currentLevel: this.currentLevel,
                 history: this.history,
                 historyIndex: this.historyIndex,
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                version: '2.1',
+                domain: this.config.isBioapgreid ? 'bioapgreid.ru' : 
+                       this.config.isGitHubPages ? 'github.io' : 'local'
             };
 
-            localStorage.setItem('genofond-navigation-state', JSON.stringify(state));
+            localStorage.setItem(this.config.localStorageKey, JSON.stringify(state));
             
             // Отправка события о сохранении состояния
             document.dispatchEvent(new CustomEvent('navigationStateSaved'));
@@ -406,7 +844,7 @@ class GalaxyNavigation {
      */
     loadState() {
         try {
-            const saved = localStorage.getItem('genofond-navigation-state');
+            const saved = localStorage.getItem(this.config.localStorageKey);
             if (!saved) {
                 console.log('ℹ️ Сохраненное состояние навигации не найдено');
                 return;
@@ -439,11 +877,32 @@ class GalaxyNavigation {
      * Валидация загруженного состояния
      */
     validateState(state) {
-        if (!state || typeof state !== 'object') return false;
-        if (state.currentLevel && !this.validateLevel(state.currentLevel)) return false;
-        if (state.history && !Array.isArray(state.history)) return false;
-        
-        return true;
+        try {
+            if (!state || typeof state !== 'object') return false;
+            
+            // Проверка обязательных полей
+            if (state.currentLevel && !this.validateLevel(state.currentLevel)) return false;
+            if (!Array.isArray(state.history)) return false;
+            if (typeof state.historyIndex !== 'number') return false;
+            if (typeof state.timestamp !== 'number') return false;
+            
+            // Проверка временной метки (не больше 30 дней)
+            const maxAge = 30 * 24 * 60 * 60 * 1000;
+            if (Date.now() - state.timestamp > maxAge) return false;
+            
+            // Проверка корректности индекса истории
+            if (state.historyIndex < -1 || state.historyIndex >= state.history.length) return false;
+            
+            // Проверка версии (опционально)
+            if (state.version && state.version !== '2.1') {
+                console.warn('⚠️ Версия состояния отличается, требуется миграция');
+            }
+            
+            return true;
+        } catch (error) {
+            console.warn('❌ Ошибка валидации состояния:', error);
+            return false;
+        }
     }
 
     /**
@@ -451,7 +910,7 @@ class GalaxyNavigation {
      */
     clearCorruptedState() {
         try {
-            localStorage.removeItem('genofond-navigation-state');
+            localStorage.removeItem(this.config.localStorageKey);
             console.log('🧹 Поврежденное состояние навигации очищено');
         } catch (error) {
             console.error('❌ Не удалось очистить поврежденное состояние:', error);
@@ -481,6 +940,11 @@ class GalaxyNavigation {
             currentHistoryIndex: this.historyIndex,
             canGoBack: this.historyIndex > 0,
             canGoForward: this.historyIndex < this.history.length - 1,
+            cacheSize: this.levelDataCache.size,
+            queueLength: this.navigationQueue.length,
+            analyticsEntries: this.analyticsData.length,
+            sessionId: this.sessionId,
+            config: this.config,
             history: this.history.map(entry => ({
                 levelId: entry.levelId,
                 title: entry.levelData?.title || entry.levelId,
@@ -490,12 +954,62 @@ class GalaxyNavigation {
     }
 
     /**
+     * Получение метрик производительности
+     */
+    getPerformanceMetrics() {
+        const totalNavigations = this.analyticsData.length;
+        const successfulNavigations = this.analyticsData.filter(entry => 
+            entry.duration < 1000 // навигация быстрее 1 секунды
+        ).length;
+        
+        return {
+            totalNavigations,
+            successRate: totalNavigations > 0 ? (successfulNavigations / totalNavigations) * 100 : 0,
+            averageNavigationTime: totalNavigations > 0 ? 
+                this.analyticsData.reduce((sum, entry) => sum + entry.duration, 0) / totalNavigations : 0,
+            cacheHitRate: this.levelDataCache.hitRate,
+            mostVisitedLevels: this.getMostVisitedLevels(),
+            navigationTypes: this.getNavigationTypeDistribution(),
+            domain: this.config.isBioapgreid ? 'bioapgreid.ru' : 
+                   this.config.isGitHubPages ? 'github.io' : 'local'
+        };
+    }
+
+    /**
+     * Получение самых посещаемых уровней
+     */
+    getMostVisitedLevels() {
+        const levelCounts = {};
+        this.analyticsData.forEach(entry => {
+            levelCounts[entry.toLevel] = (levelCounts[entry.toLevel] || 0) + 1;
+        });
+        
+        return Object.entries(levelCounts)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 5)
+            .map(([levelId, count]) => ({ levelId, visits: count }));
+    }
+
+    /**
+     * Распределение по типам навигации
+     */
+    getNavigationTypeDistribution() {
+        const typeCounts = {};
+        this.analyticsData.forEach(entry => {
+            typeCounts[entry.navigationType] = (typeCounts[entry.navigationType] || 0) + 1;
+        });
+        
+        return typeCounts;
+    }
+
+    /**
      * Очистка истории навигации
      */
     clearHistory() {
         this.history = [];
         this.historyIndex = -1;
         this.levelDataCache.clear();
+        this.navigationQueue.clear();
         console.log('🧹 История навигации очищена');
         this.dispatchHistoryUpdated();
     }
@@ -516,17 +1030,24 @@ class GalaxyNavigation {
             clearInterval(this.autoSaveInterval);
         }
         
+        if (this.predictionTimeout) {
+            clearTimeout(this.predictionTimeout);
+        }
+        
         // Сохраняем состояние перед уничтожением
         this.saveState();
+        this.saveAnalyticsData();
         
-        // Очищаем кэш
+        // Очищаем кэши
         this.levelDataCache.clear();
+        this.navigationQueue.clear();
+        this.predictionCache.clear();
         
-        console.log('🧹 Навигационная система остановлена');
+        console.log('🧹 Навигационная система v2.1 остановлена');
     }
 }
 
 // Экспорт класса
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = GalaxyNavigation;
+    module.exports = { GalaxyNavigation, LevelDataCache, NavigationQueue };
 }
