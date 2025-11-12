@@ -13,8 +13,8 @@
     <meta property="og:title" content="🌌 Галактика GENOФОНД">
     <meta property="og:description" content="Исследуйте знания как космические системы в иммерсивной образовательной платформе">
     <meta property="og:type" content="website">
-    <meta property="og:image" content="https://www.bioapgreid.ru/assets/og-image.jpg">
-    <meta property="og:url" content="https://www.bioapgreid.ru/">
+    <meta property="og:image" content="./assets/og-image.jpg">
+    <meta property="og:url" content="./">
     
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="🌌 Галактика GENOФОНД">
@@ -40,11 +40,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Фавикон и иконки -->
-    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
-    <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+    <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg">
+    <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png">
     
     <!-- Манифест PWA -->
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="./manifest.json">
     
     <!-- Структурированные данные для SEO -->
     <script type="application/ld+json">
@@ -53,12 +53,12 @@
         "@type": "EducationalOrganization",
         "name": "Галактика GENOФОНД",
         "description": "Интерактивная образовательная платформа для исследования знаний",
-        "url": "https://www.bioapgreid.ru/",
-        "logo": "https://www.bioapgreid.ru/assets/logo.svg",
+        "url": "./",
+        "logo": "./assets/logo.svg",
         "sameAs": [],
         "potentialAction": {
             "@type": "SearchAction",
-            "target": "https://www.bioapgreid.ru/search?q={search_term_string}",
+            "target": "./search?q={search_term_string}",
             "query-input": "required name=search_term_string"
         }
     }
@@ -70,7 +70,8 @@
         window.genofondConfig = {
             version: '2.1',
             environment: 'production',
-            baseUrl: 'https://www.bioapgreid.ru/', // ДОБАВЛЕНО: Базовый URL
+            // ИСПРАВЛЕНО: Динамический baseUrl для любого хостинга
+            baseUrl: window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, ''),
             enableAnalytics: true,
             enablePerformanceMonitoring: true,
             enableErrorRecovery: true,
@@ -171,7 +172,7 @@
         <nav class="breadcrumbs" id="breadcrumbs" aria-label="Навигационная цепочка">
             <ol class="breadcrumbs-list">
                 <li class="breadcrumb-item">
-                    <a href="/" aria-current="page">Галактика GENOФОНД</a>
+                    <a href="./" aria-current="page">Галактика GENOФОНД</a>
                 </li>
             </ol>
         </nav>
@@ -384,7 +385,8 @@
     <script>
         // Ждем загрузки DOM и критических ресурсов
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Запуск Галактики GENOФОНД v2.1 на bioapgreid.ru...');
+            console.log('🚀 Запуск Галактики GENOФОНД v2.1...');
+            console.log('📍 Base URL:', window.genofondConfig.baseUrl);
             
             // Обновляем метаданные загрузки
             const startTime = Date.now();
@@ -416,7 +418,8 @@
             
             // Подписка на события загрузки
             document.addEventListener('appInitialized', function() {
-                console.log('✅ Галактика GENOФОНД успешно запущена на bioapgreid.ru!');
+                console.log('✅ Галактика GENOФОНД успешно запущена!');
+                console.log('📍 Хостинг:', window.location.origin);
                 window.genofondAnalytics.appReady = Date.now();
                 
                 // Скрываем прелоадер с анимацией
