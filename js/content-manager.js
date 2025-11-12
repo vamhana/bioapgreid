@@ -4,21 +4,28 @@ class ContentCache {
         this.timeout = timeout;
         this.cache = new Map();
         this.accessOrder = [];
+        this.hits = 0;
+        this.misses = 0;
     }
 
     get(levelId) {
-        if (!this.cache.has(levelId)) return null;
+        if (!this.cache.has(levelId)) {
+            this.misses++;
+            return null;
+        }
 
         const item = this.cache.get(levelId);
         
         // Проверка таймаута
         if (Date.now() - item.timestamp > this.timeout) {
             this.delete(levelId);
+            this.misses++;
             return null;
         }
 
         // Обновляем порядок использования (LRU)
         this.updateAccessOrder(levelId);
+        this.hits++;
         
         return item.data;
     }
@@ -59,6 +66,8 @@ class ContentCache {
     clear() {
         this.cache.clear();
         this.accessOrder = [];
+        this.hits = 0;
+        this.misses = 0;
     }
 
     get size() {
@@ -66,7 +75,8 @@ class ContentCache {
     }
 
     get hitRate() {
-        return this.hits / (this.hits + this.misses) || 0;
+        const total = this.hits + this.misses;
+        return total > 0 ? this.hits / total : 0;
     }
 }
 
@@ -76,11 +86,12 @@ class ProgressManager {
         this.progress = new Map();
         this.autoSaveInterval = null;
         this.pendingSaves = new Set();
+        this.localStorageKey = 'genofond-user-progress-v2';
     }
 
     loadProgress() {
         try {
-            const saved = localStorage.getItem('genofond-user-progress');
+            const saved = localStorage.getItem(this.localStorageKey);
             if (saved) {
                 const progressData = JSON.parse(saved);
                 this.progress = new Map(Object.entries(progressData));
@@ -97,10 +108,13 @@ class ProgressManager {
     saveProgress() {
         try {
             const progressObject = Object.fromEntries(this.progress);
-            localStorage.setItem('genofond-user-progress', JSON.stringify(progressObject));
+            localStorage.setItem(this.localStorageKey, JSON.stringify(progressObject));
+            
+            // Резервная копия в sessionStorage
+            sessionStorage.setItem(this.localStorageKey + '-backup', JSON.stringify(progressObject));
             
             // Отправляем событие обновления прогресса
-            this.app.dispatchEvent('progressUpdated', {
+            this.dispatchEvent('progressUpdated', {
                 progress: progressObject,
                 timestamp: Date.now()
             });
@@ -114,7 +128,12 @@ class ProgressManager {
 
     updateProgress(levelId, data) {
         const currentProgress = this.progress.get(levelId) || {};
-        const newProgress = { ...currentProgress, ...data, lastUpdated: Date.now() };
+        const newProgress = { 
+            ...currentProgress, 
+            ...data, 
+            lastUpdated: Date.now(),
+            visits: (currentProgress.visits || 0) + (data.incrementVisit ? 1 : 0)
+        };
         
         this.progress.set(levelId, newProgress);
         this.pendingSaves.add(levelId);
@@ -129,8 +148,10 @@ class ProgressManager {
         }
 
         this.autoSaveInterval = setTimeout(() => {
-            this.saveProgress();
-            this.pendingSaves.clear();
+            if (this.pendingSaves.size > 0) {
+                this.saveProgress();
+                this.pendingSaves.clear();
+            }
         }, 30000); // 30 секунд
     }
 
@@ -141,29 +162,41 @@ class ProgressManager {
             score: 0,
             visits: 0,
             timeSpent: 0,
-            lastAccessed: null
+            lastAccessed: null,
+            firstAccessed: null
         };
     }
 
     unlockLevel(levelId) {
         this.updateProgress(levelId, {
             unlocked: true,
-            unlockedAt: Date.now()
+            unlockedAt: Date.now(),
+            firstAccessed: Date.now(),
+            incrementVisit: true
         });
 
         // Аналитика разблокировки
-        this.app.dispatchEvent('levelUnlocked', { levelId });
+        this.dispatchEvent('levelUnlocked', { levelId });
     }
 
     completeLevel(levelId, score = 100) {
+        const currentProgress = this.getProgress(levelId);
         this.updateProgress(levelId, {
             completed: true,
             completedAt: Date.now(),
-            score: Math.max(score, this.getProgress(levelId).score)
+            score: Math.max(score, currentProgress.score),
+            incrementVisit: true
         });
 
         // Аналитика завершения
-        this.app.dispatchEvent('levelCompleted', { levelId, score });
+        this.dispatchEvent('levelCompleted', { levelId, score });
+    }
+
+    recordLevelAccess(levelId) {
+        this.updateProgress(levelId, {
+            lastAccessed: Date.now(),
+            incrementVisit: true
+        });
     }
 
     recoverProgress() {
@@ -171,7 +204,7 @@ class ProgressManager {
         
         // Попытка восстановить из sessionStorage
         try {
-            const backup = sessionStorage.getItem('genofond-progress-backup');
+            const backup = sessionStorage.getItem(this.localStorageKey + '-backup');
             if (backup) {
                 const progressData = JSON.parse(backup);
                 this.progress = new Map(Object.entries(progressData));
@@ -199,6 +232,11 @@ class ProgressManager {
         }, 120000);
     }
 
+    dispatchEvent(eventName, detail) {
+        const event = new CustomEvent(eventName, { detail });
+        document.dispatchEvent(event);
+    }
+
     destroy() {
         if (this.autoSaveInterval) {
             clearTimeout(this.autoSaveInterval);
@@ -224,20 +262,25 @@ class ContentManager {
             cacheHits: 0,
             cacheMisses: 0,
             loadErrors: 0,
-            preloads: 0
+            preloads: 0,
+            totalLoaded: 0
         };
 
-        // Конфигурация
+        // ИСПРАВЛЕНО: Динамическая конфигурация путей
         this.config = {
             timeout: 15000,
             maxRetries: 3,
             circuitBreakerThreshold: 5,
             preloadDepth: 2,
             enableAnalytics: true,
-            enablePreloading: true
+            enablePreloading: true,
+            // Динамический baseUrl для всех хостингов
+            baseUrl: window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, ''),
+            useRelativePaths: true
         };
 
         console.log('📚 ContentManager v2.1 инициализирован');
+        console.log('📍 Base URL:', this.config.baseUrl);
     }
 
     async init() {
@@ -268,25 +311,29 @@ class ContentManager {
     /**
      * Получение данных уровня - основной метод для навигации
      */
-    getLevelData(levelId) {
+    async getLevelData(levelId) {
         if (!levelId) {
             console.warn('⚠️ Попытка получить данные уровня без ID');
             return this.getFallbackLevelData(levelId);
         }
 
+        // Записываем доступ к уровню
+        this.progressManager.recordLevelAccess(levelId);
+
         // Проверка кэша
         const cached = this.contentCache.get(levelId);
         if (cached) {
             this.analytics.cacheHits++;
-            return Promise.resolve(cached);
+            return cached;
         }
 
         this.analytics.cacheMisses++;
+        this.analytics.contentLoads++;
 
         // Проверка circuit breaker
         if (this.isCircuitOpen(levelId)) {
             console.warn(`🔌 Circuit breaker открыт для ${levelId}`);
-            return Promise.resolve(this.getFallbackLevelData(levelId));
+            return this.getFallbackLevelData(levelId);
         }
 
         return this.loadLevelDataWithRetry(levelId);
@@ -297,7 +344,7 @@ class ContentManager {
      */
     getChildLevels(parentLevelId) {
         try {
-            const metaParser = this.app.getComponent('metaParser');
+            const metaParser = this.app.getComponent && this.app.getComponent('metaParser');
             if (!metaParser) {
                 console.warn('⚠️ MetaParser недоступен для получения дочерних уровней');
                 return [];
@@ -313,7 +360,9 @@ class ContentManager {
                     title: entity.title,
                     type: entity.type,
                     unlocked: this.isLevelAccessible(entity.level),
-                    importance: entity.importance
+                    importance: entity.importance,
+                    icon: entity.icon,
+                    color: entity.color
                 }));
 
         } catch (error) {
@@ -336,7 +385,7 @@ class ContentManager {
 
         // Проверяем родительский уровень
         try {
-            const metaParser = this.app.getComponent('metaParser');
+            const metaParser = this.app.getComponent && this.app.getComponent('metaParser');
             if (metaParser) {
                 const entity = metaParser.getEntity && metaParser.getEntity(levelId);
                 if (entity && entity.parent) {
@@ -408,7 +457,7 @@ class ContentManager {
      */
     getTotalPlanets() {
         try {
-            const metaParser = this.app.getComponent('metaParser');
+            const metaParser = this.app.getComponent && this.app.getComponent('metaParser');
             if (metaParser && metaParser.getAllEntities) {
                 const entities = metaParser.getAllEntities();
                 return entities.filter(entity => 
@@ -448,6 +497,7 @@ class ContentManager {
             // Сбрасываем circuit breaker при успехе
             this.circuitBreaker.delete(levelId);
             
+            this.analytics.totalLoaded++;
             return levelData;
 
         } catch (error) {
@@ -478,7 +528,7 @@ class ContentManager {
         const fetchPromise = (async () => {
             try {
                 // Пытаемся получить через metaParser
-                const metaParser = this.app.getComponent('metaParser');
+                const metaParser = this.app.getComponent && this.app.getComponent('metaParser');
                 if (metaParser && metaParser.getEntity) {
                     const entity = metaParser.getEntity(levelId);
                     if (entity) {
@@ -486,8 +536,10 @@ class ContentManager {
                     }
                 }
 
-                // Fallback: загрузка HTML страницы
-                const pageUrl = `https://www.bioapgreid.ru/pages/${levelId}.html`;
+                // ИСПРАВЛЕНО: Относительные пути для всех хостингов
+                const pageUrl = `${this.config.baseUrl}/${levelId}.html`;
+                console.log(`📡 Загрузка контента: ${pageUrl}`);
+
                 const response = await fetch(pageUrl);
                 
                 if (!response.ok) {
@@ -527,7 +579,8 @@ class ContentManager {
             completed: progress.completed,
             score: progress.score,
             completionDate: progress.completedAt,
-            url: `pages/${entity.level}.html`,
+            // ИСПРАВЛЕНО: Относительный URL
+            url: `${this.config.baseUrl}/${entity.level}.html`,
             lastAccessed: progress.lastAccessed,
             metadata: {
                 depth: entity.depth || 0,
@@ -563,7 +616,8 @@ class ContentManager {
             completed: false,
             score: 0,
             completionDate: null,
-            url: `https://www.bioapgreid.ru/pages/${levelId}.html`,
+            // ИСПРАВЛЕНО: Относительный URL
+            url: `${this.config.baseUrl}/${levelId}.html`,
             lastAccessed: null,
             content: this.extractContent(doc),
             metadata: {
@@ -610,8 +664,8 @@ class ContentManager {
     getFallbackLevelData(levelId) {
         return {
             id: levelId,
-            title: levelId.replace('level', 'Уровень '),
-            description: `Резервные данные для уровня ${levelId}`,
+            title: levelId ? levelId.replace('level', 'Уровень ') : 'Неизвестный уровень',
+            description: `Резервные данные для уровня ${levelId || 'неизвестного'}`,
             type: 'planet',
             color: '#FF6B6B',
             icon: '🆘',
@@ -624,7 +678,8 @@ class ContentManager {
             completed: false,
             score: 0,
             completionDate: null,
-            url: `https://www.bioapgreid.ru/pages/${levelId}.html`,
+            // ИСПРАВЛЕНО: Относительный URL
+            url: levelId ? `${this.config.baseUrl}/${levelId}.html` : `${this.config.baseUrl}/`,
             lastAccessed: null,
             isFallback: true,
             metadata: {
@@ -670,18 +725,22 @@ class ContentManager {
     recordAnalyticsEvent(eventType, data = {}) {
         if (!this.config.enableAnalytics) return;
 
-        this.app.dispatchEvent('contentAnalytics', {
-            eventType,
-            timestamp: Date.now(),
-            data: {
-                ...data,
-                cacheStats: {
-                    size: this.contentCache.size,
-                    hitRate: this.contentCache.hitRate
-                },
-                loadStats: { ...this.analytics }
+        const event = new CustomEvent('contentAnalytics', {
+            detail: {
+                eventType,
+                timestamp: Date.now(),
+                data: {
+                    ...data,
+                    cacheStats: {
+                        size: this.contentCache.size,
+                        hitRate: this.contentCache.hitRate
+                    },
+                    loadStats: { ...this.analytics },
+                    baseUrl: this.config.baseUrl
+                }
             }
         });
+        document.dispatchEvent(event);
     }
 
     /**
@@ -693,7 +752,9 @@ class ContentManager {
             cacheSize: this.contentCache.size,
             cacheHitRate: this.contentCache.hitRate,
             loadingQueueSize: this.loadingQueue.size,
-            circuitBreakerStats: Object.fromEntries(this.circuitBreaker)
+            circuitBreakerStats: Object.fromEntries(this.circuitBreaker),
+            baseUrl: this.config.baseUrl,
+            isInitialized: this.isInitialized
         };
     }
 
@@ -703,12 +764,9 @@ class ContentManager {
      * Обновление прогресса пользователя
      */
     updateUserProgress(levelId, progressData) {
-        this.progressManager.updateProgress(levelId, progressData);
-        
-        // Обновляем время последнего доступа
         this.progressManager.updateProgress(levelId, {
-            lastAccessed: Date.now(),
-            visits: (this.progressManager.getProgress(levelId).visits || 0) + 1
+            ...progressData,
+            incrementVisit: true
         });
 
         // Инвалидируем кэш для этого уровня
@@ -762,6 +820,33 @@ class ContentManager {
     }
 
     /**
+     * Обновление конфигурации baseUrl
+     */
+    setBaseUrl(baseUrl) {
+        this.config.baseUrl = baseUrl;
+        console.log('📍 Base URL обновлен:', this.config.baseUrl);
+    }
+
+    /**
+     * Получение информации о состоянии
+     */
+    getStatus() {
+        return {
+            isInitialized: this.isInitialized,
+            config: this.config,
+            cache: {
+                size: this.contentCache.size,
+                hitRate: this.contentCache.hitRate
+            },
+            progress: {
+                total: this.progressManager.progress.size,
+                unlocked: Array.from(this.progressManager.progress.values()).filter(p => p.unlocked).length
+            },
+            analytics: this.getAnalytics()
+        };
+    }
+
+    /**
      * Уничтожение экземпляра
      */
     async destroy() {
@@ -808,10 +893,12 @@ class ContentManager {
     }
 }
 
-// Экспорт класса
+// Экспорт для использования в других модулях
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { ContentManager, ContentCache, ProgressManager };
+} else {
+    // Для использования в браузере
+    window.ContentManager = ContentManager;
+    window.ContentCache = ContentCache;
+    window.ProgressManager = ProgressManager;
 }
-
-// Глобальная доступность
-window.ContentManager = ContentManager;
