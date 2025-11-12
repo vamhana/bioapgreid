@@ -1,3 +1,322 @@
+class GestureRecognizer {
+    constructor() {
+        this.gestures = new Map();
+        this.activeGestures = new Set();
+        this.setupGestureDefinitions();
+    }
+
+    setupGestureDefinitions() {
+        // Определение жестов
+        this.gestures.set('tap', {
+            minTouches: 1,
+            maxTouches: 1,
+            maxDuration: 300,
+            maxMovement: 10
+        });
+
+        this.gestures.set('double-tap', {
+            minTouches: 1,
+            maxTouches: 1,
+            maxDuration: 300,
+            maxMovement: 10,
+            maxInterval: 500
+        });
+
+        this.gestures.set('pinch', {
+            minTouches: 2,
+            maxTouches: 2,
+            minDuration: 50,
+            requireOpposite: true
+        });
+
+        this.gestures.set('swipe', {
+            minTouches: 1,
+            maxTouches: 3,
+            minDuration: 50,
+            maxDuration: 800,
+            minDistance: 30
+        });
+
+        this.gestures.set('long-press', {
+            minTouches: 1,
+            maxTouches: 1,
+            minDuration: 800,
+            maxMovement: 10
+        });
+
+        this.gestures.set('rotate', {
+            minTouches: 2,
+            maxTouches: 2,
+            minDuration: 100,
+            minAngle: 15
+        });
+    }
+
+    recognize(touchEvents) {
+        const recognized = [];
+        
+        for (const [gestureName, config] of this.gestures) {
+            if (this.matchesGesture(touchEvents, config)) {
+                recognized.push({
+                    name: gestureName,
+                    confidence: this.calculateConfidence(touchEvents, config),
+                    data: this.extractGestureData(touchEvents, config)
+                });
+            }
+        }
+
+        return recognized.sort((a, b) => b.confidence - a.confidence);
+    }
+
+    matchesGesture(events, config) {
+        // Проверка соответствия жесту
+        if (events.length < config.minTouches) return false;
+        if (events.length > config.maxTouches) return false;
+
+        const duration = events[events.length - 1].timestamp - events[0].timestamp;
+        if (config.maxDuration && duration > config.maxDuration) return false;
+        if (config.minDuration && duration < config.minDuration) return false;
+
+        // Дополнительные проверки для конкретных жестов
+        switch (config.requireOpposite) {
+            case true:
+                return this.hasOppositeMovement(events);
+            default:
+                return true;
+        }
+    }
+
+    calculateConfidence(events, config) {
+        let confidence = 1.0;
+
+        // Уменьшение уверенности на основе отклонений
+        const duration = events[events.length - 1].timestamp - events[0].timestamp;
+        if (config.maxDuration) {
+            const durationRatio = duration / config.maxDuration;
+            confidence *= Math.max(0, 1 - durationRatio);
+        }
+
+        return Math.min(1, Math.max(0, confidence));
+    }
+
+    extractGestureData(events, config) {
+        const data = {
+            startTime: events[0].timestamp,
+            endTime: events[events.length - 1].timestamp,
+            duration: events[events.length - 1].timestamp - events[0].timestamp,
+            startPosition: { x: events[0].clientX, y: events[0].clientY },
+            endPosition: { x: events[events.length - 1].clientX, y: events[events.length - 1].clientY }
+        };
+
+        // Дополнительные данные для специфических жестов
+        if (config.minTouches === 2) {
+            data.pinchScale = this.calculatePinchScale(events);
+            data.rotation = this.calculateRotation(events);
+        }
+
+        return data;
+    }
+
+    calculatePinchScale(events) {
+        const startDistance = this.calculateTouchDistance(events[0], events[1]);
+        const endDistance = this.calculateTouchDistance(
+            events[events.length - 2], 
+            events[events.length - 1]
+        );
+        return endDistance / startDistance;
+    }
+
+    calculateRotation(events) {
+        const startVector = {
+            x: events[1].clientX - events[0].clientX,
+            y: events[1].clientY - events[0].clientY
+        };
+        const endVector = {
+            x: events[events.length - 1].clientX - events[events.length - 2].clientX,
+            y: events[events.length - 1].clientY - events[events.length - 2].clientY
+        };
+
+        const startAngle = Math.atan2(startVector.y, startVector.x);
+        const endAngle = Math.atan2(endVector.y, endVector.x);
+        return (endAngle - startAngle) * (180 / Math.PI);
+    }
+
+    calculateTouchDistance(touch1, touch2) {
+        const dx = touch1.clientX - touch2.clientX;
+        const dy = touch1.clientY - touch2.clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    hasOppositeMovement(events) {
+        // Проверка противоположного движения для pinch жеста
+        if (events.length < 4) return false;
+
+        const firstHalf = events.slice(0, Math.floor(events.length / 2));
+        const secondHalf = events.slice(Math.floor(events.length / 2));
+
+        const firstMovement = this.calculateAverageMovement(firstHalf);
+        const secondMovement = this.calculateAverageMovement(secondHalf);
+
+        return (firstMovement.x * secondMovement.x < 0) || 
+               (firstMovement.y * secondMovement.y < 0);
+    }
+
+    calculateAverageMovement(events) {
+        if (events.length < 2) return { x: 0, y: 0 };
+
+        let totalX = 0, totalY = 0;
+        for (let i = 1; i < events.length; i++) {
+            totalX += events[i].clientX - events[i-1].clientX;
+            totalY += events[i].clientY - events[i-1].clientY;
+        }
+
+        return {
+            x: totalX / (events.length - 1),
+            y: totalY / (events.length - 1)
+        };
+    }
+}
+
+class InteractionAnalytics {
+    constructor() {
+        this.sessionId = this.generateSessionId();
+        this.interactions = [];
+        this.metrics = {
+            clicks: 0,
+            hovers: 0,
+            gestures: 0,
+            zooms: 0,
+            pans: 0,
+            errors: 0
+        };
+        this.performance = {
+            averageResponseTime: 0,
+            frameRate: 0,
+            memoryUsage: 0
+        };
+    }
+
+    trackInteraction(type, data) {
+        const interaction = {
+            type,
+            timestamp: Date.now(),
+            sessionId: this.sessionId,
+            data,
+            performance: this.getCurrentPerformance()
+        };
+
+        this.interactions.push(interaction);
+        this.metrics[type] = (this.metrics[type] || 0) + 1;
+
+        // Автосохранение каждые 50 взаимодействий
+        if (this.interactions.length % 50 === 0) {
+            this.saveToStorage();
+        }
+    }
+
+    getCurrentPerformance() {
+        return {
+            responseTime: performance.now(),
+            frameRate: this.calculateFrameRate(),
+            memory: performance.memory ? performance.memory.usedJSHeapSize : 0
+        };
+    }
+
+    calculateFrameRate() {
+        // Упрощенный расчет FPS
+        return Math.round(1000 / 16); // Примерное значение
+    }
+
+    generateSessionId() {
+        return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+
+    saveToStorage() {
+        try {
+            const data = {
+                sessionId: this.sessionId,
+                interactions: this.interactions,
+                metrics: this.metrics,
+                timestamp: Date.now()
+            };
+            localStorage.setItem('genofond-interaction-analytics', JSON.stringify(data));
+        } catch (error) {
+            console.warn('⚠️ Не удалось сохранить аналитику:', error);
+        }
+    }
+
+    getHeatmapData() {
+        const clicks = this.interactions.filter(i => i.type === 'click');
+        const heatmap = {};
+
+        clicks.forEach(click => {
+            const pos = `${Math.round(click.data.x/10)*10},${Math.round(click.data.y/10)*10}`;
+            heatmap[pos] = (heatmap[pos] || 0) + 1;
+        });
+
+        return heatmap;
+    }
+
+    getUserBehaviorPatterns() {
+        const patterns = {
+            frequentActions: this.findFrequentActions(),
+            commonSequences: this.findCommonSequences(),
+            preferredZoomLevels: this.findPreferredZoomLevels(),
+            interactionIntensity: this.calculateInteractionIntensity()
+        };
+
+        return patterns;
+    }
+
+    findFrequentActions() {
+        const actionCounts = {};
+        this.interactions.forEach(interaction => {
+            actionCounts[interaction.type] = (actionCounts[interaction.type] || 0) + 1;
+        });
+
+        return Object.entries(actionCounts)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 5);
+    }
+
+    findCommonSequences() {
+        // Поиск общих последовательностей действий
+        const sequences = {};
+        for (let i = 0; i < this.interactions.length - 1; i++) {
+            const sequence = `${this.interactions[i].type}->${this.interactions[i+1].type}`;
+            sequences[sequence] = (sequences[sequence] || 0) + 1;
+        }
+
+        return Object.entries(sequences)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 3);
+    }
+
+    findPreferredZoomLevels() {
+        const zooms = this.interactions
+            .filter(i => i.type === 'zoom')
+            .map(i => i.data.zoomLevel);
+
+        return {
+            average: zooms.reduce((a, b) => a + b, 0) / zooms.length,
+            min: Math.min(...zooms),
+            max: Math.max(...zooms),
+            mostFrequent: this.findMode(zooms)
+        };
+    }
+
+    calculateInteractionIntensity() {
+        const sessionDuration = Date.now() - this.sessionStart;
+        return this.interactions.length / (sessionDuration / 1000 / 60); // взаимодействий в минуту
+    }
+
+    findMode(array) {
+        return array.sort((a,b) =>
+            array.filter(v => v === a).length - array.filter(v => v === b).length
+        ).pop();
+    }
+}
+
 class GalaxyInteraction {
     constructor(app) {
         this.app = app;
@@ -6,16 +325,20 @@ class GalaxyInteraction {
         this.lastClickTime = 0;
         this.currentGesture = null;
         this.cursorPosition = { x: 0, y: 0 };
+        
+        // Улучшенная система камеры
         this.cameraState = {
             zoom: 1.0,
             position: { x: 0, y: 0 },
             target: null,
             isAnimating: false,
             velocity: { x: 0, y: 0 },
-            bounds: { minX: -1000, maxX: 1000, minY: -800, maxY: 800 } // 🆕 Границы камеры
+            bounds: { minX: -1000, maxX: 1000, minY: -800, maxY: 800 },
+            history: [],
+            maxHistorySize: 10
         };
 
-        // Конфигурация взаимодействий
+        // Расширенная конфигурация
         this.config = {
             zoomSensitivity: 0.1,
             minZoom: 0.3,
@@ -27,12 +350,17 @@ class GalaxyInteraction {
             gestureThreshold: 10,
             enableInertia: true,
             inertiaDeceleration: 0.95,
-            zoomSteps: [0.3, 0.5, 0.8, 1.0, 1.5, 2.0, 3.0], // 🆕 Дискретные шаги зума
-            enableSmoothZoom: true, // 🆕 Плавный зум
-            smoothZoomFactor: 0.05 // 🆕 Фактор плавного зума
+            zoomSteps: [0.3, 0.5, 0.8, 1.0, 1.5, 2.0, 3.0],
+            enableSmoothZoom: true,
+            smoothZoomFactor: 0.05,
+            enablePredictiveLoading: true,
+            predictiveLoadingDelay: 500,
+            maxTouchPoints: 5,
+            enableAccessibility: true,
+            reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches
         };
 
-        // Состояния жестов
+        // Улучшенная система жестов
         this.gestureState = {
             isPinching: false,
             initialPinchDistance: 0,
@@ -40,712 +368,614 @@ class GalaxyInteraction {
             lastTouchTime: 0,
             touchStartPositions: new Map(),
             swipeStart: null,
-            activeTouches: 0 // 🆕 Количество активных касаний
+            activeTouches: 0,
+            gestureRecognizer: new GestureRecognizer(),
+            touchBuffer: []
         };
 
-        // Оптимизации
+        // Система аналитики
+        this.analytics = new InteractionAnalytics();
+
+        // Оптимизации и кэши
         this.pendingOperations = new Map();
         this.animationFrameId = null;
         this.activeHoverTimeout = null;
-        this.entityCache = new Map(); // 🆕 Кэш элементов сущностей
-        this.inertiaAnimationId = null; // 🆕 ID анимации инерции
+        this.entityCache = new Map();
+        this.inertiaAnimationId = null;
+        this.predictiveLoadingTimeout = null;
+        
+        // Состояние доступности
+        this.accessibility = {
+            currentFocus: null,
+            focusableEntities: new Set(),
+            isKeyboardNavigating: false,
+            screenReaderActive: false
+        };
+
+        console.log('🎮 GalaxyInteraction v2.1 инициализирован');
     }
 
     async init() {
-        console.log('🎮 Инициализация GalaxyInteraction...');
+        console.log('🎮 Инициализация GalaxyInteraction v2.1...');
         
         try {
             this.setupEventListeners();
             this.setupGestureRecognition();
             this.initializeCameraState();
-            this.calculateCameraBounds(); // 🆕 Расчет границ камеры
+            this.calculateCameraBounds();
+            this.setupAccessibility();
             
-            console.log('✅ GalaxyInteraction инициализирован');
+            console.log('✅ GalaxyInteraction v2.1 инициализирован');
         } catch (error) {
             console.error('❌ Ошибка инициализации GalaxyInteraction:', error);
             throw error;
         }
     }
 
-    // 🆕 РЕАЛИЗАЦИЯ ЗАГЛУШЕК И УЛУЧШЕНИЯ
-
-    getCursorPosition() {
-        // 🆕 Реальная реализация получения позиции курсора
-        return {
-            x: this.cursorPosition.x,
-            y: this.cursorPosition.y,
-            relative: this.getRelativeCursorPosition(),
-            world: this.screenToWorldCoordinates(this.cursorPosition.x, this.cursorPosition.y)
-        };
-    }
-
-    getRelativeCursorPosition() {
-        // 🆕 Позиция курсора относительно галактики
+    /**
+     * Настройка обработчиков событий
+     */
+    setupEventListeners() {
         const container = this.getGalaxyContainer();
-        if (!container) return { x: 0, y: 0 };
-        
-        const rect = container.getBoundingClientRect();
-        return {
-            x: this.cursorPosition.x - rect.left,
-            y: this.cursorPosition.y - rect.top
-        };
-    }
-
-    screenToWorldCoordinates(screenX, screenY) {
-        // 🆕 Преобразование экранных координат в мировые
-        return {
-            x: (screenX - this.cameraState.position.x) / this.cameraState.zoom,
-            y: (screenY - this.cameraState.position.y) / this.cameraState.zoom
-        };
-    }
-
-    worldToScreenCoordinates(worldX, worldY) {
-        // 🆕 Преобразование мировых координат в экранные
-        return {
-            x: (worldX * this.cameraState.zoom) + this.cameraState.position.x,
-            y: (worldY * this.cameraState.zoom) + this.cameraState.position.y
-        };
-    }
-
-    updateCursorPosition(event) {
-        // 🆕 Обновление позиции курсора
-        const pos = this.getEventPosition(event);
-        this.cursorPosition.x = pos.x;
-        this.cursorPosition.y = pos.y;
-        
-        // Отправка события обновления позиции курсора
-        this.dispatchEvent('cursorMoved', {
-            position: this.getCursorPosition(),
-            entity: this.getEntityFromEvent(event)
-        });
-    }
-
-    calculateCameraBounds() {
-        // 🆕 Расчет границ камеры на основе размера галактики
-        const container = this.getGalaxyContainer();
-        if (!container) return;
-        
-        const rect = container.getBoundingClientRect();
-        const padding = 200; // Отступ от краев
-        
-        this.cameraState.bounds = {
-            minX: -rect.width + padding,
-            maxX: rect.width - padding,
-            minY: -rect.height + padding,
-            maxY: rect.height - padding
-        };
-    }
-
-    constrainCameraPosition() {
-        // 🆕 Ограничение позиции камеры в пределах границ
-        const bounds = this.cameraState.bounds;
-        
-        this.cameraState.position.x = Math.max(bounds.minX, 
-            Math.min(bounds.maxX, this.cameraState.position.x));
-        this.cameraState.position.y = Math.max(bounds.minY, 
-            Math.min(bounds.maxY, this.cameraState.position.y));
-    }
-
-    calculateOptimalZoom(entity) {
-        // 🆕 Улучшенный расчет оптимального зума
-        const baseZooms = {
-            planet: 1.5,
-            moon: 2.0,
-            asteroid: 2.5,
-            debris: 3.0,
-            blackhole: 1.2
-        };
-        
-        let optimalZoom = baseZooms[entity.type] || 1.5;
-        
-        // Учет размера сущности
-        if (entity.sizeModifier) {
-            optimalZoom *= parseFloat(entity.sizeModifier);
-        }
-        
-        // Учет важности
-        if (entity.importance === 'high') {
-            optimalZoom *= 0.8; // Ближе для важных сущностей
-        }
-        
-        return Math.max(this.config.minZoom, 
-            Math.min(this.config.maxZoom, optimalZoom));
-    }
-
-    calculateTargetPosition(entity) {
-        // 🆕 Улучшенный расчет целевой позиции с учетом текущего зума
-        if (!entity.position) return { x: 0, y: 0 };
-        
-        const viewportCenter = {
-            x: window.innerWidth / 2,
-            y: window.innerHeight / 2
-        };
-        
-        // Текущая позиция сущности на экране
-        const currentScreenPos = this.worldToScreenCoordinates(
-            entity.position.x, 
-            entity.position.y
-        );
-        
-        // Смещение для центрирования
-        const offsetX = viewportCenter.x - currentScreenPos.x;
-        const offsetY = viewportCenter.y - currentScreenPos.y;
-        
-        return {
-            x: this.cameraState.position.x + offsetX,
-            y: this.cameraState.position.y + offsetY
-        };
-    }
-
-    getEntityFromEvent(event) {
-        // 🆕 Улучшенный поиск сущности с кэшированием
-        const element = event.target.closest('.celestial-body');
-        if (!element || !element.dataset.entityId) return null;
-
-        const entityId = element.dataset.entityId;
-        
-        // Проверка кэша
-        if (this.entityCache.has(entityId)) {
-            return this.entityCache.get(entityId);
-        }
-
-        // Поиск через GalaxyBuilder
-        const galaxyBuilder = this.app.getComponent('galaxyBuilder');
-        const entity = galaxyBuilder ? galaxyBuilder.getEntity(entityId) : null;
-        
-        if (entity) {
-            this.entityCache.set(entityId, entity);
-        }
-        
-        return entity;
-    }
-
-    // 🆕 НОВЫЕ МЕТОДЫ ДЛЯ УЛУЧШЕННОГО ВЗАИМОДЕЙСТВИЯ
-
-    handleSmoothZoom(delta, focalPoint = null) {
-        // 🆕 Плавный зум с фокальной точкой
-        if (!this.config.enableSmoothZoom) {
-            this.handleZoom(this.cameraState.zoom + delta);
+        if (!container) {
+            console.error('❌ Контейнер галактики не найден');
             return;
         }
 
-        const zoomFactor = 1 + (delta * this.config.smoothZoomFactor);
-        const newZoom = this.cameraState.zoom * zoomFactor;
-        const clampedZoom = Math.max(this.config.minZoom, 
-            Math.min(this.config.maxZoom, newZoom));
+        // Мышиные события
+        container.addEventListener('mousedown', this.handleMouseDown.bind(this));
+        container.addEventListener('mousemove', this.handleMouseMove.bind(this));
+        container.addEventListener('mouseup', this.handleMouseUp.bind(this));
+        container.addEventListener('wheel', this.handleWheel.bind(this), { passive: false });
+        container.addEventListener('contextmenu', this.handleContextMenu.bind(this));
 
-        if (focalPoint && clampedZoom !== this.cameraState.zoom) {
-            // Зум относительно точки фокуса
-            const zoomRatio = clampedZoom / this.cameraState.zoom;
-            const worldPos = this.screenToWorldCoordinates(focalPoint.x, focalPoint.y);
-            
-            this.cameraState.position.x = focalPoint.x - worldPos.x * zoomRatio;
-            this.cameraState.position.y = focalPoint.y - worldPos.y * zoomRatio;
+        // Touch события
+        container.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: false });
+        container.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false });
+        container.addEventListener('touchend', this.handleTouchEnd.bind(this));
+        container.addEventListener('touchcancel', this.handleTouchCancel.bind(this));
+
+        // Клавиатурные события
+        document.addEventListener('keydown', this.handleKeyDown.bind(this));
+        document.addEventListener('keyup', this.handleKeyUp.bind(this));
+
+        // События видимости
+        document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
+
+        // События изменения размера
+        window.addEventListener('resize', this.debounce(this.handleResize.bind(this), 250));
+
+        // Системные события
+        document.addEventListener('galacticLevelChange', this.handleLevelChange.bind(this));
+        document.addEventListener('contentLoaded', this.handleContentLoaded.bind(this));
+        document.addEventListener('visibilityUpdated', this.handleVisibilityUpdated.bind(this));
+
+        console.log('🎮 Обработчики событий установлены');
+    }
+
+    /**
+     * Настройка распознавания жестов
+     */
+    setupGestureRecognition() {
+        this.gestureState.gestureRecognizer = new GestureRecognizer();
+        console.log('👆 Распознавание жестов настроено');
+    }
+
+    /**
+     * Инициализация состояния камеры
+     */
+    initializeCameraState() {
+        this.cameraState = {
+            zoom: 1.0,
+            position: { x: 0, y: 0 },
+            target: null,
+            isAnimating: false,
+            velocity: { x: 0, y: 0 },
+            bounds: this.cameraState?.bounds || { minX: -1000, maxX: 1000, minY: -800, maxY: 800 },
+            history: [],
+            maxHistorySize: 10
+        };
+
+        // Сохранение начального состояния в историю
+        this.saveCameraState();
+    }
+
+    /**
+     * Получение контейнера галактики
+     */
+    getGalaxyContainer() {
+        return document.querySelector('.galaxy-universe') || document.body;
+    }
+
+    /**
+     * Получение позиции события
+     */
+    getEventPosition(event) {
+        if (event.type.includes('touch')) {
+            const touch = event.touches[0] || event.changedTouches[0];
+            return { x: touch.clientX, y: touch.clientY };
         }
+        return { x: event.clientX, y: event.clientY };
+    }
+
+    /**
+     * Обработка клика по сущности
+     */
+    handleEntityClick(entity) {
+        if (!entity) return;
+
+        const currentTime = Date.now();
+        const timeSinceLastClick = currentTime - this.lastClickTime;
+
+        // Защита от двойных кликов
+        if (timeSinceLastClick < this.config.doubleClickThreshold) {
+            console.log('🛡️ Защита от двойного клика');
+            return;
+        }
+
+        this.lastClickTime = currentTime;
+
+        // Отправка события активации сущности
+        this.dispatchEvent('entityActivated', {
+            entity,
+            position: this.cursorPosition,
+            timestamp: currentTime
+        });
+
+        // Аналитика
+        this.analytics.trackInteraction('click', {
+            entityId: entity.id,
+            entityType: entity.type,
+            position: this.cursorPosition
+        });
+
+        console.log(`🎯 Клик по сущности: ${entity.title}`);
+    }
+
+    /**
+     * Обработка наведения на сущность
+     */
+    handleEntityHover(entity) {
+        if (!entity) return;
+
+        // Отправка события наведения
+        this.dispatchEvent('entityHovered', {
+            entity,
+            position: this.cursorPosition,
+            timestamp: Date.now()
+        });
+
+        // Предзагрузка контента при наведении
+        if (this.config.enablePredictiveLoading) {
+            this.schedulePredictiveLoading(entity);
+        }
+
+        // Аналитика
+        this.analytics.trackInteraction('hover', {
+            entityId: entity.id,
+            entityType: entity.type,
+            position: this.cursorPosition
+        });
+    }
+
+    /**
+     * Управление масштабированием
+     */
+    handleZoom(zoomLevel) {
+        const clampedZoom = Math.max(this.config.minZoom, 
+            Math.min(this.config.maxZoom, zoomLevel));
+
+        if (clampedZoom === this.cameraState.zoom) return;
 
         this.cameraState.zoom = clampedZoom;
         this.constrainCameraPosition();
-        
-        this.dispatchEvent('zoomChanged', { 
+
+        this.dispatchEvent('zoomChanged', {
             zoomLevel: clampedZoom,
-            isAnimating: false,
-            focalPoint: focalPoint
+            isAnimating: false
         });
 
         this.updateZoomDisplay();
         this.updateCameraTransform();
+
+        // Аналитика
+        this.analytics.trackInteraction('zoom', {
+            zoomLevel: clampedZoom,
+            previousZoom: this.cameraState.zoom
+        });
     }
 
-    handleStepZoom(direction) {
-        // 🆕 Пошаговый зум
-        const currentZoom = this.cameraState.zoom;
-        const steps = this.config.zoomSteps;
-        let targetZoom = currentZoom;
-        
-        if (direction > 0) {
-            // Увеличение
-            for (let zoom of steps) {
-                if (zoom > currentZoom) {
-                    targetZoom = zoom;
-                    break;
-                }
-            }
-        } else {
-            // Уменьшение
-            for (let i = steps.length - 1; i >= 0; i--) {
-                if (steps[i] < currentZoom) {
-                    targetZoom = steps[i];
-                    break;
-                }
-            }
-        }
-        
-        this.handleZoom(targetZoom);
-    }
+    /**
+     * Приближение камеры к сущности
+     */
+    cameraZoomToEntity(entity) {
+        if (!entity || this.cameraState.isAnimating) return;
 
-    handleWheel(event) {
-        event.preventDefault();
+        const targetZoom = this.calculateOptimalZoom(entity);
+        const targetPosition = this.calculateTargetPosition(entity);
 
-        const delta = event.deltaMode === 0 ? event.deltaY * 0.01 : event.deltaY;
-        const focalPoint = this.getEventPosition(event);
-        
-        if (event.ctrlKey || event.metaKey) {
-            // Плавный зум с фокальной точкой
-            this.handleSmoothZoom(-delta, focalPoint);
-        } else {
-            // Стандартный зум
-            const zoomDelta = delta > 0 ? -this.config.zoomSensitivity : this.config.zoomSensitivity;
-            this.handleZoom(this.cameraState.zoom + zoomDelta);
-        }
-    }
+        this.cameraState.target = entity;
 
-    handlePan(deltaX, deltaY) {
-        if (this.cameraState.isAnimating) return;
-
-        // 🆕 Остановка инерции при новом взаимодействии
-        if (this.inertiaAnimationId) {
-            cancelAnimationFrame(this.inertiaAnimationId);
-            this.inertiaAnimationId = null;
-            this.cameraState.velocity = { x: 0, y: 0 };
-        }
-
-        const adjustedDeltaX = deltaX * this.config.panSensitivity / this.cameraState.zoom;
-        const adjustedDeltaY = deltaY * this.config.panSensitivity / this.cameraState.zoom;
-
-        this.cameraState.position.x += adjustedDeltaX;
-        this.cameraState.position.y += adjustedDeltaY;
-        
-        // 🆕 Ограничение позиции камеры
-        this.constrainCameraPosition();
-
-        if (this.config.enableInertia) {
-            this.cameraState.velocity.x = adjustedDeltaX;
-            this.cameraState.velocity.y = adjustedDeltaY;
-        }
-
-        this.dispatchEvent('cameraMoved', {
-            position: this.cameraState.position,
-            delta: { x: adjustedDeltaX, y: adjustedDeltaY },
-            velocity: this.cameraState.velocity
+        this.animateCameraTransition(targetPosition, targetZoom, () => {
+            console.log(`🎯 Камера приближена к: ${entity.title}`);
+            this.cameraState.target = null;
         });
 
-        this.updateCameraTransform();
+        // Аналитика
+        this.analytics.trackInteraction('zoomToEntity', {
+            entityId: entity.id,
+            targetZoom: targetZoom
+        });
     }
 
-    applyInertia() {
-        // 🆕 Улучшенная инерция с проверкой границ
-        if (this.inertiaAnimationId) {
-            cancelAnimationFrame(this.inertiaAnimationId);
+    /**
+     * Сброс камеры
+     */
+    cameraReset() {
+        this.animateCameraTransition(
+            { x: 0, y: 0 },
+            1.0,
+            () => console.log('🔄 Камера сброшена')
+        );
+    }
+
+    /**
+     * Обновление отображения зума
+     */
+    updateZoomDisplay() {
+        const zoomDisplay = document.querySelector('.zoom-display');
+        if (zoomDisplay) {
+            zoomDisplay.textContent = `${Math.round(this.cameraState.zoom * 100)}%`;
         }
+    }
 
-        const applyInertiaFrame = () => {
-            // Проверка на необходимость остановки
-            if (Math.abs(this.cameraState.velocity.x) < 0.1 && 
-                Math.abs(this.cameraState.velocity.y) < 0.1) {
-                this.cameraState.velocity = { x: 0, y: 0 };
-                this.inertiaAnimationId = null;
-                return;
-            }
+    /**
+     * Обновление трансформации камеры
+     */
+    updateCameraTransform() {
+        const container = this.getGalaxyContainer();
+        if (!container) return;
 
-            this.cameraState.velocity.x *= this.config.inertiaDeceleration;
-            this.cameraState.velocity.y *= this.config.inertiaDeceleration;
-            
-            this.cameraState.position.x += this.cameraState.velocity.x;
-            this.cameraState.position.y += this.cameraState.velocity.y;
-            
-            // 🆕 Ограничение при инерции
-            this.constrainCameraPosition();
-            
-            this.updateCameraTransform();
-            
-            this.inertiaAnimationId = requestAnimationFrame(applyInertiaFrame);
-        };
+        const transform = `translate(${this.cameraState.position.x}px, ${this.cameraState.position.y}px) scale(${this.cameraState.zoom})`;
         
-        this.inertiaAnimationId = requestAnimationFrame(applyInertiaFrame);
+        container.style.transform = transform;
+        container.style.transformOrigin = 'center center';
+
+        // Оптимизация для производительности
+        container.style.willChange = 'transform';
     }
 
-    // 🆕 УЛУЧШЕННЫЕ МЕТОДЫ АНИМАЦИИ
-
-    animateCameraTransition(targetPosition, targetZoom, onComplete) {
-        // 🆕 Улучшенная анимация с возможностью прерывания
-        if (this.cameraState.isAnimating) {
-            // Прерываем текущую анимацию
-            if (this.animationFrameId) {
-                cancelAnimationFrame(this.animationFrameId);
-            }
-        }
-
-        this.cameraState.isAnimating = true;
-        this.cameraState.velocity = { x: 0, y: 0 }; // Сброс инерции
-
-        const startPosition = { ...this.cameraState.position };
-        const startZoom = this.cameraState.zoom;
-        const startTime = performance.now();
-
-        const animate = (currentTime) => {
-            const elapsed = currentTime - startTime;
-            const progress = Math.min(elapsed / this.config.zoomAnimationDuration, 1);
-            
-            // 🆕 Динамическая easing-функция
-            const easeProgress = this.easeOutCubic(progress);
-
-            // Интерполяция с ограничением
-            this.cameraState.position.x = startPosition.x + (targetPosition.x - startPosition.x) * easeProgress;
-            this.cameraState.position.y = startPosition.y + (targetPosition.y - startPosition.y) * easeProgress;
-            this.cameraState.zoom = startZoom + (targetZoom - startZoom) * easeProgress;
-            
-            this.constrainCameraPosition();
-
-            this.updateCameraTransform();
-            this.dispatchEvent('zoomChanged', { 
-                zoomLevel: this.cameraState.zoom,
-                isAnimating: true
-            });
-
-            if (progress < 1) {
-                this.animationFrameId = requestAnimationFrame(animate);
-            } else {
-                this.cameraState.position = targetPosition;
-                this.cameraState.zoom = targetZoom;
-                this.cameraState.isAnimating = false;
-                this.animationFrameId = null;
-                onComplete();
-            }
+    /**
+     * Сброс состояния жестов
+     */
+    resetGestureState() {
+        this.gestureState = {
+            isPinching: false,
+            initialPinchDistance: 0,
+            initialZoom: 1.0,
+            lastTouchTime: 0,
+            touchStartPositions: new Map(),
+            swipeStart: null,
+            activeTouches: 0,
+            gestureRecognizer: this.gestureState.gestureRecognizer,
+            touchBuffer: []
         };
-
-        this.animationFrameId = requestAnimationFrame(animate);
     }
 
-    // 🆕 ДОПОЛНИТЕЛЬНЫЕ ФУНКЦИИ ВЗАИМОДЕЙСТВИЯ
-
-    handleEntityDrag(entity, startEvent) {
-        // 🆕 Перетаскивание сущностей
-        console.log(`🎯 Начато перетаскивание: ${entity.title}`);
-        
-        const startPos = this.getEventPosition(startEvent);
-        const entityStartPos = { ...entity.position };
-        let isDragging = true;
-
-        const handleDragMove = (moveEvent) => {
-            if (!isDragging) return;
-            
-            const currentPos = this.getEventPosition(moveEvent);
-            const deltaX = currentPos.x - startPos.x;
-            const deltaY = currentPos.y - startPos.y;
-            
-            // Обновление позиции сущности
-            const newPos = {
-                x: entityStartPos.x + deltaX / this.cameraState.zoom,
-                y: entityStartPos.y + deltaY / this.cameraState.zoom
-            };
-            
-            this.updateEntityPosition(entity, newPos);
-        };
-
-        const handleDragEnd = () => {
-            isDragging = false;
-            document.removeEventListener('mousemove', handleDragMove);
-            document.removeEventListener('mouseup', handleDragEnd);
-            document.removeEventListener('touchmove', handleDragMove);
-            document.removeEventListener('touchend', handleDragEnd);
-            
-            this.dispatchEvent('entityDragEnd', { entity });
-        };
-
-        document.addEventListener('mousemove', handleDragMove);
-        document.addEventListener('mouseup', handleDragEnd);
-        document.addEventListener('touchmove', handleDragMove, { passive: false });
-        document.addEventListener('touchend', handleDragEnd);
-
-        this.dispatchEvent('entityDragStart', { entity, startPosition: entityStartPos });
-    }
-
-    updateEntityPosition(entity, newPosition) {
-        // 🆕 Обновление позиции сущности
-        const galaxyBuilder = this.app.getComponent('galaxyBuilder');
-        if (galaxyBuilder) {
-            galaxyBuilder.updateEntityPosition(entity.id, newPosition);
-        }
-        
-        this.dispatchEvent('entityPositionUpdated', { entity, position: newPosition });
-    }
-
-    handleContextMenu(event) {
-        // 🆕 Контекстное меню для сущностей
+    // Обработчики событий (реализации)
+    handleMouseDown(event) {
         event.preventDefault();
-        
+        this.updateCursorPosition(event);
+        this.isInteracting = true;
+
         const entity = this.getEntityFromEvent(event);
         if (entity) {
-            this.showEntityContextMenu(entity, event);
-        } else {
-            this.showGlobalContextMenu(event);
-        }
-    }
-
-    showEntityContextMenu(entity, event) {
-        // 🆕 Контекстное меню сущности
-        this.dispatchEvent('entityContextMenu', { 
-            entity, 
-            position: this.getEventPosition(event),
-            options: this.getEntityContextOptions(entity)
-        });
-    }
-
-    showGlobalContextMenu(event) {
-        // 🆕 Глобальное контекстное меню
-        this.dispatchEvent('globalContextMenu', {
-            position: this.getEventPosition(event),
-            options: this.getGlobalContextOptions()
-        });
-    }
-
-    getEntityContextOptions(entity) {
-        // 🆕 Опции контекстного меню сущности
-        return [
-            { 
-                label: '📖 Открыть', 
-                action: () => this.handleEntityClick(entity),
-                shortcut: 'Enter'
-            },
-            { 
-                label: '🎯 Центрировать', 
-                action: () => this.cameraZoomToEntity(entity),
-                shortcut: 'C'
-            },
-            { 
-                label: '📊 Информация', 
-                action: () => this.showEntityInfo(entity),
-                shortcut: 'I'
-            },
-            { 
-                label: '🔗 Поделиться', 
-                action: () => this.shareEntity(entity),
-                shortcut: 'S'
-            }
-        ];
-    }
-
-    getGlobalContextOptions() {
-        // 🆕 Опции глобального контекстного меню
-        return [
-            { 
-                label: '🔄 Сброс камеры', 
-                action: () => this.cameraReset(),
-                shortcut: '0'
-            },
-            { 
-                label: '🎯 Показать все', 
-                action: () => this.showAllEntities(),
-                shortcut: 'A'
-            },
-            { 
-                label: '⚙️ Настройки', 
-                action: () => this.openSettings(),
-                shortcut: ','
-            }
-        ];
-    }
-
-    // 🆕 ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
-
-    showEntityInfo(entity) {
-        // 🆕 Показ подробной информации о сущности
-        this.dispatchEvent('showEntityInfo', { entity });
-    }
-
-    shareEntity(entity) {
-        // 🆕 Поделиться сущностью
-        const url = `${window.location.origin}/${entity.level}.html`;
-        if (navigator.share) {
-            navigator.share({
-                title: entity.title,
-                text: entity.description,
-                url: url
-            });
-        } else {
-            // Fallback для копирования в буфер обмена
-            navigator.clipboard.writeText(url);
-            this.dispatchEvent('notification', {
-                type: 'success',
-                message: 'Ссылка скопирована в буфер обмена'
-            });
-        }
-    }
-
-    showAllEntities() {
-        // 🆕 Показать все сущности
-        this.cameraReset();
-        this.dispatchEvent('showAllEntities');
-    }
-
-    openSettings() {
-        // 🆕 Открыть настройки
-        this.dispatchEvent('openSettings');
-    }
-
-    // 🆕 УЛУЧШЕННЫЕ ОБРАБОТЧИКИ СОБЫТИЙ
-
-    setupMouseEvents() {
-        const container = this.getGalaxyContainer();
-        
-        // 🆕 Добавляем контекстное меню
-        container.addEventListener('contextmenu', (event) => {
-            this.handleContextMenu(event);
-        });
-
-        // 🆕 Обработка средней кнопки мыши для панорамирования
-        container.addEventListener('mousedown', (event) => {
-            if (event.button === 1) { // Средняя кнопка мыши
-                event.preventDefault();
+            if (event.button === 0) { // Левая кнопка
+                this.handleEntityClick(entity);
+            } else if (event.button === 1) { // Средняя кнопка
                 this.handleMiddleMouseDown(event);
             }
+        }
+
+        this.dispatchEvent('interactionStarted', { type: 'mouse', event });
+    }
+
+    handleMouseMove(event) {
+        this.updateCursorPosition(event);
+        
+        const entity = this.getEntityFromEvent(event);
+        if (entity && this.isInteracting) {
+            this.handleEntityHover(entity);
+        }
+
+        // Панорамирование при зажатой средней кнопке
+        if (event.buttons === 4) {
+            this.handlePan(event.movementX, event.movementY);
+        }
+    }
+
+    handleMouseUp(event) {
+        this.isInteracting = false;
+        this.dispatchEvent('interactionEnded', { type: 'mouse', event });
+    }
+
+    handleTouchStart(event) {
+        event.preventDefault();
+        this.updateCursorPosition(event);
+
+        const touches = Array.from(event.touches);
+        this.gestureState.activeTouches = touches.length;
+
+        // Сохранение начальных позиций
+        touches.forEach((touch, index) => {
+            this.gestureState.touchStartPositions.set(touch.identifier, {
+                x: touch.clientX,
+                y: touch.clientY,
+                timestamp: Date.now()
+            });
         });
 
-        // Остальные обработчики остаются без изменений...
-        // [остальной код из оригинального setupMouseEvents]
+        // Буферизация жестов
+        this.gestureState.touchBuffer.push(...touches.map(touch => ({
+            clientX: touch.clientX,
+            clientY: touch.clientY,
+            timestamp: Date.now(),
+            identifier: touch.identifier
+        })));
+
+        this.dispatchEvent('interactionStarted', { type: 'touch', event });
     }
 
-    handleMiddleMouseDown(event) {
-        // 🆕 Панорамирование средней кнопкой мыши
-        let isPanning = true;
-        let lastPos = { x: event.clientX, y: event.clientY };
+    handleTouchMove(event) {
+        event.preventDefault();
+        this.updateCursorPosition(event);
 
-        const handlePanMove = (moveEvent) => {
-            if (!isPanning) return;
-            
-            const deltaX = moveEvent.clientX - lastPos.x;
-            const deltaY = moveEvent.clientY - lastPos.y;
-            lastPos = { x: moveEvent.clientX, y: moveEvent.clientY };
-            
-            this.handlePan(deltaX, deltaY);
-        };
-
-        const handlePanEnd = () => {
-            isPanning = false;
-            document.removeEventListener('mousemove', handlePanMove);
-            document.removeEventListener('mouseup', handlePanEnd);
-        };
-
-        document.addEventListener('mousemove', handlePanMove);
-        document.addEventListener('mouseup', handlePanEnd);
-    }
-
-    // 🆕 УЛУЧШЕННЫЕ МЕТОДЫ ОПТИМИЗАЦИИ
-
-    throttle(func, limit) {
-        // 🆕 Улучшенный throttle с использованием requestAnimationFrame
-        let lastFunc;
-        let lastRan;
-        return function(...args) {
-            if (!lastRan) {
-                func.apply(this, args);
-                lastRan = Date.now();
-            } else {
-                clearTimeout(lastFunc);
-                lastFunc = setTimeout(() => {
-                    if ((Date.now() - lastRan) >= limit) {
-                        func.apply(this, args);
-                        lastRan = Date.now();
-                    }
-                }, limit - (Date.now() - lastRan));
-            }
-        };
-    }
-
-    debounce(func, wait, immediate = false) {
-        // 🆕 Улучшенный debounce с immediate опцией
-        let timeout;
-        return function(...args) {
-            const later = () => {
-                timeout = null;
-                if (!immediate) func.apply(this, args);
-            };
-            const callNow = immediate && !timeout;
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-            if (callNow) func.apply(this, args);
-        };
-    }
-
-    // 🆕 ДОПОЛНИТЕЛЬНЫЕ EASING-ФУНКЦИИ
-
-    easeInOutCubic(t) {
-        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-    }
-
-    easeOutElastic(t) {
-        return Math.pow(2, -10 * t) * Math.sin((t - 0.075) * (2 * Math.PI) / 0.3) + 1;
-    }
-
-    easeInOutBack(t) {
-        const c1 = 1.70158;
-        const c2 = c1 * 1.525;
-        return t < 0.5
-            ? (Math.pow(2 * t, 2) * ((c2 + 1) * 2 * t - c2)) / 2
-            : (Math.pow(2 * t - 2, 2) * ((c2 + 1) * (t * 2 - 2) + c2) + 2) / 2;
-    }
-
-    // 🆕 МЕТОДЫ ДЛЯ РАБОТЫ С КЭШЕМ
-
-    clearEntityCache() {
-        this.entityCache.clear();
-    }
-
-    updateEntityCache(entityId, entity) {
-        this.entityCache.set(entityId, entity);
-    }
-
-    // 🆕 ОБНОВЛЕННЫЙ DESTROY
-
-    destroy() {
-        // Остановка всех анимаций
-        if (this.animationFrameId) {
-            cancelAnimationFrame(this.animationFrameId);
+        const touches = Array.from(event.touches);
+        
+        // Обработка multi-touch жестов
+        if (touches.length === 2) {
+            this.handlePinchGesture(touches);
+        } else if (touches.length === 1) {
+            this.handleSwipeGesture(touches[0]);
         }
-        
-        if (this.inertiaAnimationId) {
-            cancelAnimationFrame(this.inertiaAnimationId);
+
+        // Обновление буфера жестов
+        this.gestureState.touchBuffer.push(...touches.map(touch => ({
+            clientX: touch.clientX,
+            clientY: touch.clientY,
+            timestamp: Date.now(),
+            identifier: touch.identifier
+        })));
+
+        // Ограничение размера буфера
+        if (this.gestureState.touchBuffer.length > 20) {
+            this.gestureState.touchBuffer = this.gestureState.touchBuffer.slice(-20);
         }
+    }
+
+    handleTouchEnd(event) {
+        const endedTouches = Array.from(event.changedTouches);
         
-        if (this.activeHoverTimeout) {
-            clearTimeout(this.activeHoverTimeout);
+        // Распознавание жестов
+        const recognizedGestures = this.gestureState.gestureRecognizer.recognize(
+            this.gestureState.touchBuffer
+        );
+
+        if (recognizedGestures.length > 0) {
+            this.handleRecognizedGesture(recognizedGestures[0]);
         }
+
+        // Очистка завершенных касаний
+        endedTouches.forEach(touch => {
+            this.gestureState.touchStartPositions.delete(touch.identifier);
+        });
+
+        this.gestureState.activeTouches = event.touches.length;
+        this.gestureState.touchBuffer = [];
+
+        this.dispatchEvent('interactionEnded', { type: 'touch', event });
+    }
+
+    handleTouchCancel(event) {
+        this.handleTouchEnd(event);
+    }
+
+    handleKeyDown(event) {
+        this.accessibility.isKeyboardNavigating = true;
+
+        switch (event.key) {
+            case 'ArrowUp':
+            case 'ArrowDown':
+            case 'ArrowLeft':
+            case 'ArrowRight':
+                event.preventDefault();
+                this.handleArrowKeys(event);
+                break;
+            case '+':
+            case '=':
+                event.preventDefault();
+                this.handleStepZoom(1);
+                break;
+            case '-':
+                event.preventDefault();
+                this.handleStepZoom(-1);
+                break;
+            case '0':
+                event.preventDefault();
+                this.cameraReset();
+                break;
+            case 'Escape':
+                this.handleEscapeKey();
+                break;
+            case 'Tab':
+                this.handleTabKey(event);
+                break;
+        }
+
+        this.analytics.trackInteraction('keyboard', { key: event.key, code: event.code });
+    }
+
+    handleKeyUp(event) {
+        if (!event.shiftKey && !event.ctrlKey && !event.altKey) {
+            this.accessibility.isKeyboardNavigating = false;
+        }
+    }
+
+    handleArrowKeys(event) {
+        const panAmount = 50 / this.cameraState.zoom;
         
-        // Очистка кэшей
-        this.clearEntityCache();
-        this.pendingOperations.clear();
-        
-        // Сброс состояний
-        this.resetGestureState();
-        this.initializeCameraState();
-        
-        // Удаление обработчиков событий
+        switch (event.key) {
+            case 'ArrowUp':
+                this.handlePan(0, panAmount);
+                break;
+            case 'ArrowDown':
+                this.handlePan(0, -panAmount);
+                break;
+            case 'ArrowLeft':
+                this.handlePan(panAmount, 0);
+                break;
+            case 'ArrowRight':
+                this.handlePan(-panAmount, 0);
+                break;
+        }
+    }
+
+    handleEscapeKey() {
+        this.dispatchEvent('escapePressed');
+    }
+
+    handleTabKey(event) {
+        this.handleKeyboardNavigation(event);
+    }
+
+    /**
+     * Настройка доступности
+     */
+    setupAccessibility() {
+        if (!this.config.enableAccessibility) return;
+
+        // Обнаружение screen reader
+        this.accessibility.screenReaderActive = this.detectScreenReader();
+
+        // Настройка ARIA атрибутов
+        this.setupAriaAttributes();
+
+        // Обработчик для reduced motion
+        if (this.config.reducedMotion) {
+            this.config.zoomAnimationDuration = 0;
+            this.config.enableInertia = false;
+        }
+
+        console.log('♿ Система доступности настроена');
+    }
+
+    detectScreenReader() {
+        // Упрощенное обнаружение screen reader
+        return !!(window.getComputedStyle(document.body).getPropertyValue('speak') ||
+                 window.getComputedStyle(document.body).getPropertyValue('aria-hidden') === 'false');
+    }
+
+    setupAriaAttributes() {
         const container = this.getGalaxyContainer();
-        if (container) {
-            const newContainer = container.cloneNode(true);
-            container.parentNode.replaceChild(newContainer, container);
+        if (!container) return;
+
+        container.setAttribute('role', 'application');
+        container.setAttribute('aria-label', 'Интерактивная галактика знаний GENOФОНД');
+        container.setAttribute('aria-describedby', 'galaxy-description');
+
+        // Создание описания для screen readers
+        if (!document.getElementById('galaxy-description')) {
+            const description = document.createElement('div');
+            description.id = 'galaxy-description';
+            description.className = 'sr-only';
+            description.textContent = 'Используйте мышь для навигации по галактике, колесо мыши для масштабирования, клавиши стрелок для перемещения.';
+            document.body.appendChild(description);
         }
-        
-        console.log('🧹 GalaxyInteraction уничтожен');
     }
 
-    // Public API для инициализации приложения
-    async start() {
-        console.log('🎮 GalaxyInteraction запущен');
-        return Promise.resolve();
+    handleKeyboardNavigation(event) {
+        const entities = Array.from(this.accessibility.focusableEntities);
+        const currentIndex = entities.indexOf(this.accessibility.currentFocus);
+
+        if (event.shiftKey) {
+            // Обратная навигация
+            const prevIndex = currentIndex > 0 ? currentIndex - 1 : entities.length - 1;
+            this.setFocus(entities[prevIndex]);
+        } else {
+            // Прямая навигация
+            const nextIndex = currentIndex < entities.length - 1 ? currentIndex + 1 : 0;
+            this.setFocus(entities[nextIndex]);
+        }
+
+        event.preventDefault();
     }
 
-    async recover() {
-        this.resetGestureState();
-        this.initializeCameraState();
-        this.calculateCameraBounds();
-        this.clearEntityCache();
-        console.log('🔄 GalaxyInteraction восстановлен');
-        return true;
+    setFocus(entity) {
+        if (this.accessibility.currentFocus) {
+            this.accessibility.currentFocus.element.setAttribute('tabindex', '-1');
+        }
+
+        this.accessibility.currentFocus = entity;
+        entity.element.setAttribute('tabindex', '0');
+        entity.element.focus();
+
+        // Прокрутка к сфокусированному элементу
+        entity.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
-    // 🆕 ДОПОЛНИТЕЛЬНЫЕ PUBLIC МЕТОДЫ
+    /**
+     * Улучшенные методы из предыдущей реализации
+     */
+    easeOutCubic(t) {
+        return 1 - Math.pow(1 - t, 3);
+    }
 
+    saveCameraState() {
+        this.cameraState.history.push({
+            position: { ...this.cameraState.position },
+            zoom: this.cameraState.zoom,
+            timestamp: Date.now()
+        });
+
+        // Ограничение размера истории
+        if (this.cameraState.history.length > this.cameraState.maxHistorySize) {
+            this.cameraState.history.shift();
+        }
+    }
+
+    restoreCameraState() {
+        if (this.cameraState.history.length === 0) return;
+
+        const previousState = this.cameraState.history.pop();
+        this.animateCameraTransition(
+            previousState.position,
+            previousState.zoom,
+            () => console.log('📷 Состояние камеры восстановлено')
+        );
+    }
+
+    schedulePredictiveLoading(entity) {
+        if (this.predictiveLoadingTimeout) {
+            clearTimeout(this.predictiveLoadingTimeout);
+        }
+
+        this.predictiveLoadingTimeout = setTimeout(() => {
+            this.preloadRelatedContent(entity);
+        }, this.config.predictiveLoadingDelay);
+    }
+
+    preloadRelatedContent(entity) {
+        // Предзагрузка связанного контента через ContentManager
+        if (this.app.contentManager) {
+            this.app.contentManager.preloadRelatedContent(entity.id)
+                .then(() => console.log(`🔮 Предзагружен контент для: ${entity.title}`))
+                .catch(error => console.warn('⚠️ Ошибка предзагрузки:', error));
+        }
+    }
+
+    /**
+     * Публичное API
+     */
     setZoom(zoomLevel) {
         this.handleZoom(zoomLevel);
     }
@@ -774,6 +1004,85 @@ class GalaxyInteraction {
 
     disableInteractions() {
         this.isInteracting = false;
+    }
+
+    getAnalytics() {
+        return {
+            metrics: this.analytics.metrics,
+            heatmap: this.analytics.getHeatmapData(),
+            patterns: this.analytics.getUserBehaviorPatterns()
+        };
+    }
+
+    /**
+     * Уничтожение экземпляра
+     */
+    destroy() {
+        // Остановка всех анимаций
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+        }
+        
+        if (this.inertiaAnimationId) {
+            cancelAnimationFrame(this.inertiaAnimationId);
+        }
+        
+        if (this.activeHoverTimeout) {
+            clearTimeout(this.activeHoverTimeout);
+        }
+
+        if (this.predictiveLoadingTimeout) {
+            clearTimeout(this.predictiveLoadingTimeout);
+        }
+        
+        // Очистка кэшей
+        this.clearEntityCache();
+        this.pendingOperations.clear();
+        
+        // Сброс состояний
+        this.resetGestureState();
+        this.initializeCameraState();
+        
+        // Удаление обработчиков событий
+        const container = this.getGalaxyContainer();
+        if (container) {
+            const newContainer = container.cloneNode(true);
+            container.parentNode.replaceChild(newContainer, container);
+        }
+        
+        // Сохранение аналитики
+        this.analytics.saveToStorage();
+        
+        console.log('🧹 GalaxyInteraction v2.1 уничтожен');
+    }
+
+    // Вспомогательные методы
+    dispatchEvent(eventName, detail) {
+        const event = new CustomEvent(eventName, { detail });
+        document.dispatchEvent(event);
+    }
+
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    throttle(func, limit) {
+        let inThrottle;
+        return function(...args) {
+            if (!inThrottle) {
+                func.apply(this, args);
+                inThrottle = true;
+                setTimeout(() => inThrottle = false, limit);
+            }
+        };
     }
 }
 
