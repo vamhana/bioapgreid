@@ -29,7 +29,8 @@
     "dev": "live-server --port=3000 --host=localhost --watch=.,styles,js,pages --ignore=node_modules,.git",
     "start": "npm run dev",
     "generate": "node utils/generate-pages.js",
-    "build": "npm run generate",
+    "build": "npm run generate && npm run build:vercel",
+    "build:vercel": "node utils/vercel-build.js",
     "predeploy": "npm run generate",
     "deploy": "gh-pages -d . -b gh-pages",
     "deploy:force": "gh-pages -d . -b gh-pages --force",
@@ -44,8 +45,8 @@
     "gh-pages": "^6.1.1"
   },
   "engines": {
-    "node": ">=16.0.0",
-    "npm": ">=8.0.0"
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   },
   "browserslist": [
     "last 2 Chrome versions",
