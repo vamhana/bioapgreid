@@ -1,0 +1,16 @@
+{
+    "name": "Галактика GENOФОНД",
+    "short_name": "GENOФОНД", 
+    "description": "Интерактивная образовательная платформа",
+    "start_url": "./",
+    "display": "fullscreen",
+    "theme_color": "#0f1a2f",
+    "background_color": "#0f1a2f",
+    "icons": [
+        {
+            "src": "assets/favicon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml"
+        }
+    ]
+}
