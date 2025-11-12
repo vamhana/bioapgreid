@@ -1,201 +1,118 @@
 // galaxy-genofond/utils/generate-pages.js
-// СТАТУС: РАБОЧИЙ ДЛЯ ES MODULES И GITHUB PAGES
-
 import fs from 'fs';
 import path from 'path';
-import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-class PageGenerator {
-    constructor() {
-        this.config = {
-            pagesDir: path.join(__dirname, '..', 'pages'),
-            outputDir: path.join(__dirname, '..'),
-            baseUrl: 'https://www.bioapgreid.ru',
-            enableIncremental: true
-        };
+console.log('🎯 ===== ГЕНЕРАТОР СТРАНИЦ ЗАПУЩЕН =====');
 
-        this.fileHashes = new Map();
-        this.isGenerating = false;
+// Глобальный обработчик ошибок
+process.on('uncaughtException', (error) => {
+    console.error('💥 НЕОБРАБОТАННАЯ ОШИБКА:', error);
+    process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('💥 НЕОБРАБОТАННЫЙ PROMISE:', reason);
+    process.exit(1);
+});
+
+try {
+    // Базовые пути
+    const pagesDir = path.join(__dirname, '..', 'pages');
+    const outputDir = path.join(__dirname, '..');
+    
+    console.log('📁 Текущая директория:', __dirname);
+    console.log('📁 Папка pages:', pagesDir);
+    console.log('📁 Выходная директория:', outputDir);
+
+    // Проверяем существование папки pages
+    if (!fs.existsSync(pagesDir)) {
+        console.log('❌ Папка pages/ не существует. Создаю...');
+        fs.mkdirSync(pagesDir, { recursive: true });
         
-        this.ensureDirectories();
-        this.loadFileHashes();
+        // Создаем пример файла
+        const exampleContent = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="galaxy:level" content="example-level">
+    <meta name="galaxy:type" content="planet">
+    <meta name="galaxy:title" content="Пример страницы">
+    <title>Пример</title>
+</head>
+<body>
+    <h1>Пример страницы</h1>
+    <p>Добавьте свои HTML файлы в папку pages/</p>
+</body>
+</html>`;
+        
+        fs.writeFileSync(path.join(pagesDir, 'example.html'), exampleContent);
+        console.log('📝 Создан пример: pages/example.html');
     }
 
-    ensureDirectories() {
-        if (!fs.existsSync(this.config.pagesDir)) {
-            fs.mkdirSync(this.config.pagesDir, { recursive: true });
-            console.log('📁 Создана папка pages/');
-        }
+    // Сканируем папку pages
+    console.log('🔍 Сканирую папку pages/...');
+    const files = fs.readdirSync(pagesDir)
+        .filter(file => file.endsWith('.html'))
+        .sort();
+
+    console.log(`📄 Найдено HTML файлов: ${files.length}`);
+
+    if (files.length === 0) {
+        console.log('ℹ️ В папке pages/ нет HTML файлов. Добавьте файлы и перезапустите.');
+        process.exit(0);
     }
 
-    loadFileHashes() {
+    // Выводим список файлов
+    console.log('📋 Список файлов:');
+    files.forEach((file, index) => {
+        console.log(`  ${index + 1}. ${file}`);
+    });
+
+    let generatedCount = 0;
+
+    // Обрабатываем каждый файл
+    for (const file of files) {
         try {
-            const hashesPath = path.join(this.config.pagesDir, '.file-hashes.json');
-            if (fs.existsSync(hashesPath)) {
-                const data = fs.readFileSync(hashesPath, 'utf8');
-                this.fileHashes = new Map(Object.entries(JSON.parse(data)));
-            }
-        } catch (error) {
-            // Игнорируем ошибки загрузки хешей
-        }
-    }
-
-    saveFileHashes() {
-        try {
-            const hashesPath = path.join(this.config.pagesDir, '.file-hashes.json');
-            const data = Object.fromEntries(this.fileHashes);
-            fs.writeFileSync(hashesPath, JSON.stringify(data, null, 2));
-        } catch (error) {
-            // Игнорируем ошибки сохранения хешей
-        }
-    }
-
-    calculateFileHash(content) {
-        return crypto.createHash('md5').update(content).digest('hex');
-    }
-
-    hasFileChanged(filename, content) {
-        if (!this.config.enableIncremental) return true;
-        
-        const newHash = this.calculateFileHash(content);
-        const oldHash = this.fileHashes.get(filename);
-        
-        if (oldHash !== newHash) {
-            this.fileHashes.set(filename, newHash);
-            return true;
-        }
-        
-        return false;
-    }
-
-    autoDiscoverPages() {
-        console.log('🔍 Сканирование папки pages/...');
-        
-        if (!fs.existsSync(this.config.pagesDir)) {
-            console.log('❌ Папка pages/ не существует');
-            return [];
-        }
-
-        const files = fs.readdirSync(this.config.pagesDir)
-            .filter(file => file.endsWith('.html'))
-            .sort();
-
-        console.log(`📄 Найдено ${files.length} HTML-файлов`);
-
-        const pagesConfig = [];
-
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            const filePath = path.join(this.config.pagesDir, file);
+            console.log(`\n🔄 Обрабатываю: ${file}`);
             
-            try {
-                const content = fs.readFileSync(filePath, 'utf-8');
-                
-                if (!this.hasFileChanged(file, content)) {
-                    console.log(`⏭️  Пропущен (без изменений): ${file}`);
-                    continue;
-                }
-                
-                const pageConfig = this.generatePageConfig(file, content, i, files.length);
-                pagesConfig.push(pageConfig);
-                
-                console.log(`✅ Обработан: ${file} → ${pageConfig.name}.html`);
-            } catch (error) {
-                console.error(`❌ Ошибка обработки ${file}:`, error.message);
+            const filePath = path.join(pagesDir, file);
+            const content = fs.readFileSync(filePath, 'utf-8');
+            
+            // Простой парсинг meta тегов
+            const metaTags = {};
+            const metaRegex = /<meta\s+name="galaxy:([^"]+)"\s+content="([^"]*)"/g;
+            let match;
+            
+            while ((match = metaRegex.exec(content)) !== null) {
+                metaTags[match[1]] = match[2];
             }
-        }
 
-        return pagesConfig;
-    }
+            console.log(`   📍 Мета-теги:`, Object.keys(metaTags).length > 0 ? metaTags : 'не найдены');
 
-    extractMetaTags(htmlContent) {
-        const metaTags = {};
-        const metaRegex = /<meta\s+name="galaxy:([^"]+)"\s+content="([^"]*)"\s*\/?>/gi;
-        let match;
+            // Извлекаем title
+            const titleMatch = content.match(/<title>([^<]*)<\/title>/i);
+            const title = titleMatch ? titleMatch[1] : file.replace('.html', '');
 
-        while ((match = metaRegex.exec(htmlContent)) !== null) {
-            const key = match[1];
-            const value = match[2];
-            metaTags[key] = value;
-        }
-
-        // Извлечение title
-        const titleMatch = htmlContent.match(/<title>([^<]*)<\/title>/i);
-        if (titleMatch) {
-            metaTags.title = titleMatch[1];
-        }
-
-        return metaTags;
-    }
-
-    generatePageConfig(filename, htmlContent, index, totalPages) {
-        const metaTags = this.extractMetaTags(htmlContent);
-        const name = path.basename(filename, '.html');
-        
-        const config = {
-            filename: name,
-            level: metaTags.level || `level${index}`,
-            type: metaTags.type || this.determineTypeByIndex(index),
-            title: metaTags.title || this.formatTitle(name),
-            parent: metaTags.parent || (index > 0 ? 'level0' : null),
-            description: metaTags.description || `Страница ${name}`,
-            color: metaTags.color || this.generateColorByIndex(index),
-            importance: metaTags.importance || 'medium',
-            orbitRadius: metaTags.orbitRadius || this.calculateOrbitRadius(index),
-            orbitAngle: metaTags.orbitAngle || this.calculateOrbitAngle(index),
-            sizeModifier: metaTags.sizeModifier || '1.0',
-            unlocked: metaTags.unlocked !== 'false',
-            index: index,
-            total: totalPages
-        };
-
-        return config;
-    }
-
-    determineTypeByIndex(index) {
-        const types = ['planet', 'moon', 'asteroid', 'star', 'gateway'];
-        return types[index % types.length];
-    }
-
-    formatTitle(filename) {
-        return filename
-            .split(/[-_]/)
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' ');
-    }
-
-    generateColorByIndex(index) {
-        const colors = ['#4a90e2', '#50e3c2', '#b8e986', '#bd10e0', '#9013fe'];
-        return colors[index % colors.length];
-    }
-
-    calculateOrbitRadius(index) {
-        return 120 + (index % 5) * 40;
-    }
-
-    calculateOrbitAngle(index) {
-        return (index * 137.5) % 360;
-    }
-
-    createHTMLTemplate(pageConfig) {
-        return `<!DOCTYPE html>
+            // Создаем HTML шлюз
+            const htmlContent = `<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${pageConfig.title} - GENOФОНД Галактика</title>
-    <meta name="description" content="${pageConfig.description}">
+    <title>${title} - GENOФОНД</title>
+    <meta name="description" content="${metaTags.description || 'Страница галактики GENOФОНД'}">
     
-    <!-- Мета-теги для галактики -->
+    <!-- Мета-теги галактики -->
     <meta name="galaxy:gateway" content="true">
-    <meta name="galaxy:target-level" content="${pageConfig.level}">
-    <meta name="galaxy:entity-type" content="${pageConfig.type}">
-    <meta name="galaxy:entity-color" content="${pageConfig.color}">
-    <meta name="galaxy:importance" content="${pageConfig.importance}">
+    <meta name="galaxy:target-level" content="${metaTags.level || file.replace('.html', '')}">
+    <meta name="galaxy:entity-type" content="${metaTags.type || 'planet'}">
+    <meta name="galaxy:entity-color" content="${metaTags.color || '#4a90e2'}">
+    <meta name="galaxy:importance" content="${metaTags.importance || 'medium'}">
     
     <!-- Стили -->
     <link rel="stylesheet" href="styles/main.css">
@@ -206,23 +123,23 @@ class PageGenerator {
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="galaxy-universe" data-gateway-target="${pageConfig.level}">
+    <div class="galaxy-universe" data-gateway-target="${metaTags.level || file.replace('.html', '')}">
         <div class="galaxy-background">
             <div class="stars-layer"></div>
             <div class="nebula-layer"></div>
             <div class="particles-layer"></div>
         </div>
         
-        <div class="celestial-bodies">
-            <!-- Сущности будут созданы через GalaxyBuilder -->
+        <div class="celestial-bodies" id="celestialBodies">
+            <!-- Автогенерация через GalaxyBuilder -->
         </div>
         
         <div class="info-panels">
             <div class="panel user-stats">
-                <h3>${pageConfig.title}</h3>
-                <p>${pageConfig.description}</p>
+                <h3>${metaTags.title || title}</h3>
+                <p>${metaTags.description || 'Исследуйте знания в галактике GENOФОНД'}</p>
                 <div class="progress-indicator">
-                    <span>Уровень: ${pageConfig.level}</span>
+                    <span>Уровень: ${metaTags.level || 'base'}</span>
                 </div>
             </div>
         </div>
@@ -230,7 +147,7 @@ class PageGenerator {
         <div class="content-viewport" style="display: none;">
             <div class="content-viewport-header">
                 <button class="close-content">×</button>
-                <h2>${pageConfig.title}</h2>
+                <h2>${metaTags.title || title}</h2>
             </div>
             <div class="content-wrapper">
                 <!-- Контент будет загружен через ContentManager -->
@@ -240,7 +157,7 @@ class PageGenerator {
         <div class="notification-center"></div>
         <div class="preloader">
             <div class="preloader-spinner"></div>
-            <p>Загрузка галактики ${pageConfig.title}...</p>
+            <p>Загрузка галактики ${metaTags.title || title}...</p>
         </div>
     </div>
 
@@ -248,95 +165,54 @@ class PageGenerator {
     <script type="module" src="js/app.js"></script>
     <script type="module">
         // Автоактивация целевого уровня
-        window.autoActivateLevel = '${pageConfig.level}';
+        window.autoActivateLevel = '${metaTags.level || file.replace('.html', '')}';
+        console.log('🚀 Галактика GENOФОНД запускается...');
     </script>
 </body>
 </html>`;
+
+            const outputPath = path.join(outputDir, file);
+            fs.writeFileSync(outputPath, htmlContent, 'utf8');
+            generatedCount++;
+            
+            console.log(`✅ Успешно создан: ${file}`);
+
+        } catch (error) {
+            console.error(`❌ Ошибка при обработке ${file}:`, error.message);
+        }
     }
 
-    generateSiteMap(pagesConfig) {
+    // Создаем карту сайта
+    try {
         const siteMap = {
-            baseUrl: this.config.baseUrl,
+            baseUrl: 'https://www.bioapgreid.ru',
             generated: new Date().toISOString(),
-            pages: pagesConfig.map(config => ({
-                level: config.level,
-                type: config.type,
-                title: config.title,
-                filename: config.filename + '.html',
-                url: `${this.config.baseUrl}/${config.filename}.html`,
-                description: config.description
+            pages: files.map(file => ({
+                filename: file,
+                url: `/${file}`,
+                title: file.replace('.html', '')
             }))
         };
 
-        const siteMapPath = path.join(this.config.outputDir, 'sitemap.json');
+        const siteMapPath = path.join(outputDir, 'sitemap.json');
         fs.writeFileSync(siteMapPath, JSON.stringify(siteMap, null, 2));
         console.log('🗺️ Создана карта сайта: sitemap.json');
-        
-        return siteMap;
+    } catch (error) {
+        console.error('❌ Ошибка создания карты сайта:', error.message);
     }
 
-    async generateAllPages() {
-        if (this.isGenerating) {
-            console.log('⏳ Генерация уже выполняется...');
-            return false;
-        }
-        
-        this.isGenerating = true;
-        console.log('🚀 Запуск генерации страниц галактики...');
-        
-        try {
-            const pagesConfig = this.autoDiscoverPages();
-            
-            if (pagesConfig.length === 0) {
-                console.log('ℹ️ Нет новых или измененных страниц для генерации');
-                return true;
-            }
-
-            let generatedCount = 0;
-            
-            console.log('\n📁 Генерация шлюзов:');
-            console.log('─'.repeat(40));
-            
-            for (const pageConfig of pagesConfig) {
-                try {
-                    const htmlContent = this.createHTMLTemplate(pageConfig);
-                    const outputPath = path.join(this.config.outputDir, `${pageConfig.filename}.html`);
-                    
-                    fs.writeFileSync(outputPath, htmlContent, 'utf8');
-                    generatedCount++;
-                    
-                    console.log(`✅ ${pageConfig.filename}.html (${pageConfig.type})`);
-                } catch (error) {
-                    console.error(`❌ ${pageConfig.filename}.html: ${error.message}`);
-                }
-            }
-            
-            if (generatedCount > 0) {
-                this.generateSiteMap(pagesConfig);
-            }
-            
-            this.saveFileHashes();
-            
-            console.log('─'.repeat(40));
-            console.log(`🎉 Генерация завершена! Создано ${generatedCount} шлюзов`);
-            
-            return generatedCount > 0;
-        } catch (error) {
-            console.error('💥 Критическая ошибка:', error);
-            return false;
-        } finally {
-            this.isGenerating = false;
-        }
+    console.log('\n🎊 ===== ГЕНЕРАЦИЯ ЗАВЕРШЕНА =====');
+    console.log(`📊 Итог: ${generatedCount}/${files.length} файлов обработано`);
+    
+    if (generatedCount === files.length) {
+        console.log('✅ Все файлы успешно сгенерированы!');
+        process.exit(0);
+    } else {
+        console.log('⚠️ Некоторые файлы не были обработаны');
+        process.exit(1);
     }
-}
 
-// Создаем и запускаем генератор
-const generator = new PageGenerator();
-
-// Запуск генерации
-generator.generateAllPages().then(success => {
-    process.exit(success ? 0 : 1);
-}).catch(error => {
-    console.error('💥 Ошибка запуска:', error);
+} catch (error) {
+    console.error('💥 КРИТИЧЕСКАЯ ОШИБКА:', error);
     process.exit(1);
-});
+}
