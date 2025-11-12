@@ -1,31 +1,40 @@
+// bioapgreid/vercel.json
+// содержит:
+// {
+//   "version": 2,
+//   "builds": [
+//     {
+//       "src": "package.json",
+//       "use": "@vercel/static-build",
+//       "config": {
+//         "distDir": "public"
+//       }
+//     }
+//   ],
+//   "rewrites": [
+//     {
+//       "source": "/(.*)",
+//       "destination": "/$1"
+//     }
+//   ],
+//   "cleanUrls": true,
+//  "trailingSlash": false
+// }
 {
   "version": 2,
   "builds": [
     {
-      "src": "*.html",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "js/*.js", 
-      "use": "@vercel/static"
-    },
-    {
-      "src": "styles/*.css",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "assets/**/*",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "pages/*.html",
-      "use": "@vercel/static"
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "public"
+      }
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/(.*)",
+      "destination": "/$1"
     }
   ],
   "cleanUrls": true,
