@@ -1,109 +1,504 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-app-version="2.1">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🌌 Галактика GENOФОНД</title>
     
-    <!-- Подключение стилей -->
+    <!-- Базовые мета-теги -->
+    <title>🌌 Галактика GENOФОНД | Центр знаний вселенной</title>
+    <meta name="description" content="Иммерсивная образовательная платформа GENOФОНД - исследуйте знания как космические системы">
+    <meta name="keywords" content="образование, знания, галактика, интерактивное обучение, GENOФОНД">
+    
+    <!-- SEO и социальные мета-теги -->
+    <meta property="og:title" content="🌌 Галактика GENOФОНД">
+    <meta property="og:description" content="Исследуйте знания как космические системы в иммерсивной образовательной платформе">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="https://www.bioapgreid.ru/assets/og-image.jpg">
+    <meta property="og:url" content="https://www.bioapgreid.ru/">
+    
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="🌌 Галактика GENOФОНД">
+    <meta name="twitter:description" content="Иммерсивная образовательная платформа для исследования знаний">
+    
+    <!-- Мета-теги PWA -->
+    <meta name="theme-color" content="#0f1a2f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <!-- Подключение стилей с предзагрузкой -->
+    <link rel="preload" href="styles/main.css" as="style">
+    <link rel="preload" href="styles/galaxy-universe.css" as="style">
+    <link rel="preload" href="styles/galaxy-components.css" as="style">
+    
     <link rel="stylesheet" href="styles/main.css">
     <link rel="stylesheet" href="styles/galaxy-universe.css">
     <link rel="stylesheet" href="styles/galaxy-components.css">
     
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- Google Fonts с оптимизацией -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Фавикон и иконки -->
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+    
+    <!-- Манифест PWA -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Структурированные данные для SEO -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "EducationalOrganization",
+        "name": "Галактика GENOФОНД",
+        "description": "Интерактивная образовательная платформа для исследования знаний",
+        "url": "https://www.bioapgreid.ru/",
+        "logo": "https://www.bioapgreid.ru/assets/logo.svg",
+        "sameAs": [],
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://www.bioapgreid.ru/search?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+        }
+    }
+    </script>
+    
+    <!-- Инициализация глобальных переменных -->
+    <script>
+        // Глобальная конфигурация приложения
+        window.genofondConfig = {
+            version: '2.1',
+            environment: 'production',
+            baseUrl: 'https://www.bioapgreid.ru/', // ДОБАВЛЕНО: Базовый URL
+            enableAnalytics: true,
+            enablePerformanceMonitoring: true,
+            enableErrorRecovery: true,
+            defaultZoom: 1.0,
+            maxZoom: 3.0,
+            minZoom: 0.3,
+            autoActivateLevel: null,
+            features: {
+                predictiveLoading: true,
+                gestureSupport: true,
+                accessibility: true,
+                offlineSupport: false
+            }
+        };
+        
+        // Ранняя аналитика
+        window.genofondAnalytics = {
+            sessionStart: Date.now(),
+            pageView: 'main_portal',
+            userAgent: navigator.userAgent,
+            viewport: {
+                width: window.innerWidth,
+                height: window.innerHeight
+            }
+        };
+        
+        // Обработчик ошибок для раннего перехвата
+        window.addEventListener('error', function(e) {
+            console.error('🚨 Глобальная ошибка:', e.error);
+            if (window.genofondAnalytics) {
+                window.genofondAnalytics.errors = (window.genofondAnalytics.errors || 0) + 1;
+            }
+        });
+    </script>
 </head>
-<body>
+<body class="galaxy-portal" data-loading="true" data-interaction="enabled">
+    <!-- Контейнер для скринридеров -->
+    <div class="sr-only" aria-live="polite" aria-atomic="true">
+        <h1>Галактика GENOФОНД - интерактивная образовательная платформа</h1>
+        <p>Используйте мышь для навигации по галактике, колесо мыши для масштабирования, клавиши стрелок для перемещения.</p>
+    </div>
+
     <!-- Основная структура галактики -->
-    <div class="galaxy-universe">
-        <div class="galaxy-background">
-            <div class="stars-layer"></div>
-            <div class="nebula-layer"></div>
-            <div class="particles-layer"></div>
+    <main class="galaxy-universe" role="main" aria-label="Интерактивная галактика знаний">
+        <!-- Космический фон с слоями -->
+        <div class="galaxy-background" aria-hidden="true">
+            <div class="stars-layer" data-depth="0.1"></div>
+            <div class="nebula-layer" data-depth="0.3"></div>
+            <div class="particles-layer" data-depth="0.5"></div>
+            <div class="gradient-layer" data-depth="0.8"></div>
         </div>
         
         <!-- Контейнер для небесных тел -->
-        <div class="celestial-bodies" id="celestialBodies">
-            <!-- Автогенерация через galaxy-builder.js -->
-        </div>
+        <section class="celestial-bodies-container" aria-label="Небесные тела знаний">
+            <div class="celestial-bodies" id="celestialBodies" role="application" aria-label="Интерактивная карта галактики">
+                <!-- Автогенерация через galaxy-builder.js -->
+                <div class="galaxy-center" aria-hidden="true">
+                    <div class="central-star" role="img" aria-label="Центральная звезда галактики"></div>
+                </div>
+            </div>
+        </section>
         
-        <!-- Панели управления -->
-        <div class="info-panels">
-            <div class="panel user-stats">📊 Статистика генофонда</div>
-            <div class="panel quick-actions">🚀 Быстрые команды</div>
-        </div>
+        <!-- Навигационная панель -->
+        <nav class="galaxy-navigation" role="navigation" aria-label="Основная навигация">
+            <div class="nav-brand">
+                <span class="brand-icon" aria-hidden="true">🌌</span>
+                <h1 class="brand-text">GENOФОНД</h1>
+                <span class="version-badge" aria-label="Версия 2.1">v2.1</span>
+            </div>
+            
+            <div class="nav-stats" aria-label="Статистика прогресса">
+                <div class="stat-item">
+                    <span class="stat-value" id="exploredPlanets">0</span>
+                    <span class="stat-label">исследовано</span>
+                </div>
+                <div class="stat-separator" aria-hidden="true">•</div>
+                <div class="stat-item">
+                    <span class="stat-value" id="progressLevel">0%</span>
+                    <span class="stat-label">прогресс</span>
+                </div>
+            </div>
+            
+            <div class="nav-controls" aria-label="Элементы управления">
+                <button class="nav-btn" id="zoomOut" aria-label="Уменьшить масштаб" title="Уменьшить масштаб">
+                    <span aria-hidden="true">🔍−</span>
+                </button>
+                <span class="zoom-level" id="zoomLevel" aria-label="Текущий масштаб">100%</span>
+                <button class="nav-btn" id="zoomIn" aria-label="Увеличить масштаб" title="Увеличить масштаб">
+                    <span aria-hidden="true">🔍+</span>
+                </button>
+                <button class="nav-btn" id="resetView" aria-label="Сбросить вид" title="Сбросить вид">
+                    <span aria-hidden="true">🔄</span>
+                </button>
+            </div>
+        </nav>
+        
+        <!-- Хлебные крошки -->
+        <nav class="breadcrumbs" id="breadcrumbs" aria-label="Навигационная цепочка">
+            <ol class="breadcrumbs-list">
+                <li class="breadcrumb-item">
+                    <a href="/" aria-current="page">Галактика GENOФОНД</a>
+                </li>
+            </ol>
+        </nav>
+        
+        <!-- Информационные панели -->
+        <aside class="info-panels" aria-label="Информационные панели">
+            <section class="panel user-stats" aria-labelledby="stats-title">
+                <header class="panel-header">
+                    <h3 id="stats-title" class="panel-title">📊 Статистика генофонда</h3>
+                    <button class="panel-toggle" aria-label="Свернуть панель статистики">−</button>
+                </header>
+                <div class="panel-content">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon" aria-hidden="true">🪐</div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="statsExplored">0</div>
+                                <div class="stat-label">Исследовано</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon" aria-hidden="true">🌙</div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="statsInProgress">0</div>
+                                <div class="stat-label">В процессе</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon" aria-hidden="true">🔒</div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="statsLocked">0</div>
+                                <div class="stat-label">Заблокировано</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="globalProgress" style="width: 0%"></div>
+                    </div>
+                </div>
+            </section>
+            
+            <section class="panel quick-actions" aria-labelledby="actions-title">
+                <header class="panel-header">
+                    <h3 id="actions-title" class="panel-title">🚀 Быстрые команды</h3>
+                    <button class="panel-toggle" aria-label="Свернуть панель команд">−</button>
+                </header>
+                <div class="panel-content">
+                    <div class="actions-grid">
+                        <button class="action-btn" id="showAllEntities" aria-label="Показать все сущности">
+                            <span class="action-icon" aria-hidden="true">👁️</span>
+                            <span class="action-text">Показать все</span>
+                        </button>
+                        <button class="action-btn" id="toggleDebug" aria-label="Переключить режим отладки">
+                            <span class="action-icon" aria-hidden="true">🐛</span>
+                            <span class="action-text">Отладка</span>
+                        </button>
+                        <button class="action-btn" id="exportProgress" aria-label="Экспортировать прогресс">
+                            <span class="action-icon" aria-hidden="true">📤</span>
+                            <span class="action-text">Экспорт</span>
+                        </button>
+                        <button class="action-btn" id="settingsBtn" aria-label="Открыть настройки">
+                            <span class="action-icon" aria-hidden="true">⚙️</span>
+                            <span class="action-text">Настройки</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Панель производительности (только в development) -->
+            <section class="panel performance-panel" aria-labelledby="performance-title" data-visible="false">
+                <header class="panel-header">
+                    <h3 id="performance-title" class="panel-title">📈 Производительность</h3>
+                    <button class="panel-toggle" aria-label="Свернуть панель производительности">−</button>
+                </header>
+                <div class="panel-content">
+                    <div class="performance-stats">
+                        <div class="perf-stat">
+                            <span class="perf-label">FPS:</span>
+                            <span class="perf-value" id="fpsCounter">0</span>
+                        </div>
+                        <div class="perf-stat">
+                            <span class="perf-label">Память:</span>
+                            <span class="perf-value" id="memoryUsage">0MB</span>
+                        </div>
+                        <div class="perf-stat">
+                            <span class="perf-label">Задержка:</span>
+                            <span class="perf-value" id="interactionLatency">0ms</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </aside>
         
         <!-- Окно контента -->
-        <div class="content-viewport" id="contentViewport">
-            <div class="content-viewport-header">
-                <h2 class="content-viewport-title">Добро пожаловать в Галактику GENOФОНД</h2>
-                <button class="close-button">✕</button>
+        <section class="content-viewport" id="contentViewport" aria-label="Область просмотра контента" aria-live="polite">
+            <header class="content-viewport-header">
+                <h2 class="content-viewport-title" id="contentTitle">Добро пожаловать в Галактику GENOФОНД</h2>
+                <div class="content-controls">
+                    <button class="content-btn" id="contentBack" aria-label="Назад" disabled>
+                        <span aria-hidden="true">←</span>
+                    </button>
+                    <button class="content-btn" id="contentForward" aria-label="Вперед" disabled>
+                        <span aria-hidden="true">→</span>
+                    </button>
+                    <button class="content-btn" id="contentClose" aria-label="Закрыть контент">
+                        <span aria-hidden="true">✕</span>
+                    </button>
+                </div>
+            </header>
+            <div class="content-wrapper" id="contentWrapper">
+                <div class="welcome-content">
+                    <div class="welcome-hero">
+                        <div class="hero-icon" aria-hidden="true">🌌</div>
+                        <h3>Исследуйте знания как никогда раньше</h3>
+                        <p>Выберите планету или звездную систему для начала путешествия по вселенной знаний GENOФОНД.</p>
+                    </div>
+                    <div class="welcome-features">
+                        <div class="feature-card">
+                            <div class="feature-icon" aria-hidden="true">🪐</div>
+                            <h4>Интерактивные планеты</h4>
+                            <p>Каждая планета представляет отдельную тему или раздел знаний</p>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon" aria-hidden="true">🔍</div>
+                            <h4>Глубокое погружение</h4>
+                            <p>Приближайтесь к планетам для изучения детального контента</p>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon" aria-hidden="true">📊</div>
+                            <h4>Отслеживание прогресса</h4>
+                            <p>Наблюдайте за своим продвижением в исследовании галактики</p>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="content-wrapper">
-                <p>Выберите планету для изучения контента...</p>
-            </div>
-        </div>
+        </section>
         
         <!-- Система уведомлений -->
-        <div class="notification-center" id="notifications"></div>
+        <div class="notification-center" id="notifications" aria-live="polite" aria-atomic="true"></div>
         
         <!-- Прелоадер -->
-        <div class="preloader" id="preloader">
-            <div class="preloader-spinner"></div>
-            <div class="preloader-text">⏳ Инициализация вселенной GENOФОНД</div>
-            <div class="preloader-progress">
-                <div class="preloader-progress-bar"></div>
+        <div class="preloader" id="preloader" aria-live="polite" aria-label="Загрузка галактики">
+            <div class="preloader-content">
+                <div class="preloader-logo" aria-hidden="true">
+                    <div class="logo-spinner"></div>
+                    <span class="logo-text">GENOФОНД</span>
+                </div>
+                
+                <div class="preloader-progress">
+                    <div class="progress-info">
+                        <span class="progress-text" id="preloaderText">Инициализация космического пространства...</span>
+                        <span class="progress-percent" id="preloaderPercent">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="preloaderProgress"></div>
+                    </div>
+                </div>
+                
+                <div class="preloader-stats">
+                    <div class="loader-stat">
+                        <span class="stat-label">Компоненты:</span>
+                        <span class="stat-value" id="loaderComponents">0/8</span>
+                    </div>
+                    <div class="loader-stat">
+                        <span class="stat-label">Ресурсы:</span>
+                        <span class="stat-value" id="loaderResources">0%</span>
+                    </div>
+                    <div class="loader-stat">
+                        <span class="stat-label">Время:</span>
+                        <span class="stat-value" id="loaderTime">0.0s</span>
+                    </div>
+                </div>
+                
+                <div class="preloader-tips">
+                    <p class="tip-text" id="loaderTip">Используйте колесо мыши для масштабирования галактики</p>
+                </div>
             </div>
         </div>
-    </div>
+        
+        <!-- Модальные окна -->
+        <div class="modal-overlay" id="modalOverlay" aria-hidden="true" data-visible="false">
+            <div class="modal-container" role="dialog" aria-labelledby="modalTitle">
+                <div class="modal-header">
+                    <h3 id="modalTitle">Настройки</h3>
+                    <button class="modal-close" id="modalClose" aria-label="Закрыть диалог">✕</button>
+                </div>
+                <div class="modal-content" id="modalContent">
+                    <!-- Динамическое содержимое модального окна -->
+                </div>
+            </div>
+        </div>
+    </main>
 
-    <!-- Подключение JavaScript в правильном порядке -->
-    <script src="js/meta-parser.js"></script>
-    <script src="js/adaptive-positioning.js"></script>
-    <script src="js/galaxy-builder.js"></script>
-    <script src="js/visibility-manager.js"></script>
-    <script src="js/content-manager.js"></script>
-    <script src="js/galaxy-navigation.js"></script>
-    <script src="js/galaxy-interaction.js"></script>
-    <script src="js/app.js"></script>
+    <!-- Подключение JavaScript с стратегией загрузки -->
+    <!-- Критичные скрипты -->
+    <script src="js/app.js" defer></script>
+    
+    <!-- Основные компоненты -->
+    <script src="js/meta-parser.js" defer></script>
+    <script src="js/adaptive-positioning.js" defer></script>
+    <script src="js/galaxy-builder.js" defer></script>
+    
+    <!-- Системы управления -->
+    <script src="js/visibility-manager.js" defer></script>
+    <script src="js/content-manager.js" defer></script>
+    <script src="js/galaxy-navigation.js" defer></script>
+    <script src="js/galaxy-interaction.js" defer></script>
 
     <!-- Инициализация приложения -->
     <script>
-        // Ждем загрузки DOM
+        // Ждем загрузки DOM и критических ресурсов
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Запуск Галактики GENOФОНД...');
+            console.log('🚀 Запуск Галактики GENOФОНД v2.1 на bioapgreid.ru...');
+            
+            // Обновляем метаданные загрузки
+            const startTime = Date.now();
+            window.genofondAnalytics.domReady = startTime;
             
             // Создаем и инициализируем приложение
             const app = new GenofondApp();
+            window.genofondApp = app; // Глобальная ссылка для отладки
             
-            app.init().then(() => {
-                console.log('✅ Галактика GENOФОНД успешно запущена!');
+            // Функция для обновления статистики загрузки
+            function updateLoaderStats(components, resources, message) {
+                const componentsEl = document.getElementById('loaderComponents');
+                const resourcesEl = document.getElementById('loaderResources');
+                const textEl = document.getElementById('preloaderText');
+                const percentEl = document.getElementById('preloaderPercent');
+                const progressEl = document.getElementById('preloaderProgress');
+                const timeEl = document.getElementById('loaderTime');
                 
-                // Скрываем прелоадер
+                if (componentsEl) componentsEl.textContent = components;
+                if (resourcesEl) resourcesEl.textContent = resources + '%';
+                if (textEl) textEl.textContent = message;
+                if (percentEl) percentEl.textContent = resources + '%';
+                if (progressEl) progressEl.style.width = resources + '%';
+                if (timeEl) {
+                    const elapsed = (Date.now() - startTime) / 1000;
+                    timeEl.textContent = elapsed.toFixed(1) + 's';
+                }
+            }
+            
+            // Подписка на события загрузки
+            document.addEventListener('appInitialized', function() {
+                console.log('✅ Галактика GENOФОНД успешно запущена на bioapgreid.ru!');
+                window.genofondAnalytics.appReady = Date.now();
+                
+                // Скрываем прелоадер с анимацией
                 const preloader = document.getElementById('preloader');
                 if (preloader) {
+                    preloader.style.opacity = '0';
                     setTimeout(() => {
-                        preloader.classList.add('hidden');
-                    }, 1000);
+                        preloader.style.display = 'none';
+                        document.body.setAttribute('data-loading', 'false');
+                    }, 500);
                 }
-            }).catch(error => {
+                
+                // Показываем приветственное уведомление
+                if (app.showNotification) {
+                    app.showNotification('Галактика GENOФОНД готова к исследованию!', 'success');
+                }
+            });
+            
+            document.addEventListener('componentLoaded', function(e) {
+                const { component, time } = e.detail;
+                const componentsLoaded = document.querySelectorAll('[data-component-loaded]').length + 1;
+                const progress = Math.min(95, Math.round((componentsLoaded / 8) * 100));
+                
+                updateLoaderStats(
+                    `${componentsLoaded}/8`,
+                    progress,
+                    `Загрузка ${component}...`
+                );
+            });
+            
+            // Обработка ошибок инициализации
+            app.init().catch(error => {
                 console.error('❌ Ошибка запуска галактики:', error);
+                window.genofondAnalytics.initError = error.message;
                 
                 // Показываем сообщение об ошибке
                 const preloader = document.getElementById('preloader');
                 if (preloader) {
                     preloader.innerHTML = `
-                        <div style="text-align: center; color: #ff6b6b;">
-                            <div style="font-size: 48px;">💥</div>
-                            <div style="font-size: 24px; margin: 20px 0;">Ошибка загрузки</div>
-                            <div>${error.message}</div>
-                            <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #ff6b6b; border: none; border-radius: 5px; color: white; cursor: pointer;">
-                                Перезагрузить
-                            </button>
+                        <div class="error-state">
+                            <div class="error-icon" aria-hidden="true">💥</div>
+                            <h3 class="error-title">Ошибка загрузки галактики</h3>
+                            <p class="error-message">${error.message}</p>
+                            <div class="error-actions">
+                                <button class="error-btn primary" onclick="location.reload()">
+                                    Перезагрузить
+                                </button>
+                                <button class="error-btn secondary" onclick="window.genofondApp.enterSafeMode()">
+                                    Безопасный режим
+                                </button>
+                                ${window.genofondConfig.environment === 'development' ? 
+                                `<button class="error-btn tertiary" onclick="this.nextElementSibling.style.display='block'">
+                                    Подробности
+                                </button>
+                                <div class="error-details" style="display:none">
+                                    <pre>${error.stack}</pre>
+                                </div>` : ''}
+                            </div>
                         </div>
                     `;
                 }
             });
+            
+            // Ранняя инициализация некоторых элементов
+            updateLoaderStats('0/8', '0', 'Подготовка космического пространства...');
+        });
+        
+        // Обработка ошибок загрузки ресурсов
+        window.addEventListener('error', function(e) {
+            if (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK') {
+                console.error('❌ Ошибка загрузки ресурса:', e.target.src || e.target.href);
+                if (window.genofondApp && window.genofondApp.showNotification) {
+                    window.genofondApp.showNotification('Ошибка загрузки ресурсов', 'error');
+                }
+            }
+        });
+        
+        // Сохранение состояния при закрытии
+        window.addEventListener('beforeunload', function() {
+            if (window.genofondApp) {
+                window.genofondApp.saveAppState();
+            }
         });
     </script>
 </body>
