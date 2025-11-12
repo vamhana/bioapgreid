@@ -22,14 +22,15 @@ class PageGenerator {
             watcherInterval: 2000,
             maxBackupCount: 10,
             
-            // Настройки для GitHub Pages
-            baseUrl: 'https://www.bioapgreid.ru',
+            // ИСПРАВЛЕНО: Динамический baseUrl для Vercel и GitHub Pages
+            baseUrl: isVercel && process.env.VERCEL_URL ? 
+                `https://${process.env.VERCEL_URL}` : './',
             
             // Настройки аналитики
             enableAnalytics: false,
-            analyticsProvider: 'yandex', // 'yandex', 'google', 'none'
-            yandexCounterId: '12345678', // ЗАМЕНИТЬ НА РЕАЛЬНЫЙ ID
-            gaTrackingId: 'G-XXXXXXXXXX', // ЗАМЕНИТЬ НА РЕАЛЬНЫЙ ID
+            analyticsProvider: 'yandex',
+            yandexCounterId: '12345678',
+            gaTrackingId: 'G-XXXXXXXXXX',
             
             // Цветовые схемы и иконки
             colorSchemes: {
@@ -40,7 +41,9 @@ class PageGenerator {
                 debris: ['#A8E6CF', '#97CFBA', '#86B8A5', '#75A190'],
                 blackhole: ['#2C3E50', '#34495E', '#2C3E50', '#1A252F'],
                 nebula: ['#D4A5FF', '#BF94E6', '#AA83CC', '#9572B3'],
-                station: ['#FFD166', '#E6BC5C', '#CCA752', '#B39248']
+                station: ['#FFD166', '#E6BC5C', '#CCA752', '#B39248'],
+                gateway: ['#EF476F', '#D63E64', '#BD3659', '#A42D4E'],
+                anomaly: ['#118AB2', '#0F7AA0', '#0D6A8E', '#0B5B7C']
             },
             entityIcons: {
                 star: '⭐',
@@ -50,7 +53,9 @@ class PageGenerator {
                 debris: '🛰️',
                 blackhole: '🌀',
                 nebula: '🌌',
-                station: '🚀'
+                station: '🚀',
+                gateway: '⛩️',
+                anomaly: '💫'
             },
             entitySizes: {
                 star: '1.8',
@@ -60,7 +65,9 @@ class PageGenerator {
                 debris: '0.4',
                 blackhole: '2.0',
                 nebula: '2.5',
-                station: '0.9'
+                station: '0.9',
+                gateway: '1.1',
+                anomaly: '0.7'
             }
         };
 
@@ -179,7 +186,6 @@ class PageGenerator {
                 }))
                 .sort((a, b) => b.time - a.time);
 
-            // Удаляем все, кроме первых maxBackupCount
             if (files.length > this.config.maxBackupCount) {
                 const toDelete = files.slice(this.config.maxBackupCount);
                 toDelete.forEach(file => {
@@ -205,13 +211,9 @@ class PageGenerator {
         };
 
         pagesConfig.forEach(page => {
-            // Статистика по типам
             stats.byType[page.type] = (stats.byType[page.type] || 0) + 1;
-            
-            // Статистика по важности
             stats.byImportance[page.importance] = (stats.byImportance[page.importance] || 0) + 1;
             
-            // Подсчет ошибок
             if (page.validationErrors && page.validationErrors.length > 0) {
                 stats.withErrors++;
             }
@@ -226,7 +228,6 @@ class PageGenerator {
     async autoDiscoverPages() {
         console.log('🔍 Сканирование папки pages/...');
         
-        // Проверяем существование папки pages
         if (!fs.existsSync(this.config.pagesDir)) {
             console.log('⚠️ Папка pages/ не найдена, создаем...');
             this.ensureDirectories();
@@ -250,7 +251,6 @@ class PageGenerator {
             try {
                 const content = fs.readFileSync(filePath, 'utf-8');
                 
-                // Проверка изменений для инкрементальной генерации
                 if (this.config.enableIncremental && !this.hasFileChanged(file, content)) {
                     console.log(`⏭️  Пропущена (без изменений): ${file}`);
                     continue;
@@ -258,8 +258,6 @@ class PageGenerator {
                 
                 const pageConfig = await this.generatePageConfig(file, content, i, files.length);
                 pagesConfig.push(pageConfig);
-                
-                // Сохраняем для проверки иерархии
                 hierarchyMap.set(pageConfig.level, pageConfig);
                 
                 console.log(`📄 Обработана: ${file} → ${pageConfig.name}.html (${pageConfig.type})`);
@@ -268,9 +266,7 @@ class PageGenerator {
             }
         }
 
-        // Проверяем иерархические отношения
         this.validateHierarchy(pagesConfig, hierarchyMap);
-
         return pagesConfig;
     }
 
@@ -305,19 +301,6 @@ class PageGenerator {
     <div class="content">
         <h1>Пример раздела</h1>
         <p>Это пример страницы. Добавьте свои HTML-файлы в папку pages/ и запустите генератор снова.</p>
-        
-        <h2>Поддерживаемые мета-теги:</h2>
-        <ul>
-            <li><code>galaxy:level</code> - идентификатор уровня</li>
-            <li><code>galaxy:type</code> - тип сущности (planet, moon, star, etc.)</li>
-            <li><code>galaxy:title</code> - название сущности</li>
-            <li><code>galaxy:description</code> - описание</li>
-            <li><code>galaxy:color</code> - цвет в HEX</li>
-            <li><code>galaxy:icon</code> - иконка эмодзи</li>
-            <li><code>galaxy:importance</code> - важность (high, medium, low)</li>
-            <li><code>galaxy:parent</code> - родительский уровень</li>
-            <li>И другие...</li>
-        </ul>
     </div>
 </body>
 </html>`;
@@ -334,7 +317,6 @@ class PageGenerator {
         const metaTags = this.extractMetaTags(htmlContent);
         const name = filename.replace('.html', '');
 
-        // Определяем тип сущности на основе содержимого или индекса
         const entityType = this.determineEntityType(metaTags, index, totalPages);
 
         const config = {
@@ -363,9 +345,7 @@ class PageGenerator {
             validationErrors: []
         };
 
-        // Валидация конфигурации
         config.validationErrors = this.validatePageConfig(config);
-        
         return config;
     }
 
@@ -373,37 +353,22 @@ class PageGenerator {
      * Генерирует путь к превью-изображению
      */
     generatePreviewImage(name, entityType) {
-        const previewsDir = path.join(this.config.outputDir, 'assets', 'previews');
-        
-        // Создаем директорию для превью, если её нет
-        if (!fs.existsSync(previewsDir)) {
-            fs.mkdirSync(previewsDir, { recursive: true });
-        }
-        
-        const previewFilename = `${name}-preview.png`;
-        const previewPath = path.join(previewsDir, previewFilename);
-        
-        // Здесь может быть логика генерации превью-изображений
-        // Пока возвращаем путь к заглушке
-        return `/assets/previews/${previewFilename}`;
+        return `./assets/previews/${name}-preview.png`;
     }
 
     /**
      * Определяет тип сущности на основе мета-тегов и контекста
      */
     determineEntityType(metaTags, index, totalPages) {
-        // Приоритет отдается явно указанному типу
         if (metaTags.type && this.isValidEntityType(metaTags.type)) {
             return metaTags.type;
         }
         
-        // Автоматическое определение на основе позиции и контента
         if (index === 0) return 'star';
         if (index < 3) return 'planet';
         if (index < 8) return 'moon';
         
-        // Случайное распределение для остальных
-        const types = ['asteroid', 'debris', 'station', 'nebula'];
+        const types = ['asteroid', 'debris', 'station', 'nebula', 'gateway', 'anomaly'];
         return types[Math.floor(Math.random() * types.length)];
     }
 
@@ -421,17 +386,14 @@ class PageGenerator {
     extractMetaTags(htmlContent) {
         const metaTags = {};
         
-        // Регулярные выражения для извлечения мета-тегов
         const metaRegex = /<meta\s+name="galaxy:([^"]+)"\s+content="([^"]*)"/g;
         const titleRegex = /<title>([^<]*)<\/title>/i;
         
-        // Извлекаем стандартные мета-теги галактики
         let match;
         while ((match = metaRegex.exec(htmlContent)) !== null) {
             metaTags[match[1]] = match[2];
         }
         
-        // Извлекаем title страницы как резервное значение
         const titleMatch = htmlContent.match(titleRegex);
         if (titleMatch && !metaTags.title) {
             metaTags.title = titleMatch[1].replace(' | GENOФОНД', '').trim();
@@ -471,7 +433,9 @@ class PageGenerator {
             debris: 20,
             blackhole: 150,
             nebula: 180,
-            station: 80
+            station: 80,
+            gateway: 100,
+            anomaly: 70
         };
         
         const baseRadius = baseRadii[entityType] || 100;
@@ -493,10 +457,8 @@ class PageGenerator {
      */
     validateHierarchy(pagesConfig, hierarchyMap) {
         let hasOrphans = false;
-        let hasCycles = false;
         
         pagesConfig.forEach(page => {
-            // Проверка существования родителя
             if (page.parent && !hierarchyMap.has(page.parent)) {
                 console.warn(`⚠️ Страница ${page.level} ссылается на несуществующего родителя ${page.parent}`);
                 page.parent = '';
@@ -504,18 +466,16 @@ class PageGenerator {
                 hasOrphans = true;
             }
             
-            // Находим дочерние элементы
             page.children = pagesConfig.filter(p => p.parent === page.level)
                 .map(p => p.level);
         });
         
-        // Проверяем циклические зависимости
         if (this.detectCycles(pagesConfig)) {
-            hasCycles = true;
+            console.warn('⚠️ Обнаружены циклические зависимости в иерархии');
         }
         
-        if (hasOrphans || hasCycles) {
-            console.log('ℹ️ Обнаружены проблемы в иерархии страниц');
+        if (hasOrphans) {
+            console.log('ℹ️ Обнаружены сиротские страницы');
         }
     }
 
@@ -564,29 +524,24 @@ class PageGenerator {
         const errors = [];
         const requiredFields = ['name', 'title', 'level', 'type', 'description', 'color'];
         
-        // Проверка обязательных полей
         requiredFields.forEach(field => {
             if (!config[field]) {
                 errors.push(`Отсутствует обязательное поле: ${field}`);
             }
         });
         
-        // Проверка корректности уровня
         if (!config.level.match(/^[a-zA-Z0-9_-]+$/)) {
             errors.push(`Некорректный формат уровня: ${config.level}`);
         }
         
-        // Проверка корректности типа
         if (!this.isValidEntityType(config.type)) {
             errors.push(`Некорректный тип сущности: ${config.type}`);
         }
         
-        // Проверка корректности цвета
         if (!config.color.match(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/)) {
             errors.push(`Некорректный формат цвета: ${config.color}`);
         }
         
-        // Проверка числовых значений
         if (isNaN(parseFloat(config.orbitRadius)) || parseFloat(config.orbitRadius) <= 0) {
             errors.push(`Некорректный радиус орбиты: ${config.orbitRadius}`);
         }
@@ -648,15 +603,13 @@ class PageGenerator {
                 userAgent: navigator.userAgent
             };
             
-            // Сохраняем в localStorage для последующего анализа
             try {
                 const sessionKey = 'ga_session_' + new Date().toDateString();
                 let sessionData = JSON.parse(localStorage.getItem(sessionKey) || '{"pageViews": []}');
                 sessionData.pageViews.push(analyticsData);
                 localStorage.setItem(sessionKey, JSON.stringify(sessionData));
-                console.log('📊 Analytics recorded:', analyticsData);
             } catch (e) {
-                console.log('📊 Analytics (fallback):', analyticsData);
+                console.log('📊 Analytics recorded:', analyticsData);
             }
         });
     </script>`;
@@ -671,6 +624,10 @@ class PageGenerator {
             `    <meta name="galaxy:tags" content="${config.metadata.tags.join(',')}">\n` : '';
         
         const analyticsScript = this.generateAnalyticsScript();
+
+        // ИСПРАВЛЕНО: Относительные пути для Vercel
+        const isRelativeBase = this.config.baseUrl === './';
+        const basePath = isRelativeBase ? './' : this.config.baseUrl + '/';
 
         return `<!DOCTYPE html>
 <html lang="ru">
@@ -698,13 +655,13 @@ ${additionalMetaTags}
     <meta property="og:title" content="${config.title}">
     <meta property="og:description" content="${config.description}">
     <meta property="og:type" content="website">
-    <meta property="og:image" content="${config.metadata.previewImage}">
-    <meta property="og:url" content="/${config.name}.html">
+    <meta property="og:image" content="${basePath}${config.metadata.previewImage}">
+    <meta property="og:url" content="${basePath}${config.name}.html">
     
     <!-- ПОДКЛЮЧЕНИЕ СТИЛЕЙ -->
-    <link rel="stylesheet" href="styles/main.css">
-    <link rel="stylesheet" href="styles/galaxy-universe.css">
-    <link rel="stylesheet" href="styles/galaxy-components.css">
+    <link rel="stylesheet" href="${basePath}styles/main.css">
+    <link rel="stylesheet" href="${basePath}styles/galaxy-universe.css">
+    <link rel="stylesheet" href="${basePath}styles/galaxy-components.css">
     
     ${analyticsScript}
     
@@ -712,6 +669,11 @@ ${additionalMetaTags}
     <script>
         window.autoActivateLevel = '${config.level}';
         window.pageConfig = ${JSON.stringify(config, null, 2)};
+        // ИСПРАВЛЕНО: Динамическая конфигурация baseUrl
+        window.genofondConfig = {
+            baseUrl: '${basePath}',
+            environment: 'production'
+        };
     </script>
 </head>
 <body>
@@ -785,20 +747,20 @@ ${additionalMetaTags}
     </div>
     
     <!-- ПОДКЛЮЧЕНИЕ СКРИПТОВ -->
-    <script src="js/app.js"></script>
-    <script src="js/meta-parser.js"></script>
-    <script src="js/galaxy-builder.js"></script>
-    <script src="js/visibility-manager.js"></script>
-    <script src="js/content-manager.js"></script>
-    <script src="js/galaxy-interaction.js"></script>
-    <script src="js/galaxy-navigation.js"></script>
-    <script src="js/adaptive-positioning.js"></script>
+    <script src="${basePath}js/app.js"></script>
+    <script src="${basePath}js/meta-parser.js"></script>
+    <script src="${basePath}js/galaxy-builder.js"></script>
+    <script src="${basePath}js/visibility-manager.js"></script>
+    <script src="${basePath}js/content-manager.js"></script>
+    <script src="${basePath}js/galaxy-interaction.js"></script>
+    <script src="${basePath}js/galaxy-navigation.js"></script>
+    <script src="${basePath}js/adaptive-positioning.js"></script>
     
     <!-- ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            if (window.app) {
-                window.app.init().catch(function(error) {
+            if (window.genofondApp) {
+                window.genofondApp.init().catch(function(error) {
                     console.error('Ошибка инициализации:', error);
                     document.getElementById('preloader').innerHTML = 
                         '<div class="error-message">Ошибка загрузки: ' + error.message + '</div>';
@@ -823,7 +785,7 @@ ${additionalMetaTags}
                 title: page.title,
                 type: page.type,
                 importance: page.importance,
-                url: `/${page.name}.html`,
+                url: `${this.config.baseUrl}/${page.name}.html`,
                 parent: page.parent || null,
                 children: page.children,
                 metadata: page.metadata,
@@ -881,6 +843,7 @@ ${additionalMetaTags}
         const startTime = Date.now();
         
         console.log('🚀 Запуск автоматической генерации шлюзов v2.1.1...');
+        console.log('📍 Base URL:', this.config.baseUrl);
         console.log('═'.repeat(60));
         
         try {
@@ -914,13 +877,8 @@ ${additionalMetaTags}
                 }
             }
             
-            // Генерируем карту сайта
             this.generateSiteMap(pagesConfig);
-            
-            // Создаем резервную копию
             this.createBackup(pagesConfig);
-            
-            // Сохраняем хеши файлов
             this.saveFileHashes();
             
             const endTime = Date.now();
@@ -930,7 +888,6 @@ ${additionalMetaTags}
             console.log(`🎉 Генерация завершена за ${generationTime}с`);
             console.log(`📊 Результат: ${generatedCount} успешно, ${errorCount} с ошибками`);
             
-            // Статистика по типам
             const typeStats = {};
             pagesConfig.forEach(page => {
                 typeStats[page.type] = (typeStats[page.type] || 0) + 1;
@@ -941,7 +898,6 @@ ${additionalMetaTags}
                 console.log(`   ${this.config.entityIcons[type] || '🔮'} ${type}: ${count}`);
             });
             
-            // Информация об аналитике
             if (this.config.enableAnalytics) {
                 console.log(`\n📊 Аналитика: ${this.config.analyticsProvider.toUpperCase()} ${this.config.analyticsProvider === 'yandex' ? '(ID: ' + this.config.yandexCounterId + ')' : ''}`);
             }
@@ -957,18 +913,13 @@ ${additionalMetaTags}
      * Генерирует отдельную страницу на основе конфигурации
      */
     async generatePage(pageConfig) {
-        // Валидация конфигурации
         if (pageConfig.validationErrors.length > 0) {
             console.warn(`⚠️ Конфигурация ${pageConfig.name} содержит ошибки:`, pageConfig.validationErrors);
         }
         
-        // Создание HTML-содержимого
         const htmlContent = this.createHTMLTemplate(pageConfig);
-        
-        // Определение пути для сохранения
         const outputPath = path.join(this.config.outputDir, `${pageConfig.name}.html`);
         
-        // Запись файла
         await fs.promises.writeFile(outputPath, htmlContent, 'utf-8');
     }
 }
@@ -976,15 +927,15 @@ ${additionalMetaTags}
 // Создаем экземпляр генератора
 const pageGenerator = new PageGenerator();
 
-// Если в Vercel - настраиваем конфигурацию
+// Автоматическая настройка для Vercel
 if (isVercel) {
     console.log('🌐 Vercel Environment Detected - Running optimized build');
     pageGenerator.config.enableWatcher = false;
     pageGenerator.config.enableAnalytics = true;
 }
 
-// Запуск генерации при прямом вызове
-if (import.meta.url === `file://${process.argv[1]}` || isVercel) {
+// Упрощенный запуск для Vercel и локальной разработки
+if (isVercel || import.meta.url === `file://${process.argv[1]}`) {
     console.log('🚀 Starting page generation...');
     
     pageGenerator.generateAllPages().catch(error => {
@@ -992,11 +943,9 @@ if (import.meta.url === `file://${process.argv[1]}` || isVercel) {
         process.exit(1);
     });
     
-    // Запускаем отслеживание изменений, если включено и не в Vercel
     if (pageGenerator.config.enableWatcher && !isVercel) {
         pageGenerator.setupWatcher();
         
-        // Обработка graceful shutdown
         process.on('SIGINT', () => {
             console.log('\n🛑 Остановка генератора...');
             pageGenerator.stopWatcher();
@@ -1010,7 +959,6 @@ export {
     pageGenerator
 };
 
-// И ДОБАВЬТЕ ОТДЕЛЬНЫЕ ЭКСПОРТЫ:
 export const generateAllPages = () => pageGenerator.generateAllPages();
 export const autoDiscoverPages = () => pageGenerator.autoDiscoverPages();
 export const createHTMLTemplate = (config) => pageGenerator.createHTMLTemplate(config);
