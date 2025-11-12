@@ -1,25 +1,4 @@
-// bioapgreid/vercel.json
-// содержит:
-// {
-//   "version": 2,
-//   "builds": [
-//     {
-//       "src": "package.json",
-//       "use": "@vercel/static-build",
-//       "config": {
-//         "distDir": "public"
-//       }
-//     }
-//   ],
-//   "rewrites": [
-//     {
-//       "source": "/(.*)",
-//       "destination": "/$1"
-//     }
-//   ],
-//   "cleanUrls": true,
-//  "trailingSlash": false
-// }
+
 {
   "version": 2,
   "builds": [
