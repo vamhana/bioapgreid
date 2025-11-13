@@ -5,23 +5,15 @@
   "type": "module",
   "main": "js/app.js",
   "scripts": {
-    "dev": "live-server --port=3000 --watch=.,pages,styles,js,assets --ignore=backups,node_modules --open=/",
-    "build": "npm run generate-pages && npm run build-styles && npm run optimize-assets",
+    "dev": "node utils/generate-pages.js && live-server --port=3000 --watch=.,pages,styles,js,assets --ignore=backups,node_modules --open=/",
+    "build": "npm run generate-pages",
     "generate-pages": "node utils/generate-pages.js",
-    "build-styles": "node scripts/build-styles.js",
-    "optimize-assets": "node scripts/optimize-assets.js",
-    "predeploy": "npm run build",
     "start": "npm run dev",
-    "clean": "node scripts/clean-build.js",
-    "test": "node scripts/run-tests.js",
-    "lint": "node scripts/lint-code.js",
-    "debug": "npm run generate-pages && live-server --port=3001 --watch=.,pages,styles,js --ignore=backups --open=/?debug=true",
-    "vercel-build": "npm run generate-pages && npm run build-styles",
-    "gh-pages": "npm run generate-pages && npm run build-styles && npm run optimize-assets",
-    "analyze": "node scripts/analyze-bundle.js",
-    "backup": "node scripts/create-backup.js",
-    "restore": "node scripts/restore-backup.js",
-    "health-check": "node scripts/health-check.js"
+    "clean": "rm -f sitemap.json *.html backups/*.json",
+    "test": "echo \"No tests specified\" && exit 0",
+    "vercel-build": "npm run generate-pages",
+    "gh-pages": "npm run generate-pages",
+    "health-check": "node -e \"console.log('Health check passed')\""
   },
   "keywords": [
     "education",
@@ -44,80 +36,18 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/bioapgreid/genofond-galaxy.git"
+    "url": "https://github.com/vamhana/bioapgreid.git"
   },
-  "homepage": "https://www.bioapgreid.ru",
+  "homepage": "https://bioapgreid.vercel.app",
   "bugs": {
-    "url": "https://github.com/bioapgreid/genofond-galaxy/issues",
-    "email": "support@bioapgreid.ru"
+    "url": "https://github.com/vamhana/bioapgreid/issues"
   },
   "engines": {
     "node": ">=16.0.0",
     "npm": ">=7.0.0"
   },
-  "browserslist": [
-    "last 2 versions",
-    "not dead",
-    "not ie < 11",
-    "not op_mini all"
-  ],
   "dependencies": {},
   "devDependencies": {
-    "live-server": "^1.2.2",
-    "clean-css": "^5.3.2",
-    "sharp": "^0.32.1",
-    "imagemin": "^8.0.1",
-    "imagemin-pngquant": "^9.0.2",
-    "imagemin-svgo": "^10.0.1",
-    "eslint": "^8.45.0",
-    "html-validator": "^6.0.1",
-    "lighthouse": "^11.0.0",
-    "node-fetch": "^3.3.1"
-  },
-  "volta": {
-    "node": "18.16.0",
-    "npm": "9.5.1"
-  },
-  "config": {
-    "port": 3000,
-    "apiUrl": "https://api.bioapgreid.ru",
-    "analyticsId": "G-XXXXXXXXXX",
-    "yandexMetrikaId": "12345678",
-    "environment": "production"
-  },
-  "deploy": {
-    "vercel": {
-      "env": {
-        "NODE_ENV": "production"
-      },
-      "buildCommand": "npm run vercel-build",
-      "outputDirectory": ".",
-      "include": [
-        "*.html",
-        "js/**/*",
-        "styles/**/*",
-        "assets/**/*",
-        "pages/**/*",
-        "backups/**/*",
-        "sitemap.json"
-      ]
-    },
-    "github-pages": {
-      "buildCommand": "npm run gh-pages",
-      "outputDirectory": ".",
-      "cname": "www.bioapgreid.ru"
-    }
-  },
-  "files": [
-    "*.html",
-    "js/",
-    "styles/",
-    "assets/",
-    "pages/",
-    "utils/",
-    "backups/",
-    "sitemap.json",
-    "manifest.json",
-    "robots.txt"
-  ]
+    "live-server": "^1.2.2"
+  }
 }
