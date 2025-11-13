@@ -1,77 +1,123 @@
 {
-  "name": "genofond-galaxy",
-  "version": "2.1.0",
-  "description": "🌌 Галактика GENOФОНД - Интерактивная образовательная платформа для исследования знаний как космических систем",
-  "homepage": "https://www.bioapgreid.ru/",
+  "name": "bioapgreid",
+  "version": "2.1.1",
+  "description": "Галактика GENOФОНД - интерактивная образовательная платформа для исследования знаний через визуальную космическую метафору",
+  "type": "module",
+  "main": "js/app.js",
+  "scripts": {
+    "dev": "live-server --port=3000 --watch=.,pages,styles,js,assets --ignore=backups,node_modules --open=/",
+    "build": "npm run generate-pages && npm run build-styles && npm run optimize-assets",
+    "generate-pages": "node utils/generate-pages.js",
+    "build-styles": "node scripts/build-styles.js",
+    "optimize-assets": "node scripts/optimize-assets.js",
+    "predeploy": "npm run build",
+    "start": "npm run dev",
+    "clean": "node scripts/clean-build.js",
+    "test": "node scripts/run-tests.js",
+    "lint": "node scripts/lint-code.js",
+    "debug": "npm run generate-pages && live-server --port=3001 --watch=.,pages,styles,js --ignore=backups --open=/?debug=true",
+    "vercel-build": "npm run generate-pages && npm run build-styles",
+    "gh-pages": "npm run generate-pages && npm run build-styles && npm run optimize-assets",
+    "analyze": "node scripts/analyze-bundle.js",
+    "backup": "node scripts/create-backup.js",
+    "restore": "node scripts/restore-backup.js",
+    "health-check": "node scripts/health-check.js"
+  },
   "keywords": [
     "education",
     "interactive",
     "galaxy",
     "knowledge",
-    "learning",
     "genetics",
-    "biology",
-    "bioapgreid"
+    "bioinformatics",
+    "visualization",
+    "cosmic",
+    "metaphor",
+    "russian",
+    "genofond"
   ],
   "author": {
-    "name": "GENOФОНД Team",
+    "name": "BioApGreid Team",
     "email": "contact@bioapgreid.ru",
-    "url": "https://www.bioapgreid.ru/"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/vamhana/bioapgreid.git"
+    "url": "https://www.bioapgreid.ru"
   },
   "license": "MIT",
-  "type": "module",
-  "main": "index.html",
-  "scripts": {
-    "dev": "live-server --port=3000 --host=localhost --watch=.,styles,js,pages --ignore=node_modules,.git",
-    "start": "npm run dev",
-    "generate": "node utils/generate-pages.js",
-    "build": "npm run generate && npm run create-public",
-    "create-public": "mkdir -p public && cp -r *.html styles/ js/ assets/ pages/ public/ 2>/dev/null || echo 'Files copied to public'",
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d public -b gh-pages",
-    "deploy:force": "gh-pages -d public -b gh-pages --force",
-    "clean": "rm -rf node_modules package-lock.json public",
-    "lint": "echo 'No linter configured'",
-    "test": "echo 'No tests specified'",
-    "analyze": "echo 'Bundle analysis not needed for static site'",
-    "serve:prod": "live-server --port=3000 --host=localhost --no-browser --quiet"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bioapgreid/genofond-galaxy.git"
   },
-  "devDependencies": {
-    "live-server": "^1.2.2",
-    "gh-pages": "^6.1.1"
+  "homepage": "https://www.bioapgreid.ru",
+  "bugs": {
+    "url": "https://github.com/bioapgreid/genofond-galaxy/issues",
+    "email": "support@bioapgreid.ru"
   },
   "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=9.0.0"
+    "node": ">=16.0.0",
+    "npm": ">=7.0.0"
   },
   "browserslist": [
-    "last 2 Chrome versions",
-    "last 2 Firefox versions",
-    "last 2 Safari versions",
-    "last 2 Edge versions"
+    "last 2 versions",
+    "not dead",
+    "not ie < 11",
+    "not op_mini all"
   ],
-  "config": {
-    "port": 3000,
-    "baseUrl": "https://www.bioapgreid.ru/"
-  },
-  "files": [
-    "index.html",
-    "js/",
-    "styles/",
-    "pages/",
-    "utils/",
-    "assets/",
-    "manifest.json"
-  ],
-  "publishConfig": {
-    "registry": "https://registry.npmjs.org/"
+  "dependencies": {},
+  "devDependencies": {
+    "live-server": "^1.2.2",
+    "clean-css": "^5.3.2",
+    "sharp": "^0.32.1",
+    "imagemin": "^8.0.1",
+    "imagemin-pngquant": "^9.0.2",
+    "imagemin-svgo": "^10.0.1",
+    "eslint": "^8.45.0",
+    "html-validator": "^6.0.1",
+    "lighthouse": "^11.0.0",
+    "node-fetch": "^3.3.1"
   },
   "volta": {
-    "node": "18.17.0",
-    "npm": "9.6.7"
-  }
+    "node": "18.16.0",
+    "npm": "9.5.1"
+  },
+  "config": {
+    "port": 3000,
+    "apiUrl": "https://api.bioapgreid.ru",
+    "analyticsId": "G-XXXXXXXXXX",
+    "yandexMetrikaId": "12345678",
+    "environment": "production"
+  },
+  "deploy": {
+    "vercel": {
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "buildCommand": "npm run vercel-build",
+      "outputDirectory": ".",
+      "include": [
+        "*.html",
+        "js/**/*",
+        "styles/**/*",
+        "assets/**/*",
+        "pages/**/*",
+        "backups/**/*",
+        "sitemap.json"
+      ]
+    },
+    "github-pages": {
+      "buildCommand": "npm run gh-pages",
+      "outputDirectory": ".",
+      "cname": "www.bioapgreid.ru"
+    }
+  },
+  "files": [
+    "*.html",
+    "js/",
+    "styles/",
+    "assets/",
+    "pages/",
+    "utils/",
+    "backups/",
+    "sitemap.json",
+    "manifest.json",
+    "robots.txt"
+  ]
 }
