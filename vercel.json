@@ -5,8 +5,8 @@
       "src": "package.json",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "public",
-        "nodeVersion": "22.x"
+        "distDir": ".",
+        "nodeVersion": "18.x"
       }
     }
   ],
