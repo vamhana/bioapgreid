@@ -12,7 +12,7 @@
   ],
   "routes": [
     {
-        "src": "/data/sitemap.json",
+        "src": "/sitemap.json",
         "dest": "/api/sitemap.js"
     },
     {
