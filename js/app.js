@@ -1,3 +1,5 @@
+
+
 class PerformanceMonitor {
     constructor(app) {
         this.app = app;
@@ -256,8 +258,8 @@ class GenofondApp {
             currentLevel: null,
             isLoading: true,
             lastError: null,
-            domain: window.location.hostname, // ДОБАВЛЕНО: информация о домене
-            environment: this.getEnvironment(), // ДОБАВЛЕНО: определение окружения
+            domain: window.location.hostname,
+            environment: this.getEnvironment(),
             performanceMetrics: {
                 initTime: 0,
                 componentLoadTimes: {},
@@ -270,7 +272,14 @@ class GenofondApp {
                 interactions: 0,
                 navigationEvents: 0,
                 errors: 0,
-                domain: window.location.hostname // ДОБАВЛЕНО: домен в аналитику
+                domain: window.location.hostname
+            },
+            // ДОБАВЛЕНО: Детальная информация для отладки
+            debug: {
+                initializationSteps: [],
+                fileAvailability: {},
+                componentStatus: {},
+                errors: []
             }
         };
         
@@ -295,10 +304,23 @@ class GenofondApp {
             enableErrorRecovery: true,
             baseUrl: 'https://www.bioapgreid.ru/',
             isGitHubPages: window.location.hostname.includes('github.io'),
-            isBioapgreid: window.location.hostname.includes('bioapgreid.ru')
+            isBioapgreid: window.location.hostname.includes('bioapgreid.ru'),
+            // ДОБАВЛЕНО: Критические файлы для проверки
+            criticalFiles: [
+                'js/app.js',
+                'js/meta-parser.js', 
+                'js/galaxy-builder.js',
+                'sitemap.json',
+                'pages/filosofiya.html'
+            ]
         };
         
-        console.log(`🚀 GenofondApp v2.1 инициализирован для домена: ${this.appState.domain}`);
+        console.log(`🚀 GenofondApp v2.1.1 инициализирован для домена: ${this.appState.domain}`);
+        console.log(`📍 Окружение: ${this.appState.environment}`);
+        console.log(`📍 Base URL: ${window.genofondConfig?.baseUrl || 'не определен'}`);
+        
+        // Запись шага инициализации
+        this.recordDebugStep('constructor', 'Экземпляр приложения создан');
     }
 
     /**
@@ -309,64 +331,213 @@ class GenofondApp {
             return 'production';
         } else if (window.location.hostname.includes('github.io')) {
             return 'staging';
-        } else {
+        } else if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
             return 'development';
+        } else {
+            return 'unknown';
         }
+    }
+
+    /**
+     * Запись шага отладки
+     */
+    recordDebugStep(step, message, data = null) {
+        const debugStep = {
+            step,
+            message,
+            timestamp: Date.now(),
+            data
+        };
+        
+        this.appState.debug.initializationSteps.push(debugStep);
+        console.log(`🔧 [${step}] ${message}`, data || '');
+    }
+
+    /**
+     * Проверка доступности файла
+     */
+    async checkFileAvailability(url) {
+        try {
+            const startTime = performance.now();
+            const response = await fetch(url, { method: 'HEAD', cache: 'no-cache' });
+            const availability = response.ok;
+            const loadTime = performance.now() - startTime;
+            
+            this.appState.debug.fileAvailability[url] = {
+                available: availability,
+                status: response.status,
+                loadTime: loadTime,
+                checkedAt: Date.now()
+            };
+            
+            this.recordDebugStep('fileCheck', `Файл ${url}: ${availability ? '✅ доступен' : '❌ недоступен'}`, {
+                status: response.status,
+                loadTime: loadTime.toFixed(2) + 'ms'
+            });
+            
+            return availability;
+        } catch (error) {
+            this.appState.debug.fileAvailability[url] = {
+                available: false,
+                error: error.message,
+                checkedAt: Date.now()
+            };
+            
+            this.recordDebugStep('fileCheck', `Файл ${url}: ❌ ошибка проверки`, error.message);
+            return false;
+        }
+    }
+
+    /**
+     * Отправка события прогресса
+     */
+    sendProgressEvent(type, data) {
+        this.dispatchEvent('componentProgress', {
+            type,
+            timestamp: Date.now(),
+            domain: this.appState.domain,
+            ...data
+        });
+    }
+
+    /**
+     * Предварительная проверка файлов
+     */
+    async preFlightCheck() {
+        this.recordDebugStep('preFlightCheck', 'Начало проверки критических файлов');
+        
+        let availableCount = 0;
+        const results = [];
+
+        for (const file of this.config.criticalFiles) {
+            const isAvailable = await this.checkFileAvailability(file);
+            results.push({ file, available: isAvailable });
+            if (isAvailable) availableCount++;
+            
+            // Отправка события прогресса проверки файлов
+            this.sendProgressEvent('fileCheck', {
+                file,
+                available: isAvailable,
+                progress: Math.round((availableCount / this.config.criticalFiles.length) * 100),
+                checkedFiles: availableCount,
+                totalFiles: this.config.criticalFiles.length
+            });
+            
+            // Короткая задержка между проверками
+            await this.delay(100);
+        }
+
+        this.recordDebugStep('preFlightCheck', `Проверка файлов завершена: ${availableCount}/${this.config.criticalFiles.length} доступно`, results);
+        
+        // Проверяем наличие критических файлов
+        const criticalFilesMissing = results.filter(r => 
+            r.file.startsWith('js/') && !r.available
+        ).length > 0;
+
+        if (criticalFilesMissing) {
+            throw new Error(`Отсутствуют критические JavaScript файлы. Доступно: ${availableCount}/${this.config.criticalFiles.length}`);
+        }
+
+        return results;
     }
 
     async init() {
         const startTime = performance.now();
         
         try {
-            console.log(`🚀 Начало инициализации галактики GENOФОНД v2.1 на домене: ${this.appState.domain}...`);
+            console.log(`🚀 ===== НАЧАЛО ИНИЦИАЛИЗАЦИИ ГАЛАКТИКИ GENOФОНД v2.1.1 =====`);
+            console.log(`📍 Домен: ${this.appState.domain}`);
+            console.log(`📍 Окружение: ${this.appState.environment}`);
+            console.log(`📍 Путь: ${window.location.pathname}`);
+            
+            this.recordDebugStep('init', 'Начало инициализации приложения');
+
+            // ФАЗА 0: ПРЕДВАРИТЕЛЬНАЯ ПРОВЕРКА
+            this.recordDebugStep('init', 'Фаза 0: Предварительная проверка');
+            this.sendProgressEvent('phase', { phase: 0, message: 'Предварительная проверка...' });
+            
+            await this.showPreloader();
+            const fileCheckResults = await this.preFlightCheck();
+
+            // ФАЗА 1: ПРЕДВАРИТЕЛЬНАЯ НАСТРОЙКА
+            this.recordDebugStep('init', 'Фаза 1: Предварительная настройка');
+            this.sendProgressEvent('phase', { phase: 1, message: 'Предварительная настройка...' });
+            
+            await this.loadUserData();
+            await this.setupAnalytics();
             
             // Запуск мониторинга производительности
             if (this.config.enablePerformanceMonitoring) {
                 this.performanceMonitor.start();
             }
-            
-            // ФАЗА 1: ПРЕДВАРИТЕЛЬНАЯ НАСТРОЙКА
-            await this.showPreloader();
-            await this.loadUserData();
-            await this.setupAnalytics();
-            
+
             // ФАЗА 2: ИНИЦИАЛИЗАЦИЯ КОМПОНЕНТОВ
+            this.recordDebugStep('init', 'Фаза 2: Инициализация компонентов');
+            this.sendProgressEvent('phase', { phase: 2, message: 'Инициализация компонентов...' });
+            
             await this.initializeComponents();
-            
+
             // ФАЗА 3: НАСТРОЙКА ВЗАИМОДЕЙСТВИЙ
-            await this.setupComponentIntegration();
+            this.recordDebugStep('init', 'Фаза 3: Настройка взаимодействий');
+            this.sendProgressEvent('phase', { phase: 3, message: 'Настройка взаимодействий...' });
             
+            await this.setupComponentIntegration();
+
             // ФАЗА 4: ЗАПУСК СИСТЕМЫ
+            this.recordDebugStep('init', 'Фаза 4: Запуск системы');
+            this.sendProgressEvent('phase', { phase: 4, message: 'Запуск системы...' });
+            
             await this.startApplication();
             
             const initTime = performance.now() - startTime;
             this.appState.performanceMetrics.initTime = initTime;
             
-            console.log(`🎉 Галактика GENOФОНД v2.1 успешно инициализирована на ${this.appState.domain} за ${initTime.toFixed(2)}мс!`);
+            console.log(`🎉 Галактика GENOФОНД v2.1.1 успешно инициализирована на ${this.appState.domain} за ${initTime.toFixed(2)}мс!`);
             
             // Аналитика успешной инициализации
             this.recordAnalyticsEvent('app_initialized', { 
                 initTime,
                 domain: this.appState.domain,
-                environment: this.appState.environment
+                environment: this.appState.environment,
+                components: Array.from(this.components.keys()),
+                fileCheckResults
+            });
+            
+            this.recordDebugStep('init', 'Инициализация успешно завершена', {
+                initTime: initTime.toFixed(2) + 'ms',
+                components: Array.from(this.components.keys()),
+                domain: this.appState.domain
             });
             
         } catch (error) {
             const errorTime = performance.now() - startTime;
-            console.error(`💥 Критическая ошибка инициализации на ${this.appState.domain} через ${errorTime.toFixed(2)}мс:`, error);
+            console.error(`💥 КРИТИЧЕСКАЯ ОШИБКА ИНИЦИАЛИЗАЦИИ на ${this.appState.domain} через ${errorTime.toFixed(2)}мс:`, error);
             
             this.appState.lastError = {
                 message: error.message,
                 timestamp: Date.now(),
                 phase: 'initialization',
-                domain: this.appState.domain
+                domain: this.appState.domain,
+                stack: error.stack
             };
+            
+            this.appState.debug.errors.push({
+                type: 'initialization',
+                message: error.message,
+                phase: 'init',
+                timestamp: Date.now(),
+                domain: this.appState.domain
+            });
             
             this.recordAnalyticsEvent('app_initialization_failed', { 
                 error: error.message,
                 initTime: errorTime,
-                domain: this.appState.domain
+                domain: this.appState.domain,
+                environment: this.appState.environment,
+                debug: this.appState.debug
             });
+            
+            this.recordDebugStep('init', 'Критическая ошибка инициализации', error);
             
             await this.handleInitializationError(error);
         }
@@ -382,7 +553,8 @@ class GenofondApp {
         preloader.style.display = 'flex';
         
         const progressSteps = [
-            { percent: 10, text: 'Загрузка космического пространства...' },
+            { percent: 5, text: 'Загрузка космического пространства...' },
+            { percent: 15, text: 'Проверка системных файлов...' },
             { percent: 30, text: 'Инициализация звездных систем...' },
             { percent: 50, text: 'Построение галактики...' },
             { percent: 70, text: 'Настройка навигации...' },
@@ -392,8 +564,11 @@ class GenofondApp {
         
         for (const step of progressSteps) {
             if (!this.appState.isInitialized) {
-                await this.updatePreloaderProgress(step.percent, step.text);
-                await this.delay(400);
+                this.sendProgressEvent('preloader', {
+                    percent: step.percent,
+                    message: step.text
+                });
+                await this.delay(300);
             }
         }
     }
@@ -401,12 +576,16 @@ class GenofondApp {
     async updatePreloaderProgress(percent, text) {
         const progressFill = document.getElementById('preloaderProgress');
         const progressText = document.getElementById('preloaderText');
+        const percentEl = document.getElementById('preloaderPercent');
         
         if (progressFill) {
             progressFill.style.width = `${percent}%`;
         }
         if (progressText) {
             progressText.textContent = text;
+        }
+        if (percentEl) {
+            percentEl.textContent = `${percent}%`;
         }
         
         // Обновление title для отображения прогресса
@@ -417,6 +596,8 @@ class GenofondApp {
 
     async loadUserData() {
         try {
+            this.recordDebugStep('loadUserData', 'Загрузка данных пользователя');
+            
             // Загрузка прогресса пользователя из localStorage с таймаутом
             const [savedProgress, savedState] = await Promise.all([
                 this.loadWithTimeout('genofond-user-progress'),
@@ -425,24 +606,25 @@ class GenofondApp {
             
             if (savedProgress) {
                 this.appState.userProgress = JSON.parse(savedProgress);
-                console.log('📊 Загружен прогресс пользователя');
+                this.recordDebugStep('loadUserData', 'Прогресс пользователя загружен');
             }
             
             if (savedState) {
                 const state = JSON.parse(savedState);
                 this.appState.currentLevel = state.currentLevel;
-                console.log('💾 Загружено состояние приложения');
+                this.recordDebugStep('loadUserData', 'Состояние приложения загружено');
             }
             
             // Проверка авто-активации уровня из специализированного шлюза
             if (window.autoActivateLevel && typeof window.autoActivateLevel === 'string') {
                 this.appState.currentLevel = window.autoActivateLevel;
-                console.log(`🎯 Авто-активация уровня: ${window.autoActivateLevel}`);
+                this.recordDebugStep('loadUserData', `Авто-активация уровня: ${window.autoActivateLevel}`);
             }
             
         } catch (error) {
             console.warn('⚠️ Не удалось загрузить данные пользователя:', error);
             this.appState.userProgress = {};
+            this.recordDebugStep('loadUserData', 'Ошибка загрузки данных пользователя', error.message);
         }
     }
 
@@ -466,6 +648,8 @@ class GenofondApp {
     async setupAnalytics() {
         if (!this.config.enableAnalytics) return;
         
+        this.recordDebugStep('setupAnalytics', 'Настройка системы аналитики');
+        
         // Загрузка предыдущей аналитики
         try {
             const savedAnalytics = sessionStorage.getItem('genofond-analytics');
@@ -477,7 +661,7 @@ class GenofondApp {
             console.warn('⚠️ Не удалось загрузить аналитику:', error);
         }
         
-        console.log('📈 Система аналитики настроена');
+        this.recordDebugStep('setupAnalytics', 'Система аналитики настроена');
     }
 
     async initializeComponents() {
@@ -494,20 +678,43 @@ class GenofondApp {
         // Сортировка по приоритету
         components.sort((a, b) => a.priority - b.priority);
 
+        let loadedCount = 0;
+        const totalComponents = components.length;
+
         for (const component of components) {
             // Проверка circuit breaker
             if (this.errorRecovery.isCircuitOpen(component.name)) {
                 console.warn(`🔌 Circuit breaker открыт для ${component.name}, пропускаем инициализацию`);
+                this.appState.debug.componentStatus[component.name] = 'circuit_open';
                 continue;
             }
 
             try {
+                this.recordDebugStep('initializeComponents', `Инициализация компонента: ${component.name}`);
+                
                 const startTime = performance.now();
                 await this.initializeComponentWithRetry(component);
                 const loadTime = performance.now() - startTime;
                 
                 this.performanceMonitor.recordComponentLoadTime(component.name, loadTime);
-                console.log(`✅ ${component.name} инициализирован за ${loadTime.toFixed(2)}мс`);
+                loadedCount++;
+                
+                // Отправка события загрузки компонента
+                this.dispatchEvent('componentLoaded', {
+                    component: component.name,
+                    loadTime: loadTime,
+                    loadedCount: loadedCount,
+                    totalComponents: totalComponents
+                });
+                
+                this.sendProgressEvent('componentLoad', {
+                    component: component.name,
+                    loadedCount: loadedCount,
+                    totalComponents: totalComponents,
+                    progress: Math.round((loadedCount / totalComponents) * 100)
+                });
+                
+                console.log(`✅ ${component.name} инициализирован за ${loadTime.toFixed(2)}мс (${loadedCount}/${totalComponents})`);
                 
                 await this.delay(50); // Короткая задержка между инициализациями
                 
@@ -515,11 +722,21 @@ class GenofondApp {
                 console.error(`❌ Ошибка инициализации ${component.name}:`, error);
                 this.errorRecovery.recordError(component.name, error);
                 
+                this.appState.debug.componentStatus[component.name] = 'error';
+                this.appState.debug.errors.push({
+                    type: 'component_initialization',
+                    component: component.name,
+                    message: error.message,
+                    timestamp: Date.now()
+                });
+                
                 if (component.critical) {
                     throw new Error(`Критический компонент ${component.name} не удалось инициализировать: ${error.message}`);
                 }
             }
         }
+        
+        this.recordDebugStep('initializeComponents', `Инициализация компонентов завершена: ${loadedCount}/${totalComponents} успешно`);
     }
 
     async initializeComponentWithRetry(componentConfig, attempt = 0) {
@@ -529,6 +746,12 @@ class GenofondApp {
             if (attempt < this.config.maxRetries) {
                 const delayTime = this.config.retryDelay * Math.pow(2, attempt); // Экспоненциальная задержка
                 console.log(`🔄 Повторная попытка ${attempt + 1} для ${componentConfig.name} через ${delayTime}мс...`);
+                
+                this.recordDebugStep('initializeComponentWithRetry', `Повторная попытка для ${componentConfig.name}`, {
+                    attempt: attempt + 1,
+                    maxRetries: this.config.maxRetries,
+                    delay: delayTime
+                });
                 
                 await this.delay(delayTime);
                 return this.initializeComponentWithRetry(componentConfig, attempt + 1);
@@ -559,22 +782,28 @@ class GenofondApp {
                     if (componentClass) {
                         const componentInstance = new componentClass(this);
                         this.components.set(componentConfig.name, componentInstance);
+                        this.appState.debug.componentStatus[componentConfig.name] = 'loaded';
                         
                         if (typeof componentInstance.init === 'function') {
                             await componentInstance.init();
                         }
                         
+                        this.recordDebugStep('initializeComponent', `Компонент ${componentConfig.name} успешно инициализирован`);
                         resolve(componentInstance);
                     } else {
-                        reject(new Error(`Класс для ${componentConfig.name} не найден`));
+                        const error = new Error(`Класс для ${componentConfig.name} не найден`);
+                        this.appState.debug.componentStatus[componentConfig.name] = 'class_not_found';
+                        reject(error);
                     }
                 } catch (error) {
+                    this.appState.debug.componentStatus[componentConfig.name] = 'init_error';
                     reject(error);
                 }
             };
             
             script.onerror = () => {
                 clearTimeout(timeoutId);
+                this.appState.debug.componentStatus[componentConfig.name] = 'load_error';
                 reject(new Error(`Не удалось загрузить ${componentConfig.path}`));
             };
             
@@ -597,13 +826,15 @@ class GenofondApp {
     }
 
     async setupComponentIntegration() {
+        this.recordDebugStep('setupComponentIntegration', 'Настройка межкомпонентной интеграции');
+        
         // Настройка межкомпонентной коммуникации через Custom Events
         this.setupGlobalEventHandlers();
         
         // Инициализация интеграции между компонентами
         await this.initializeComponentIntegration();
         
-        console.log('🔗 Интеграция компонентов настроена');
+        this.recordDebugStep('setupComponentIntegration', 'Интеграция компонентов настроена');
     }
 
     setupGlobalEventHandlers() {
@@ -619,7 +850,10 @@ class GenofondApp {
             'componentError',
             'performanceWarning',
             'interactionStarted',
-            'interactionEnded'
+            'interactionEnded',
+            // ДОБАВЛЕНО: События для отладки
+            'componentProgress',
+            'fileCheckResult'
         ];
 
         events.forEach(eventName => {
@@ -631,11 +865,13 @@ class GenofondApp {
             this.eventHandlers.set(eventName, handler);
         });
 
-        console.log('📢 Глобальные обработчики событий установлены');
+        this.recordDebugStep('setupGlobalEventHandlers', `Установлено ${events.length} глобальных обработчиков событий`);
     }
 
     async initializeComponentIntegration() {
         try {
+            this.recordDebugStep('initializeComponentIntegration', 'Инициализация интеграции компонентов');
+            
             const metaParser = this.components.get('metaParser');
             const galaxyBuilder = this.components.get('galaxyBuilder');
             const contentManager = this.components.get('contentManager');
@@ -643,28 +879,34 @@ class GenofondApp {
             
             if (metaParser && galaxyBuilder) {
                 // Парсинг мета-данных и построение галактики
-                console.log('🔍 Парсинг мета-данных и построение галактики...');
+                this.recordDebugStep('initializeComponentIntegration', 'Парсинг мета-данных и построение галактики');
                 const entities = await metaParser.parseAllPages();
                 await galaxyBuilder.buildGalaxy(entities);
             }
             
             if (contentManager && this.appState.currentLevel) {
                 // Авто-загрузка контента для специализированного шлюза
-                console.log(`📚 Авто-загрузка контента для уровня: ${this.appState.currentLevel}`);
+                this.recordDebugStep('initializeComponentIntegration', `Авто-загрузка контента для уровня: ${this.appState.currentLevel}`);
                 await contentManager.loadContent(this.appState.currentLevel);
             }
             
             if (navigation && this.appState.currentLevel) {
                 // Инициализация навигации
+                this.recordDebugStep('initializeComponentIntegration', `Инициализация навигации для уровня: ${this.appState.currentLevel}`);
                 navigation.switchLevel(this.appState.currentLevel, 'auto_activation');
             }
+            
+            this.recordDebugStep('initializeComponentIntegration', 'Интеграция компонентов завершена');
         } catch (error) {
             console.error('❌ Ошибка интеграции компонентов:', error);
             this.showNotification('Ошибка инициализации галактики', 'error');
+            this.recordDebugStep('initializeComponentIntegration', 'Ошибка интеграции компонентов', error);
         }
     }
 
     async startApplication() {
+        this.recordDebugStep('startApplication', 'Запуск основного приложения');
+        
         // Запуск всех активных компонентов
         const startPromises = [];
         
@@ -698,12 +940,14 @@ class GenofondApp {
             components: Array.from(this.components.keys()),
             performance: this.appState.performanceMetrics,
             domain: this.appState.domain,
-            environment: this.appState.environment
+            environment: this.appState.environment,
+            debug: this.appState.debug
         });
         
         // Обновление интерфейса
         this.updateUI();
         
+        this.recordDebugStep('startApplication', 'Приложение запущено и готово к работе');
         console.log('🎯 Приложение запущено и готово к работе на', this.appState.domain);
     }
 
@@ -725,6 +969,8 @@ class GenofondApp {
     }
 
     startBackgroundProcesses() {
+        this.recordDebugStep('startBackgroundProcesses', 'Запуск фоновых процессов');
+        
         // Авто-сохранение каждые 30 секунд
         setInterval(() => {
             this.saveAppState();
@@ -783,6 +1029,12 @@ class GenofondApp {
                 
             case 'performanceWarning':
                 this.handlePerformanceWarning(detail);
+                break;
+                
+            // ДОБАВЛЕНО: Обработка событий прогресса
+            case 'componentProgress':
+            case 'fileCheckResult':
+                // Эти события уже обрабатываются в UI через index.html
                 break;
         }
         
@@ -881,7 +1133,8 @@ class GenofondApp {
             environment: this.appState.environment,
             components: {},
             performance: this.performanceMonitor.getMetrics(),
-            errors: Array.from(this.errorRecovery.errorCounts.entries())
+            errors: Array.from(this.errorRecovery.errorCounts.entries()),
+            debug: this.appState.debug
         };
         
         // Проверка состояния каждого компонента
@@ -1012,10 +1265,10 @@ class GenofondApp {
                 const stateToSave = {
                     userProgress: this.appState.userProgress,
                     currentLevel: this.appState.currentLevel,
-                    domain: this.appState.domain, // ДОБАВЛЕНО: сохранение домена
-                    environment: this.appState.environment, // ДОБАВЛЕНО: сохранение окружения
+                    domain: this.appState.domain,
+                    environment: this.appState.environment,
                     lastUpdated: Date.now(),
-                    version: '2.1'
+                    version: '2.1.1'
                 };
                 
                 localStorage.setItem('genofond-app-state', JSON.stringify(stateToSave));
@@ -1057,14 +1310,21 @@ class GenofondApp {
                     <div class="error-icon">💥</div>
                     <div class="error-title">Ошибка загрузки галактики</div>
                     <div class="error-message">${error.message}</div>
-                    <div class="error-details" style="display: none;">
-                        <pre>${error.stack}</pre>
+                    <div class="error-details">
+                        <strong>Домен:</strong> ${this.appState.domain}<br>
+                        <strong>Окружение:</strong> ${this.appState.environment}<br>
+                        <strong>Время:</strong> ${new Date().toLocaleString()}
                     </div>
                     <div class="error-actions">
-                        <button class="retry-btn" onclick="window.location.reload()">Повторить попытку</button>
-                        <button class="safe-mode-btn" onclick="app.enterSafeMode()">Безопасный режим</button>
-                        ${this.isDevelopment() ? '<button class="details-btn" onclick="this.parentElement.previousElementSibling.style.display=\'block\'">Подробности</button>' : ''}
+                        <button class="error-btn primary" onclick="window.location.reload()">Повторить попытку</button>
+                        <button class="error-btn secondary" onclick="window.genofondApp.enterSafeMode()">Безопасный режим</button>
+                        ${this.isDevelopment() ? '<button class="error-btn tertiary" onclick="this.nextElementSibling.style.display=\'block\'">Подробности</button>' : ''}
                     </div>
+                    ${this.isDevelopment() ? `
+                    <div class="error-debug" style="display: none; margin-top: 20px; text-align: left;">
+                        <strong>Отладочная информация:</strong><br>
+                        <pre>${JSON.stringify(this.appState.debug, null, 2)}</pre>
+                    </div>` : ''}
                 </div>
             `;
         }
@@ -1074,7 +1334,8 @@ class GenofondApp {
             error: error.message,
             timestamp: Date.now(),
             domain: this.appState.domain,
-            components: Array.from(this.components.keys())
+            components: Array.from(this.components.keys()),
+            debug: this.appState.debug
         });
     }
 
@@ -1120,7 +1381,8 @@ class GenofondApp {
     isDevelopment() {
         return window.location.hostname === 'localhost' || 
                window.location.hostname === '127.0.0.1' ||
-               window.location.search.includes('debug=true');
+               window.location.search.includes('debug=true') ||
+               this.appState.environment === 'development';
     }
 
     // Public API для внешнего использования
@@ -1146,10 +1408,31 @@ class GenofondApp {
     }
 
     /**
+     * Глобальная функция отладки
+     */
+    debug() {
+        console.log('=== GENOFOND DEBUG INFO ===');
+        console.log('App State:', this.appState);
+        console.log('Components:', Array.from(this.components.keys()));
+        console.log('Performance:', this.performanceMonitor.getMetrics());
+        console.log('Error Recovery:', this.errorRecovery);
+        console.log('File Availability:', this.appState.debug.fileAvailability);
+        console.log('Initialization Steps:', this.appState.debug.initializationSteps);
+        console.log('========================');
+        
+        return {
+            state: this.appState,
+            components: Array.from(this.components.keys()),
+            performance: this.performanceMonitor.getMetrics(),
+            fileAvailability: this.appState.debug.fileAvailability
+        };
+    }
+
+    /**
      * Очистка ресурсов приложения
      */
     async destroy() {
-        console.log('🧹 Очистка ресурсов приложения v2.1...');
+        console.log('🧹 Очистка ресурсов приложения v2.1.1...');
         
         // Остановка мониторинга
         this.performanceMonitor.stop();
@@ -1183,20 +1466,34 @@ class GenofondApp {
         await Promise.allSettled(destroyPromises);
         this.components.clear();
         
-        console.log('✅ Ресурсы приложения v2.1 очищены');
+        console.log('✅ Ресурсы приложения v2.1.1 очищены');
     }
 }
 
 // Глобальная доступность для инициализации
 window.GenofondApp = GenofondApp;
 
+// Глобальная функция отладки
+window.debugGenofond = function() {
+    if (window.genofondApp) {
+        return window.genofondApp.debug();
+    } else {
+        console.warn('⚠️ GenofondApp еще не инициализирован');
+        return null;
+    }
+};
+
 // Автоматическая инициализация при загрузке DOM
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
+        console.log('🌐 DOM загружен, запуск GenofondApp...');
         window.app = new GenofondApp();
+        window.genofondApp = window.app;
         window.app.init().catch(console.error);
     });
 } else {
+    console.log('🌐 DOM уже загружен, немедленный запуск GenofondApp...');
     window.app = new GenofondApp();
+    window.genofondApp = window.app;
     window.app.init().catch(console.error);
 }
