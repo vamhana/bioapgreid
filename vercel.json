@@ -6,16 +6,18 @@
       "src": "package.json",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "public"
+        "distDir": ".",
+        "nodeVersion": "18.x"
       }
     }
   ],
-  "rewrites": [
+  "routes": [
     {
-      "source": "/(.*)",
-      "destination": "/$1"
+      "src": "/(.*)",
+      "dest": "/$1"
     }
   ],
-  "cleanUrls": true,
-  "trailingSlash": false
+  "env": {
+    "NODE_ENV": "production"
+  }
 }
