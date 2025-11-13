@@ -12,8 +12,16 @@
   ],
   "routes": [
     {
-      "src": "/(.*)",
-      "dest": "/$1"
+        "src": "/data/sitemap.json",
+        "dest": "/api/sitemap.js"
+    },
+    {
+        "src": "/api/pages",
+        "dest": "/api/pages.js"
+    },
+    {
+        "src": "/(.*)",
+        "dest": "/$1"
     }
   ],
   "env": {
