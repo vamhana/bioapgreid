@@ -1,8 +1,7 @@
-node_modules/
-.git/
+.git
 .gitignore
-.backups/
-- utils/vercel-build.js
+README.md
+node_modules
+backups/*.json
 *.log
-*.tmp
-temp/
+.DS_Store
