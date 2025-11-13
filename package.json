@@ -1,7 +1,7 @@
 {
   "name": "bioapgreid",
   "version": "2.1.1",
-  "description": "Галактика GENOФОНД - интерактивная образовательная платформа для исследования знаний через визуальную космическую метафору",
+  "description": "Галактика BIOAPGREID - интерактивная образовательная платформа для исследования знаний через визуальную космическую метафору",
   "type": "module",
   "main": "js/app.js",
   "scripts": {
@@ -36,17 +36,20 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/vamhana/bioapgreid.git"
+    "url": "https://www.bioapgreid.ru"
   },
-  "homepage": "https://bioapgreid.vercel.app",
+  "homepage": "https://www.bioapgreid.ru",
   "bugs": {
-    "url": "https://github.com/vamhana/bioapgreid/issues"
+    "url": "https://www.bioapgreid.ru"
   },
   "engines": {
     "node": "22.x"
   },
-  "dependencies": {},
+  "dependencies": {
+    "jsdom": "^22.0.0"
+  },
   "devDependencies": {
+    "@vercel/node": "^2.0.0",
     "live-server": "^1.2.2"
   }
 }
