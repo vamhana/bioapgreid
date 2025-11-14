@@ -1,55 +1,17 @@
+// bioapgreid/package.json
 {
   "name": "bioapgreid",
-  "version": "2.1.1",
-  "description": "Галактика BIOAPGREID - интерактивная образовательная платформа для исследования знаний через визуальную космическую метафору",
+  "version": "2.1.0",
   "type": "module",
-  "main": "js/app.js",
   "scripts": {
-    "dev": "node utils/generate-pages.js && live-server --port=3000 --watch=.,pages,styles,js,assets --ignore=backups,node_modules --open=/",
-    "build": "npm run generate-pages",
-    "generate-pages": "node utils/generate-pages.js",
-    "start": "npm run dev",
-    "clean": "rm -f sitemap.json *.html backups/*.json",
-    "test": "echo \"No tests specified\" && exit 0",
-    "vercel-build": "npm run generate-pages",
-    "gh-pages": "npm run generate-pages",
-    "health-check": "node -e \"console.log('Health check passed')\""
-  },
-  "keywords": [
-    "education",
-    "interactive",
-    "galaxy",
-    "knowledge",
-    "genetics",
-    "bioinformatics",
-    "visualization",
-    "cosmic",
-    "metaphor",
-    "russian",
-    "genofond"
-  ],
-  "author": {
-    "name": "BioApGreid Team",
-    "email": "contact@bioapgreid.ru",
-    "url": "https://www.bioapgreid.ru"
-  },
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://www.bioapgreid.ru"
-  },
-  "homepage": "https://www.bioapgreid.ru",
-  "bugs": {
-    "url": "https://www.bioapgreid.ru"
-  },
-  "engines": {
-    "node": "22.x"
+    "dev": "vercel dev",
+    "deploy": "vercel --prod",
+    "build": "node utils/generate-pages.js"
   },
   "dependencies": {
-    "jsdom": "^22.0.0"
+    "jsdom": "^22.1.0"
   },
   "devDependencies": {
-    "@vercel/node": "^2.0.0",
-    "live-server": "^1.2.2"
+    "@vercel/node": "^2.0.0"
   }
 }
