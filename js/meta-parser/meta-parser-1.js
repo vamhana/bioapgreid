@@ -1,8 +1,3 @@
-// bioapgreid/js/meta-parser/meta-parser-1.js
-/**
- * LRU кэш с максимальным размером 200 элементов
- * @class MetaCache
- */
 class MetaCache {
     constructor(maxSize = 200) {
         this._maxSize = maxSize;
@@ -82,7 +77,9 @@ class MetaCache {
      * Итератор для использования в for...of циклах
      */
     *[Symbol.iterator]() {
-        yield* this._cache.entries();
+        for (const [key, value] of this._cache) {
+            yield [key, value];
+        }
     }
 
     /**
@@ -153,7 +150,7 @@ class HierarchyBuilder {
         const rootNodes = [];
         const orphanedNodes = [];
 
-        console.log(`🌌 Начало построения иерархии из ${Object.keys(entities).length} сущностей...`);
+        console.log('🌌 Начало построения иерархии из ' + Object.keys(entities).length + ' сущностей...');
 
         // Фаза 1: Создание карты сущностей и вычисление цепочек
         Object.values(entities).forEach(entity => {
@@ -191,11 +188,11 @@ class HierarchyBuilder {
                     entityNode.metadata.depth = parentNode.metadata.depth + 1;
                     
                     if (entityNode.metadata.depth > this._maxDepth) {
-                        console.warn(`⚠️ Превышена максимальная глубина иерархии: ${entity.level} (глубина ${entityNode.metadata.depth})`);
+                        console.warn('⚠️ Превышена максимальная глубина иерархии: ' + entity.level + ' (глубина ' + entityNode.metadata.depth + ')');
                     }
                 } else {
                     orphanedNodes.push(entityNode);
-                    console.warn(`⚠️ Сиротская сущность: ${entity.level} (родитель ${entity.parent} не найден)`);
+                    console.warn('⚠️ Сиротская сущность: ' + entity.level + ' (родитель ' + entity.parent + ' не найден)');
                 }
             } else {
                 rootNodes.push(entityNode);
@@ -209,7 +206,7 @@ class HierarchyBuilder {
                 suggestedParent.children.push(orphan);
                 suggestedParent.metadata.childCount++;
                 orphan.metadata.depth = suggestedParent.metadata.depth + 1;
-                console.log(`🔗 Автоматически привязан сирота ${orphan.level} к ${suggestedParent.level}`);
+                console.log('🔗 Автоматически привязан сирота ' + orphan.level + ' к ' + suggestedParent.level);
             } else {
                 rootNodes.push(orphan);
                 orphan.metadata.isRoot = true;
@@ -236,7 +233,7 @@ class HierarchyBuilder {
         return {
             roots: rootNodes,
             entities: entityMap,
-            stats,
+            stats: stats,
             relationshipChains: this._buildAllChains(entityMap)
         };
     }
@@ -248,23 +245,24 @@ class HierarchyBuilder {
      * @param {Array} chain - Текущая цепочка
      * @returns {Array} Цепочка отношений
      */
-    _calculateRelationshipChain(entity, allEntities, chain = []) {
-        const cacheKey = `${entity.level}_chain`;
+    _calculateRelationshipChain(entity, allEntities, chain) {
+        const currentChain = chain || [];
+        const cacheKey = entity.level + '_chain';
         if (this._chainCache.has(cacheKey)) {
             return this._chainCache.get(cacheKey);
         }
 
-        chain.unshift(entity.level);
+        currentChain.unshift(entity.level);
 
         if (entity.parent) {
             const parentEntity = allEntities[entity.parent];
-            if (parentEntity && !chain.includes(entity.parent)) {
-                return this._calculateRelationshipChain(parentEntity, allEntities, chain);
+            if (parentEntity && !currentChain.includes(entity.parent)) {
+                return this._calculateRelationshipChain(parentEntity, allEntities, currentChain);
             }
         }
 
-        this._chainCache.set(cacheKey, [...chain]);
-        return chain;
+        this._chainCache.set(cacheKey, [...currentChain]);
+        return currentChain;
     }
 
     /**
@@ -287,7 +285,7 @@ class HierarchyBuilder {
      * @returns {Object|null} Подходящий родитель или null
      */
     _findSuggestedParent(orphan, entityMap) {
-        if (orphan.metadata.relationshipChain?.length > 1) {
+        if (orphan.metadata.relationshipChain && orphan.metadata.relationshipChain.length > 1) {
             const potentialParentLevel = orphan.metadata.relationshipChain[1];
             const parent = entityMap.get(potentialParentLevel);
             if (parent) return parent;
@@ -335,7 +333,7 @@ class HierarchyBuilder {
             node.metadata.siblingIndex = index;
             
             node.metadata.totalDescendants = node.children.reduce((total, child) => {
-                return total + 1 + this._calculateHierarchyMetadata([child])[0];
+                return total + 1 + this._calculateHierarchyMetadata([child])[0].metadata.totalDescendants;
             }, 0);
         });
 
@@ -421,7 +419,7 @@ class HierarchyBuilder {
 }
 
 /**
- * Универсальная конфигурация системы парсинга v3.0
+ * Универсальная конфигурация системы парсинга v3.1
  */
 const PARSER_CONFIG = Object.freeze({
     maxRetries: 3,
@@ -509,6 +507,19 @@ const PARSER_CONFIG = Object.freeze({
             parseConcurrency: 3,
             retryBackoff: 'exponential'
         })
+    }),
+
+    // Новые настройки для Vercel интеграции
+    vercel: Object.freeze({
+        enabled: true,
+        apiEndpoints: Object.freeze({
+            projectStructure: '/api/project-structure',
+            metaParser: '/api/meta-parser',
+            sitemap: '/api/sitemap',
+            pages: '/api/pages'
+        }),
+        timeout: 10000,
+        fallbackEnabled: true
     })
 });
 
@@ -566,10 +577,17 @@ const ConfigUtils = {
             warnings.push('Таймаут запроса больше 30 секунд может блокировать интерфейс');
         }
 
+        // Проверка Vercel настроек
+        if (config.vercel && config.vercel.enabled) {
+            if (!config.vercel.apiEndpoints || Object.keys(config.vercel.apiEndpoints).length === 0) {
+                warnings.push('Vercel включен но не настроены API endpoints');
+            }
+        }
+
         return {
             isValid: errors.length === 0,
-            errors,
-            warnings
+            errors: errors,
+            warnings: warnings
         };
     },
 
@@ -579,13 +597,43 @@ const ConfigUtils = {
      * @returns {Object} Адаптированная конфигурация
      */
     createDomainConfig(domain) {
+        const domainSafe = domain.replace(/[^a-z0-9]/gi, '_');
         return {
             ...PARSER_CONFIG,
-            domain,
+            domain: domain,
             sitemap: {
                 ...PARSER_CONFIG.sitemap,
-                outputPath: `/data/sitemap_${domain.replace(/[^a-z0-9]/gi, '_')}.json`
+                outputPath: '/data/sitemap_' + domainSafe + '.json'
             }
+        };
+    },
+
+    /**
+     * Получение Vercel endpoints
+     * @returns {Object} Vercel endpoints
+     */
+    getVercelEndpoints() {
+        return PARSER_CONFIG.vercel.apiEndpoints;
+    },
+
+    /**
+     * Проверка доступности Vercel
+     * @returns {boolean} Доступен ли Vercel
+     */
+    isVercelEnabled() {
+        return PARSER_CONFIG.vercel.enabled;
+    },
+
+    /**
+     * Получение таймаутов для различных операций
+     * @returns {Object} Таймауты
+     */
+    getTimeouts() {
+        return {
+            request: PARSER_CONFIG.requestTimeout,
+            cache: PARSER_CONFIG.cacheTTL,
+            vercel: PARSER_CONFIG.vercel.timeout,
+            discovery: PARSER_CONFIG.pageDiscovery.checkTimeouts
         };
     }
 };
@@ -601,7 +649,7 @@ if (typeof window !== 'undefined') {
 console.log('✅ Модуль 1: Базовые классы ES6+ и универсальная конфигурация загружены');
 
 // Автоматическая проверка конфигурации при загрузке
-(() => {
+(function() {
     const validation = ConfigUtils.validateConfig(PARSER_CONFIG);
     if (!validation.isValid) {
         console.error('❌ Ошибки в конфигурации:', validation.errors);
@@ -610,3 +658,138 @@ console.log('✅ Модуль 1: Базовые классы ES6+ и униве�
         console.warn('⚠️ Предупреждения конфигурации:', validation.warnings);
     }
 })();
+
+// Глобальные вспомогательные функции
+window.GalaxyParserUtils = {
+    /**
+     * Создание экземпляра MetaCache
+     * @param {number} size - Размер кэша
+     * @returns {MetaCache} Экземпляр MetaCache
+     */
+    createCache: function(size) {
+        return new MetaCache(size);
+    },
+
+    /**
+     * Создание экземпляра HierarchyBuilder
+     * @param {number} depth - Максимальная глубина
+     * @returns {HierarchyBuilder} Экземпляр HierarchyBuilder
+     */
+    createHierarchyBuilder: function(depth) {
+        return new HierarchyBuilder(depth);
+    },
+
+    /**
+     * Быстрая проверка типа сущности
+     * @param {string} type - Тип для проверки
+     * @returns {boolean} Поддерживается ли тип
+     */
+    isValidEntityType: function(type) {
+        return ConfigUtils.isEntityTypeSupported(type);
+    },
+
+    /**
+     * Получение конфигурации по умолчанию
+     * @returns {Object} Конфигурация
+     */
+    getDefaultConfig: function() {
+        return PARSER_CONFIG;
+    },
+
+    /**
+     * Валидация объекта сущности
+     * @param {Object} entity - Сущность для валидации
+     * @returns {Object} Результат валидации
+     */
+    validateEntity: function(entity) {
+        const errors = [];
+        const warnings = [];
+
+        if (!entity.level) {
+            errors.push('Отсутствует level');
+        }
+
+        if (!entity.type) {
+            errors.push('Отсутствует type');
+        } else if (!ConfigUtils.isEntityTypeSupported(entity.type)) {
+            errors.push('Неподдерживаемый тип: ' + entity.type);
+        }
+
+        if (!entity.title) {
+            warnings.push('Отсутствует title');
+        }
+
+        if (entity['orbit-radius'] && (entity['orbit-radius'] < 0 || entity['orbit-radius'] > 1000)) {
+            warnings.push('Некорректный радиус орбиты: ' + entity['orbit-radius']);
+        }
+
+        if (entity['orbit-angle'] && (entity['orbit-angle'] < 0 || entity['orbit-angle'] >= 360)) {
+            warnings.push('Некорректный угол орбиты: ' + entity['orbit-angle']);
+        }
+
+        return {
+            isValid: errors.length === 0,
+            errors: errors,
+            warnings: warnings
+        };
+    },
+
+    /**
+     * Генерация случайного цвета для сущности
+     * @param {string} type - Тип сущности
+     * @returns {string} Цвет в формате HSL
+     */
+    generateRandomColor: function(type) {
+        const typeHues = {
+            galaxy: 60,
+            planet: 180,
+            moon: 90,
+            asteroid: 0,
+            debris: 120,
+            blackhole: 240,
+            nebula: 270,
+            station: 45,
+            gateway: 300,
+            anomaly: 200
+        };
+
+        const hue = typeHues[type] || Math.floor(Math.random() * 360);
+        return 'hsl(' + hue + ', 70%, 60%)';
+    },
+
+    /**
+     * Расчет важности на основе типа
+     * @param {string} type - Тип сущности
+     * @returns {string} Важность
+     */
+    calculateImportance: function(type) {
+        if (type === 'galaxy' || type === 'blackhole') return 'high';
+        if (type === 'planet' || type === 'nebula' || type === 'gateway') return 'medium';
+        return 'low';
+    },
+
+    /**
+     * Создание базовой сущности с минимальными данными
+     * @param {string} level - Уровень
+     * @param {string} type - Тип
+     * @param {string} title - Заголовок
+     * @returns {Object} Базовая сущность
+     */
+    createBasicEntity: function(level, type, title) {
+        const defaults = ConfigUtils.getDefaultsForType(type);
+        return {
+            level: level,
+            type: type,
+            title: title,
+            importance: defaults.importance,
+            'orbit-radius': defaults.orbitRadius,
+            'orbit-angle': Math.floor(Math.random() * 360),
+            color: this.generateRandomColor(type),
+            unlocked: true,
+            metadata: {
+                created: new Date().toISOString(),
+                basic: true
+            }
+        };
+    }
+};
