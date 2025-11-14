@@ -1,5 +1,4 @@
-
-
+// bioapgreid/js/app.js
 class PerformanceMonitor {
     constructor(app) {
         this.app = app;
@@ -248,6 +247,32 @@ class ErrorRecoverySystem {
 
 class GenofondApp {
     constructor() {
+        // Конфигурация для GitHub Pages и bioapgreid.ru
+        this.config = {
+            maxRetries: 3,
+            retryDelay: 1000,
+            circuitBreakerThreshold: 3,
+            initialStateTimeout: 5000,
+            saveStateDebounce: 1000,
+            componentLoadTimeout: 10000,
+            enableAnalytics: true,
+            enablePerformanceMonitoring: true,
+            enableErrorRecovery: true,
+            baseUrl: 'https://www.bioapgreid.ru/',
+            isGitHubPages: window.location.hostname.includes('github.io'),
+            isBioapgreid: window.location.hostname.includes('bioapgreid.ru'),
+            // ДОБАВЛЕНО: Критические файлы для проверки
+            criticalFiles: [
+                'js/app.js',
+                'js/meta-parser.js', 
+                'js/galaxy-builder.js',
+                'sitemap.json',
+                'pages/filosofiya.html'
+            ]
+        };
+        this.debouncedSaveState = this.debounce(() => {
+            this.saveAppState();
+        }, this.config.saveStateDebounce);
         this.components = new Map();
         this.appState = {
             isInitialized: false,
@@ -291,29 +316,7 @@ class GenofondApp {
         this.performanceMonitor = new PerformanceMonitor(this);
         this.errorRecovery = new ErrorRecoverySystem(this);
         
-        // Конфигурация для GitHub Pages и bioapgreid.ru
-        this.config = {
-            maxRetries: 3,
-            retryDelay: 1000,
-            circuitBreakerThreshold: 3,
-            initialStateTimeout: 5000,
-            saveStateDebounce: 1000,
-            componentLoadTimeout: 10000,
-            enableAnalytics: true,
-            enablePerformanceMonitoring: true,
-            enableErrorRecovery: true,
-            baseUrl: 'https://www.bioapgreid.ru/',
-            isGitHubPages: window.location.hostname.includes('github.io'),
-            isBioapgreid: window.location.hostname.includes('bioapgreid.ru'),
-            // ДОБАВЛЕНО: Критические файлы для проверки
-            criticalFiles: [
-                'js/app.js',
-                'js/meta-parser.js', 
-                'js/galaxy-builder.js',
-                'sitemap.json',
-                'pages/filosofiya.html'
-            ]
-        };
+
         
         console.log(`🚀 GenofondApp v2.1.1 инициализирован для домена: ${this.appState.domain}`);
         console.log(`📍 Окружение: ${this.appState.environment}`);
@@ -445,7 +448,7 @@ class GenofondApp {
         const startTime = performance.now();
         
         try {
-            console.log(`🚀 ===== НАЧАЛО ИНИЦИАЛИЗАЦИИ ГАЛАКТИКИ GENOФОНД v2.1.1 =====`);
+            console.log(`🚀 ===== НАЧАЛО ИНИЦИАЛИЗАЦИИ ГАЛАКТИКИ BIOAPGREID v2.1.1 =====`);
             console.log(`📍 Домен: ${this.appState.domain}`);
             console.log(`📍 Окружение: ${this.appState.environment}`);
             console.log(`📍 Путь: ${window.location.pathname}`);
@@ -492,7 +495,7 @@ class GenofondApp {
             const initTime = performance.now() - startTime;
             this.appState.performanceMetrics.initTime = initTime;
             
-            console.log(`🎉 Галактика GENOФОНД v2.1.1 успешно инициализирована на ${this.appState.domain} за ${initTime.toFixed(2)}мс!`);
+            console.log(`🎉 Галактика BIOAPGREID v2.1.1 успешно инициализирована на ${this.appState.domain} за ${initTime.toFixed(2)}мс!`);
             
             // Аналитика успешной инициализации
             this.recordAnalyticsEvent('app_initialized', { 
@@ -591,7 +594,7 @@ class GenofondApp {
         // Обновление title для отображения прогресса
         const domainSuffix = this.config.isBioapgreid ? ' | bioapgreid.ru' : 
                            this.config.isGitHubPages ? ' | GitHub Pages' : '';
-        document.title = `GENOФОНД (${percent}%)${domainSuffix}`;
+        document.title = `BIOAPGREID (${percent}%)${domainSuffix}`;
     }
 
     async loadUserData() {
@@ -964,7 +967,7 @@ class GenofondApp {
             // Восстановление оригинального title с учетом домена
             const domainSuffix = this.config.isBioapgreid ? ' | bioapgreid.ru' : 
                                this.config.isGitHubPages ? ' | GitHub Pages' : '';
-            document.title = `Галактика GENOФОНД${domainSuffix}`;
+            document.title = `Галактика BIOAPGREID${domainSuffix}`;
         }
     }
 
@@ -1226,7 +1229,7 @@ class GenofondApp {
         const breadcrumbs = document.getElementById('breadcrumbs');
         if (!breadcrumbs) return;
         
-        let breadcrumbHTML = '<span class="breadcrumb-item">Галактика GENOФОНД</span>';
+        let breadcrumbHTML = '<span class="breadcrumb-item">Галактика BIOAPGREID</span>';
         
         if (this.appState.focusedEntity) {
             breadcrumbHTML += ` <span class="breadcrumb-separator">/</span> <span class="breadcrumb-item">${this.appState.focusedEntity.title}</span>`;
