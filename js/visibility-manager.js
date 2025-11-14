@@ -39,7 +39,7 @@ class VisibilityManager {
             },
             typeFactors: {
                 // Базовые типы
-                star: 1.2,
+                galaxy: 1.2,
                 planet: 1.0,
                 moon: 0.8,
                 asteroid: 0.6,
@@ -203,6 +203,19 @@ class VisibilityManager {
         document.addEventListener('analyticsDataFlushed', (event) => {
             this.handleAnalyticsFlushed(event.detail);
         });
+
+        // События видимости документа
+        document.addEventListener('visibilitychange', () => {
+            this.handleVisibilityChange();
+        });
+
+        // События изменения размера
+        window.addEventListener('resize', () => {
+            this.debounce(() => {
+                this.optimizeForMobile();
+                this.scheduleVisibilityUpdate();
+            }, 250)();
+        });
     }
 
     setupIntersectionObserver() {
@@ -280,6 +293,391 @@ class VisibilityManager {
         this.predictiveSystem.startTime = Date.now();
         
         console.log('🔮 Предиктивная система видимости активирована');
+    }
+
+    /**
+     * Обновление метрик производительности
+     */
+    updatePerformanceMetrics() {
+        const now = performance.now();
+        
+        if (this.lastUpdateTime > 0) {
+            const frameTime = now - this.lastUpdateTime;
+            this.performanceMetrics.frameTime = frameTime;
+            this.performanceMetrics.updateCount++;
+            
+            // Адаптивное обновление на основе производительности
+            if (frameTime > 16) { // Меньше 60 FPS
+                this.updateInterval = Math.min(200, this.updateInterval + 10);
+            } else if (frameTime < 8) { // Больше 120 FPS
+                this.updateInterval = Math.max(50, this.updateInterval - 5);
+            }
+        }
+        
+        this.lastUpdateTime = now;
+        
+        // Обновление счетчика видимых сущностей
+        this.performanceMetrics.visibleCount = Array.from(this.entities.values())
+            .filter(entity => entity.isVisible).length;
+            
+        // Расчет hit rate кэша
+        const totalCalculations = this.performanceMetrics.updateCount;
+        const cacheHits = this.visibilityCache.size;
+        this.performanceMetrics.cacheHitRate = totalCalculations > 0 ? 
+            (cacheHits / totalCalculations) * 100 : 0;
+    }
+
+    /**
+     * Получение метрик производительности
+     */
+    getPerformanceMetrics() {
+        return { 
+            ...this.performanceMetrics,
+            entitiesCount: this.entities.size,
+            cacheSize: this.visibilityCache.size,
+            currentLOD: this.currentLOD
+        };
+    }
+
+    /**
+     * Обеспечение видимости сущности
+     */
+    ensureEntityVisibility(entityId) {
+        const entity = this.entities.get(entityId);
+        if (entity && !entity.isVisible) {
+            this.setEntityVisibility(entity, true);
+        }
+    }
+
+    /**
+     * Очистка кэша
+     */
+    clearCache() {
+        this.visibilityCache.clear();
+    }
+
+    /**
+     * Планирование обновления видимости
+     */
+    scheduleVisibilityUpdate() {
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+        }
+        
+        this.animationFrameId = requestAnimationFrame(() => {
+            this.updateVisibility();
+        });
+    }
+
+    /**
+     * Обновление видимости
+     */
+    updateVisibility() {
+        this.animationFrameId = null;
+        
+        // Используем кэш для оптимизации
+        const cacheKey = this.generateVisibilityCacheKey();
+        const cachedResult = this.visibilityCache.get(cacheKey);
+        
+        if (cachedResult) {
+            this.applyCachedVisibility(cachedResult);
+            return;
+        }
+        
+        const visibilityUpdates = [];
+        
+        for (const [entityId, entity] of this.entities) {
+            const score = this.calculateVisibilityScore(entity);
+            const shouldBeVisible = score >= this.config.visibilityThreshold;
+            
+            if (entity.isVisible !== shouldBeVisible) {
+                visibilityUpdates.push({ entity, shouldBeVisible });
+            }
+        }
+        
+        // Применяем обновления видимости
+        visibilityUpdates.forEach(({ entity, shouldBeVisible }) => {
+            this.setEntityVisibility(entity, shouldBeVisible);
+        });
+        
+        // Сохраняем в кэш
+        if (visibilityUpdates.length > 0) {
+            this.visibilityCache.set(cacheKey, {
+                timestamp: Date.now(),
+                updates: visibilityUpdates
+            });
+            
+            // Ограничиваем размер кэша
+            if (this.visibilityCache.size > this.config.cacheSize) {
+                const oldestKey = this.visibilityCache.keys().next().value;
+                this.visibilityCache.delete(oldestKey);
+            }
+        }
+    }
+
+    /**
+     * Генерация ключа для кэша видимости
+     */
+    generateVisibilityCacheKey() {
+        const appState = this.app.getState();
+        const visibleEntities = Array.from(this.entities.values())
+            .filter(e => e.isVisible)
+            .map(e => e.level)
+            .sort()
+            .join(',');
+        
+        return `${appState.currentZoom}_${appState.currentLevel}_${visibleEntities}`;
+    }
+
+    /**
+     * Применение кэшированных состояний видимости
+     */
+    applyCachedVisibility(cachedResult) {
+        cachedResult.updates.forEach(({ entity, shouldBeVisible }) => {
+            this.setEntityVisibility(entity, shouldBeVisible);
+        });
+    }
+
+    /**
+     * Обработка изменения зума
+     */
+    handleZoomChange(zoomLevel) {
+        // Определение LOD на основе уровня зума
+        if (zoomLevel >= this.config.lodLevels.HIGH_DETAIL.zoom) {
+            this.currentLOD = 'HIGH_DETAIL';
+        } else if (zoomLevel >= this.config.lodLevels.MEDIUM_DETAIL.zoom) {
+            this.currentLOD = 'MEDIUM_DETAIL';
+        } else {
+            this.currentLOD = 'LOW_DETAIL';
+        }
+        
+        // Очищаем кэш при значительном изменении зума
+        this.clearCache();
+        this.scheduleVisibilityUpdate();
+        
+        console.log(`🔍 LOD изменен на: ${this.currentLOD} (zoom: ${zoomLevel})`);
+    }
+
+    /**
+     * Обработка активации сущности
+     */
+    handleEntityActivated(entity) {
+        // Запись аналитики активации
+        if (this.config.analyticsEnabled) {
+            const entityId = entity.level || entity.id;
+            if (!this.analytics.userInteractions.has(entityId)) {
+                this.analytics.userInteractions.set(entityId, {
+                    activationCount: 0,
+                    lastActivated: 0,
+                    averageViewTime: 0
+                });
+            }
+            
+            const interaction = this.analytics.userInteractions.get(entityId);
+            interaction.activationCount++;
+            interaction.lastActivated = Date.now();
+            
+            // Записываем в аналитику видимости
+            this.recordVisibilityCalculation(entity, 1.0); // Максимальный score для активированной сущности
+        }
+        
+        // Обеспечиваем видимость активированной сущности и ее соседей
+        this.ensureEntityVisibility(entity.level);
+        
+        // Активируем предиктивную систему для связанных сущностей
+        if (this.config.predictiveLoading) {
+            this.triggerPredictiveLoading(entity);
+        }
+    }
+
+    /**
+     * Обработка изменения уровня
+     */
+    handleLevelChange(levelId) {
+        console.log(`🔄 Изменение уровня на: ${levelId}`);
+        
+        // Очищаем кэш при смене уровня
+        this.clearCache();
+        this.scheduleVisibilityUpdate();
+        
+        // Обновляем аналитику
+        if (this.config.analyticsEnabled) {
+            this.analytics.currentLevel = levelId;
+        }
+    }
+
+    /**
+     * Обработка изменения состояния приложения
+     */
+    handleAppStateChange(detail) {
+        const { state, value } = detail;
+        console.log(`⚙️ Изменение состояния приложения: ${state} = ${value}`);
+        
+        // Обработка специфических состояний
+        switch (state) {
+            case 'performanceMode':
+                this.handlePerformanceModeChange(value);
+                break;
+            case 'batterySaver':
+                this.handleBatterySaverChange(value);
+                break;
+            case 'networkStatus':
+                this.handleNetworkStatusChange(value);
+                break;
+        }
+    }
+
+    /**
+     * Обработка режима производительности
+     */
+    handlePerformanceModeChange(enabled) {
+        if (enabled) {
+            // Увеличиваем пороги для лучшей производительности
+            this.config.visibilityThreshold += 0.1;
+            this.updateInterval = Math.max(200, this.updateInterval);
+            this.currentLOD = 'LOW_DETAIL';
+        } else {
+            // Восстанавливаем нормальные настройки
+            this.config.visibilityThreshold = Math.max(0.3, this.config.visibilityThreshold - 0.1);
+            this.updateInterval = 100;
+        }
+        
+        this.clearCache();
+        this.scheduleVisibilityUpdate();
+    }
+
+    /**
+     * Обработка режима экономии батареи
+     */
+    handleBatterySaverChange(enabled) {
+        if (enabled) {
+            // Отключаем аналитику и предиктивную систему для экономии
+            this.setAnalyticsMode(false);
+            this.setPredictiveMode(false);
+            this.updateInterval = 300;
+        }
+    }
+
+    /**
+     * Обработка изменения статуса сети
+     */
+    handleNetworkStatusChange(status) {
+        switch (status) {
+            case 'slow':
+                this.setPredictiveMode(false);
+                break;
+            case 'normal':
+                this.setPredictiveMode(true);
+                break;
+            case 'offline':
+                this.setPredictiveMode(false);
+                this.setAnalyticsMode(false);
+                break;
+        }
+    }
+
+    /**
+     * Обработка построения иерархии
+     */
+    handleHierarchyBuilt(hierarchy) {
+        console.log('🏗️ Иерархия построена, обновление видимости...');
+        
+        // Регистрируем сущности в менеджере видимости
+        this.registerEntitiesFromHierarchy(hierarchy);
+        
+        // Пересчитываем видимость
+        this.clearCache();
+        this.scheduleVisibilityUpdate();
+    }
+
+    /**
+     * Регистрация сущностей из иерархии
+     */
+    registerEntitiesFromHierarchy(hierarchy) {
+        const registerRecursive = (nodes, depth = 0) => {
+            nodes.forEach(node => {
+                // Регистрируем сущность
+                this.entities.set(node.level, {
+                    ...node,
+                    isVisible: false,
+                    isInViewport: false,
+                    viewportRatio: 0,
+                    lastVisibilityChange: 0,
+                    metadata: {
+                        ...node.metadata,
+                        depth: depth
+                    }
+                });
+                
+                // Рекурсивно регистрируем детей
+                if (node.children && node.children.length > 0) {
+                    registerRecursive(node.children, depth + 1);
+                }
+            });
+        };
+        
+        this.entities.clear();
+        registerRecursive(hierarchy);
+        console.log(`📝 Зарегистрировано сущностей: ${this.entities.size}`);
+    }
+
+    /**
+     * Обработка порога производительности
+     */
+    handlePerformanceThreshold(detail) {
+        const { type, value, threshold } = detail;
+        
+        switch (type) {
+            case 'lowFPS':
+                this.handleLowFPS(value, threshold);
+                break;
+            case 'highMemory':
+                this.handleHighMemory(value, threshold);
+                break;
+            case 'longFrame':
+                this.handleLongFrame(value, threshold);
+                break;
+        }
+    }
+
+    /**
+     * Обработка низкого FPS
+     */
+    handleLowFPS(currentFPS, threshold) {
+        console.warn(`⚠️ Низкий FPS: ${currentFPS} (порог: ${threshold})`);
+        
+        // Адаптируем настройки для улучшения производительности
+        this.config.visibilityThreshold = Math.min(0.8, this.config.visibilityThreshold + 0.1);
+        this.updateInterval = Math.min(300, this.updateInterval + 50);
+        this.currentLOD = 'LOW_DETAIL';
+        
+        // Очищаем кэш и пересчитываем видимость
+        this.clearCache();
+        this.scheduleVisibilityUpdate();
+    }
+
+    /**
+     * Обработка высокого использования памяти
+     */
+    handleHighMemory(memoryUsage, threshold) {
+        console.warn(`⚠️ Высокое использование памяти: ${memoryUsage} (порог: ${threshold})`);
+        
+        // Очищаем кэши
+        this.clearCache();
+        this.visibilityCache.clear();
+        
+        // Увеличиваем порог видимости
+        this.config.visibilityThreshold = Math.min(0.9, this.config.visibilityThreshold + 0.2);
+    }
+
+    /**
+     * Обработка длинных фреймов
+     */
+    handleLongFrame(frameTime, threshold) {
+        if (frameTime > threshold) {
+            // Временно отключаем сложные вычисления
+            this.updateInterval = Math.max(500, this.updateInterval);
+        }
     }
 
     // ОБНОВЛЕННЫЕ МЕТОДЫ V2.1
@@ -403,7 +801,7 @@ class VisibilityManager {
 
     getEntitySizeFactor(entity) {
         const sizeFactors = {
-            'star': 0.9,
+            'galaxy': 0.9,
             'planet': 1.0,
             'moon': 1.3,
             'asteroid': 1.7,
@@ -858,6 +1256,266 @@ class VisibilityManager {
         console.log(`📊 Аналитика ${enabled ? 'включена' : 'выключена'}`);
     }
 
+    // ДОПОЛНИТЕЛЬНЫЕ МЕТОДЫ ДЛЯ ИНТЕГРАЦИИ
+
+    /**
+     * Инициализация состояния на основе приложения
+     */
+    initializeFromApp() {
+        const appState = this.app.getState();
+        
+        if (appState.currentZoom) {
+            this.handleZoomChange(appState.currentZoom);
+        }
+        
+        if (appState.currentLevel) {
+            this.handleLevelChange(appState.currentLevel);
+        }
+        
+        // Инициализация интеграций
+        this.initializeIntegrations();
+    }
+
+    /**
+     * Обработчик изменения видимости документа
+     */
+    handleVisibilityChange() {
+        if (document.hidden) {
+            // При скрытии документа уменьшаем частоту обновлений
+            this.updateInterval = Math.max(1000, this.updateInterval);
+            console.log('👁️ Документ скрыт, уменьшаем частоту обновлений');
+        } else {
+            // При показе документа восстанавливаем нормальную частоту
+            this.updateInterval = 100;
+            this.scheduleVisibilityUpdate();
+            console.log('👁️ Документ видим, восстанавливаем обновления');
+        }
+    }
+
+    /**
+     * Оптимизация для мобильных устройств
+     */
+    optimizeForMobile() {
+        if (window.innerWidth < 768) {
+            // Увеличиваем пороги для мобильных устройств
+            this.config.visibilityThreshold += 0.1;
+            this.config.lodLevels.HIGH_DETAIL.maxEntities = 50;
+            this.config.lodLevels.MEDIUM_DETAIL.maxEntities = 25;
+            this.config.lodLevels.LOW_DETAIL.maxEntities = 10;
+            
+            console.log('📱 Применены мобильные оптимизации');
+        }
+    }
+
+    /**
+     * Восстановление после ошибки
+     */
+    recoverFromError(error) {
+        console.error('🔄 Восстановление VisibilityManager после ошибки:', error);
+        
+        // Сбрасываем состояния
+        this.clearCache();
+        this.performanceMetrics.integrationStatus = 'recovering';
+        
+        // Переинициализируем наблюдатели
+        this.setupIntersectionObserver();
+        this.setupPerformanceMonitoring();
+        
+        // Пересчитываем видимость
+        this.scheduleVisibilityUpdate();
+        
+        this.performanceMetrics.integrationStatus = 'recovered';
+    }
+
+    /**
+     * Расчет среднего времени взаимодействия
+     */
+    calculateAverageInteractionTime() {
+        let totalTime = 0;
+        let interactionCount = 0;
+        
+        this.analytics.userInteractions.forEach(interactionData => {
+            if (interactionData.averageViewTime > 0) {
+                totalTime += interactionData.averageViewTime;
+                interactionCount++;
+            }
+        });
+        
+        return interactionCount > 0 ? totalTime / interactionCount : 0;
+    }
+
+    /**
+     * Расчет приоритета предзагрузки
+     */
+    calculatePreloadPriority(entityId) {
+        const entity = this.entities.get(entityId);
+        if (!entity) return 0;
+        
+        let priority = 0;
+        
+        // Приоритет на основе важности
+        const importanceWeights = { high: 3, medium: 2, low: 1 };
+        priority += importanceWeights[entity.importance] || 1;
+        
+        // Приоритет на основе глубины в иерархии
+        priority += (entity.metadata?.depth || 0) * 0.5;
+        
+        // Приоритет на основе пользовательских паттернов
+        const userInteractions = this.analytics.userInteractions.get(entityId) || [];
+        priority += Math.min(userInteractions.length * 0.1, 2);
+        
+        // Приоритет на основе текущей видимости
+        if (entity.isVisible) {
+            priority += 1;
+        }
+        
+        return priority;
+    }
+
+    /**
+     * Расчет путей от корня
+     */
+    calculatePathsFromRoot(root, allEntities, currentPath = [], depth = 0) {
+        if (depth >= this.config.lodLevels[this.currentLOD].preloadDepth) {
+            return [currentPath];
+        }
+        
+        const paths = [];
+        const children = allEntities.filter(e => e.parent === root.level);
+        
+        if (children.length === 0) return [currentPath];
+        
+        children.forEach(child => {
+            const newPath = [...currentPath, child.level];
+            paths.push(newPath);
+            
+            // Рекурсивно вычисляем пути для детей
+            const childPaths = this.calculatePathsFromRoot(child, allEntities, newPath, depth + 1);
+            paths.push(...childPaths);
+        });
+        
+        return paths;
+    }
+
+    /**
+     * Расчет вероятных путей
+     */
+    calculateProbablePaths(currentEntity) {
+        const paths = [];
+        
+        // Получаем дочерние сущности
+        const children = Array.from(this.entities.values())
+            .filter(e => e.parent === currentEntity.level);
+        
+        // Сортируем по важности и истории взаимодействий
+        const sortedChildren = children.sort((a, b) => {
+            const priorityA = this.calculatePreloadPriority(a.level);
+            const priorityB = this.calculatePreloadPriority(b.level);
+            return priorityB - priorityA;
+        });
+        
+        // Берем топ-3 наиболее вероятных пути
+        sortedChildren.slice(0, 3).forEach(child => {
+            paths.push(child.level);
+        });
+        
+        return paths;
+    }
+
+    /**
+     * Регистрация сущности
+     */
+    registerEntity(entity) {
+        if (!entity.level) {
+            console.warn('⚠️ Попытка зарегистрировать сущность без level:', entity);
+            return;
+        }
+        
+        this.entities.set(entity.level, {
+            ...entity,
+            isVisible: false,
+            isInViewport: false,
+            viewportRatio: 0,
+            lastVisibilityChange: 0
+        });
+        
+        // Записываем в аналитику
+        if (this.config.analyticsEnabled) {
+            this.analytics.visibilityChanges.set(entity.level, {
+                visibleCount: 0,
+                hiddenCount: 0,
+                lastScore: 0,
+                averageScore: 0,
+                calculations: 0
+            });
+        }
+    }
+
+    /**
+     * Получение состояния сущности
+     */
+    getEntityState(entityId) {
+        const entity = this.entities.get(entityId);
+        if (!entity) return null;
+        
+        return {
+            isVisible: entity.isVisible,
+            isInViewport: entity.isInViewport,
+            viewportRatio: entity.viewportRatio,
+            lastVisibilityChange: entity.lastVisibilityChange,
+            visibilityScore: this.calculateVisibilityScore(entity)
+        };
+    }
+
+    /**
+     * Принудительное обновление видимости
+     */
+    forceVisibilityUpdate() {
+        this.clearCache();
+        this.scheduleVisibilityUpdate();
+    }
+
+    /**
+     * Установка порога видимости
+     */
+    setVisibilityThreshold(threshold) {
+        this.config.visibilityThreshold = Math.max(0.1, Math.min(1.0, threshold));
+        this.forceVisibilityUpdate();
+    }
+
+    /**
+     * Получение статистики видимости
+     */
+    getVisibilityStats() {
+        const visibleCount = Array.from(this.entities.values())
+            .filter(e => e.isVisible).length;
+        const totalCount = this.entities.size;
+        
+        return {
+            totalEntities: totalCount,
+            visibleEntities: visibleCount,
+            visibilityRatio: totalCount > 0 ? (visibleCount / totalCount) : 0,
+            cacheSize: this.visibilityCache.size,
+            cacheHitRate: this.performanceMetrics.cacheHitRate,
+            currentLOD: this.currentLOD
+        };
+    }
+
+    /**
+     * Дебаунс функция
+     */
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
     // ОБНОВЛЕННАЯ ОЧИСТКА РЕСУРСОВ
 
     destroy() {
@@ -895,9 +1553,6 @@ class VisibilityManager {
         
         console.log('✅ VisibilityManager v2.1 очищен');
     }
-
-    // Сохранение существующих методов для обратной совместимости
-    // ... (все остальные методы из предыдущей версии сохраняются)
 
     dispatchEvent(eventName, detail) {
         try {
