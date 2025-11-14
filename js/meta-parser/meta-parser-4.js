@@ -1,11 +1,12 @@
 class VercelAdapter {
-    #metaParser;
-    #sitemapGenerator;
-    #vercelAPIEnabled = false;
-    #originalMethods = new Map();
-    #apiEndpointsStatus = new Map();
+    _metaParser;
+    _sitemapGenerator;
+    _vercelAPIEnabled = false;
+    _originalMethods = new Map();
+    _apiEndpointsStatus = new Map();
 
-    static #VERCEL_CONFIG = Object.freeze({
+    // ЗАМЕНА: убираем приватное поле, используем обычное статическое свойство
+    static _VERCEL_CONFIG = Object.freeze({
         apiEndpoints: {
             projectStructure: '/api/project-structure',
             metaParser: '/api/meta-parser', 
@@ -31,15 +32,15 @@ class VercelAdapter {
      * Активация Vercel адаптера
      */
     async activate() {
-        if (!this.#checkDependencies()) {
+        if (!this._checkDependencies()) {
             console.warn('⚠️ Основные модули не загружены, Vercel Adapter отключен');
             return false;
         }
 
-        await this.#checkVercelAPI();
+        await this._checkVercelAPI();
         
-        if (this.#vercelAPIEnabled) {
-            this.#applyVercelEnhancements();
+        if (this._vercelAPIEnabled) {
+            this._applyVercelEnhancements();
             console.log('✅ Vercel Adapter активирован');
             return true;
         } else {
@@ -51,7 +52,7 @@ class VercelAdapter {
     /**
      * Проверка зависимостей
      */
-    #checkDependencies() {
+    _checkDependencies() {
         const dependencies = {
             GalaxyMetaParser: window.GalaxyMetaParser,
             metaParserInstance: window.metaParserInstance,
@@ -60,16 +61,16 @@ class VercelAdapter {
         };
 
         const missing = Object.entries(dependencies)
-            .filter((entry) => !entry[1])
-            .map((entry) => entry[0]);
+            .filter(([key, value]) => !value)
+            .map(([key]) => key);
 
         if (missing.length > 0) {
             console.warn(`⚠️ Отсутствуют зависимости: ${missing.join(', ')}`);
             return false;
         }
 
-        this.#metaParser = window.metaParserInstance;
-        this.#sitemapGenerator = window.universalSitemapGenerator;
+        this._metaParser = window.metaParserInstance;
+        this._sitemapGenerator = window.universalSitemapGenerator;
         
         return true;
     }
@@ -77,9 +78,10 @@ class VercelAdapter {
     /**
      * Проверка доступности Vercel API
      */
-    async #checkVercelAPI() {
+    async _checkVercelAPI() {
         try {
-            const endpoints = Object.values(VercelAdapter.#VERCEL_CONFIG.apiEndpoints);
+            // ИСПРАВЛЕНИЕ: используем _VERCEL_CONFIG вместо #VERCEL_CONFIG
+            const endpoints = Object.values(VercelAdapter._VERCEL_CONFIG.apiEndpoints);
             const checks = await Promise.all(
                 endpoints.map(endpoint => 
                     new Promise((resolve) => {
@@ -121,12 +123,12 @@ class VercelAdapter {
 
             // Сохраняем статус каждого endpoint
             checks.forEach(check => {
-                this.#apiEndpointsStatus.set(check.endpoint, check);
+                this._apiEndpointsStatus.set(check.endpoint, check);
             });
 
-            this.#vercelAPIEnabled = checks.some(check => check.available);
+            this._vercelAPIEnabled = checks.some(check => check.available);
 
-            if (this.#vercelAPIEnabled) {
+            if (this._vercelAPIEnabled) {
                 const availableEndpoints = checks.filter(check => check.available).length;
                 console.log(`✅ Vercel API доступен (${availableEndpoints}/${endpoints.length} endpoints)`);
             } else {
@@ -134,18 +136,18 @@ class VercelAdapter {
             }
         } catch (error) {
             console.log('ℹ️ Vercel API проверка не удалась');
-            this.#vercelAPIEnabled = false;
+            this._vercelAPIEnabled = false;
         }
     }
 
     /**
      * Применение Vercel улучшений
      */
-    #applyVercelEnhancements() {
-        this.#enhanceMetaParser();
-        this.#enhanceSitemapGenerator();
-        this.#setupVercelEvents();
-        this.#setupAPIErrorHandling();
+    _applyVercelEnhancements() {
+        this._enhanceMetaParser();
+        this._enhanceSitemapGenerator();
+        this._setupVercelEvents();
+        this._setupAPIErrorHandling();
         
         console.log('🔧 Vercel улучшения применены');
     }
@@ -153,23 +155,23 @@ class VercelAdapter {
     /**
      * Улучшение GalaxyMetaParser
      */
-    #enhanceMetaParser() {
-        const parser = this.#metaParser;
+    _enhanceMetaParser() {
+        const parser = this._metaParser;
 
         // Сохраняем оригинальные методы
-        this.#originalMethods.set('parseAllPages', parser.parseAllPages.bind(parser));
-        this.#originalMethods.set('parsePageMeta', parser.parsePageMeta.bind(parser));
-        this.#originalMethods.set('_discoverPageUrls', parser._discoverPageUrls ? 
+        this._originalMethods.set('parseAllPages', parser.parseAllPages.bind(parser));
+        this._originalMethods.set('parsePageMeta', parser.parsePageMeta.bind(parser));
+        this._originalMethods.set('_discoverPageUrls', parser._discoverPageUrls ? 
             parser._discoverPageUrls.bind(parser) : null);
 
         // Monkey-patch методов
-        parser.parseAllPages = this.#createVercelParseAllPages(parser);
-        parser.parsePageMeta = this.#createVercelParsePageMeta(parser);
+        parser.parseAllPages = this._createVercelParseAllPages(parser);
+        parser.parsePageMeta = this._createVercelParsePageMeta(parser);
 
         // Добавляем Vercel-специфичные методы
-        parser._vercelAPIEnabled = this.#vercelAPIEnabled;
-        parser._batchParseVercel = this.#batchParseVercel.bind(this);
-        parser._discoverPageUrlsVercel = this.#discoverPageUrlsVercel.bind(this);
+        parser._vercelAPIEnabled = this._vercelAPIEnabled;
+        parser._batchParseVercel = this._batchParseVercel.bind(this);
+        parser._discoverPageUrlsVercel = this._discoverPageUrlsVercel.bind(this);
 
         console.log('🔧 GalaxyMetaParser улучшен для Vercel');
     }
@@ -177,8 +179,8 @@ class VercelAdapter {
     /**
      * Vercel-оптимизированный parseAllPages
      */
-    #createVercelParseAllPages(parser) {
-        const originalParseAllPages = this.#originalMethods.get('parseAllPages');
+    _createVercelParseAllPages(parser) {
+        const originalParseAllPages = this._originalMethods.get('parseAllPages');
         const self = this;
         
         return async function(pageUrls) {
@@ -193,7 +195,7 @@ class VercelAdapter {
             
             // Если Vercel discovery не дал результатов, используем оригинальный метод
             if (!urls || urls.length === 0) {
-                const originalDiscover = self.#originalMethods.get('_discoverPageUrls');
+                const originalDiscover = self._originalMethods.get('_discoverPageUrls');
                 if (originalDiscover) {
                     urls = await originalDiscover.call(this);
                 }
@@ -218,16 +220,17 @@ class VercelAdapter {
     /**
      * Vercel-оптимизированный parsePageMeta
      */
-    #createVercelParsePageMeta(parser) {
-        const originalParsePageMeta = this.#originalMethods.get('parsePageMeta');
+    _createVercelParsePageMeta(parser) {
+        const originalParsePageMeta = this._originalMethods.get('parsePageMeta');
         const self = this;
         
         return async function(pageUrl) {
             // Для тяжелых страниц используем server-side парсинг
-            if (this._vercelAPIEnabled && self.#shouldUseServerSideParsing(pageUrl)) {
+            if (this._vercelAPIEnabled && self._shouldUseServerSideParsing(pageUrl)) {
                 try {
+                    // ИСПРАВЛЕНИЕ: используем _VERCEL_CONFIG вместо #VERCEL_CONFIG
                     const response = await fetch(
-                        VercelAdapter.#VERCEL_CONFIG.apiEndpoints.metaParser + 
+                        VercelAdapter._VERCEL_CONFIG.apiEndpoints.metaParser + 
                         '?url=' + encodeURIComponent(pageUrl)
                     );
                     
@@ -240,7 +243,7 @@ class VercelAdapter {
                             // Трансформируем результат в формат системы
                             const entity = this._enrichEntityData ? 
                                 this._enrichEntityData(result.meta, pageUrl) :
-                                self.#createBasicEntity(result.meta, pageUrl);
+                                self._createBasicEntity(result.meta, pageUrl);
                             
                             entity.metadata = entity.metadata || {};
                             entity.metadata.serverSideParsed = true;
@@ -270,14 +273,15 @@ class VercelAdapter {
     /**
      * Пакетный парсинг через Vercel API
      */
-    async #batchParseVercel(urls) {
+    async _batchParseVercel(urls) {
         console.log('🔄 Пакетный парсинг ' + urls.length + ' страниц через Vercel API...');
         
         try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-            const response = await fetch(VercelAdapter.#VERCEL_CONFIG.apiEndpoints.metaParser, {
+            // ИСПРАВЛЕНИЕ: используем _VERCEL_CONFIG вместо #VERCEL_CONFIG
+            const response = await fetch(VercelAdapter._VERCEL_CONFIG.apiEndpoints.metaParser, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ urls: urls }),
@@ -300,9 +304,9 @@ class VercelAdapter {
                     if (item && item.success && item.meta) {
                         try {
                             // Используем метод обогащения сущности из основного парсера
-                            const entity = this.#metaParser._enrichEntityData ?
-                                this.#metaParser._enrichEntityData(item.meta, item.url) :
-                                this.#createBasicEntity(item.meta, item.url);
+                            const entity = this._metaParser._enrichEntityData ?
+                                this._metaParser._enrichEntityData(item.meta, item.url) :
+                                this._createBasicEntity(item.meta, item.url);
                             
                             entity.metadata = entity.metadata || {};
                             entity.metadata.serverSideParsed = true;
@@ -311,14 +315,14 @@ class VercelAdapter {
                             entities[entity.level] = entity;
                             
                             // Сохраняем в кэши
-                            if (this.#metaParser._cache) {
-                                this.#metaParser._cache.set(item.url, {
+                            if (this._metaParser._cache) {
+                                this._metaParser._cache.set(item.url, {
                                     data: entity,
                                     timestamp: Date.now()
                                 });
                             }
-                            if (this.#metaParser._entityCache) {
-                                this.#metaParser._entityCache.set(entity.level, entity);
+                            if (this._metaParser._entityCache) {
+                                this._metaParser._entityCache.set(entity.level, entity);
                             }
                         } catch (error) {
                             console.warn('Ошибка обработки сущности ' + item.url + ':', error);
@@ -326,11 +330,11 @@ class VercelAdapter {
                     }
                 });
                 
-                console.log('✅ Пакетный парсинг завершен: ' + batchResults.filter(function(r) { return r.success; }).length + ' успешно');
+                console.log('✅ Пакетный парсинг завершен: ' + batchResults.filter(r => r.success).length + ' успешно');
                 
                 // Строим иерархию
-                if (this.#metaParser.buildEntityHierarchy) {
-                    return this.#metaParser.buildEntityHierarchy(entities);
+                if (this._metaParser.buildEntityHierarchy) {
+                    return this._metaParser.buildEntityHierarchy(entities);
                 } else {
                     return { entities: entities, hierarchy: null };
                 }
@@ -346,12 +350,13 @@ class VercelAdapter {
     /**
      * Vercel discovery страниц
      */
-    async #discoverPageUrlsVercel() {
+    async _discoverPageUrlsVercel() {
         try {
             // Пробуем все доступные API endpoints
+            // ИСПРАВЛЕНИЕ: используем _VERCEL_CONFIG вместо #VERCEL_CONFIG
             const endpoints = [
-                VercelAdapter.#VERCEL_CONFIG.apiEndpoints.projectStructure,
-                VercelAdapter.#VERCEL_CONFIG.apiEndpoints.pages
+                VercelAdapter._VERCEL_CONFIG.apiEndpoints.projectStructure,
+                VercelAdapter._VERCEL_CONFIG.apiEndpoints.pages
             ];
 
             for (const endpoint of endpoints) {
@@ -368,7 +373,7 @@ class VercelAdapter {
                     
                     if (endpoint.includes('project-structure') && result.success) {
                         // Обрабатываем project-structure формат
-                        urls = result.data.pages.map(function(page) { return '/' + page.path; });
+                        urls = result.data.pages.map(page => '/' + page.path);
                     } else if (endpoint.includes('pages') && result.pages) {
                         // Обрабатываем pages формат
                         urls = result.pages;
@@ -388,20 +393,20 @@ class VercelAdapter {
             
         } catch (error) {
             console.warn('Vercel discovery не удался, используем fallback');
-            return this.#fallbackPageDiscovery();
+            return this._fallbackPageDiscovery();
         }
     }
 
     /**
      * Резервное обнаружение страниц
      */
-    #fallbackPageDiscovery() {
+    _fallbackPageDiscovery() {
         console.log('🔄 Использование резервного обнаружения страниц...');
         
         // Используем клиентские методы из meta-parser-2
-        const originalDiscover = this.#originalMethods.get('_discoverPageUrls');
+        const originalDiscover = this._originalMethods.get('_discoverPageUrls');
         if (originalDiscover) {
-            return originalDiscover.call(this.#metaParser);
+            return originalDiscover.call(this._metaParser);
         }
         
         // Минимальный набор страниц по умолчанию
@@ -416,9 +421,9 @@ class VercelAdapter {
     /**
      * Создание базовой сущности если метод обогащения недоступен
      */
-    #createBasicEntity(metaTags, pageUrl) {
+    _createBasicEntity(metaTags, pageUrl) {
         return {
-            level: metaTags.level || this.#extractLevelFromUrl(pageUrl),
+            level: metaTags.level || this._extractLevelFromUrl(pageUrl),
             type: metaTags.type || 'planet',
             title: metaTags.title || 'Untitled',
             description: metaTags.description || '',
@@ -436,7 +441,7 @@ class VercelAdapter {
         };
     }
 
-    #extractLevelFromUrl(url) {
+    _extractLevelFromUrl(url) {
         const match = url.match(/\/([^\/]+)\.html$/);
         return match ? match[1] : 'unknown';
     }
@@ -444,7 +449,7 @@ class VercelAdapter {
     /**
      * Определение необходимости server-side парсинга
      */
-    #shouldUseServerSideParsing(pageUrl) {
+    _shouldUseServerSideParsing(pageUrl) {
         return pageUrl.includes('/blog/') || 
                pageUrl.includes('/docs/') ||
                (pageUrl && pageUrl.endsWith('/index.html')) ||
@@ -455,30 +460,30 @@ class VercelAdapter {
     /**
      * Улучшение SitemapGenerator
      */
-    #enhanceSitemapGenerator() {
-        const generator = this.#sitemapGenerator;
+    _enhanceSitemapGenerator() {
+        const generator = this._sitemapGenerator;
 
         // Сохраняем оригинальные методы если они существуют
         if (generator._saveUniversalSitemap) {
-            this.#originalMethods.set('_saveUniversalSitemap', 
+            this._originalMethods.set('_saveUniversalSitemap', 
                 generator._saveUniversalSitemap.bind(generator));
         }
         if (generator._loadExistingSitemap) {
-            this.#originalMethods.set('_loadExistingSitemap',
+            this._originalMethods.set('_loadExistingSitemap',
                 generator._loadExistingSitemap.bind(generator));
         }
 
         // Monkey-patch методов если они существуют
         if (generator._saveUniversalSitemap) {
-            generator._saveUniversalSitemap = this.#createVercelSaveSitemap(generator);
+            generator._saveUniversalSitemap = this._createVercelSaveSitemap(generator);
         }
         if (generator._loadExistingSitemap) {
-            generator._loadExistingSitemap = this.#createVercelLoadSitemap(generator);
+            generator._loadExistingSitemap = this._createVercelLoadSitemap(generator);
         }
 
         // Добавляем Vercel-специфичные методы
-        generator._vercelAPIEnabled = this.#vercelAPIEnabled;
-        generator._saveToVercelAPI = this.#saveToVercelAPI.bind(this);
+        generator._vercelAPIEnabled = this._vercelAPIEnabled;
+        generator._saveToVercelAPI = this._saveToVercelAPI.bind(this);
 
         console.log('🔧 SitemapGenerator улучшен для Vercel');
     }
@@ -486,8 +491,8 @@ class VercelAdapter {
     /**
      * Vercel-оптимизированное сохранение sitemap
      */
-    #createVercelSaveSitemap(generator) {
-        const originalSaveUniversalSitemap = this.#originalMethods.get('_saveUniversalSitemap');
+    _createVercelSaveSitemap(generator) {
+        const originalSaveUniversalSitemap = this._originalMethods.get('_saveUniversalSitemap');
         const self = this;
         
         return async function() {
@@ -526,15 +531,16 @@ class VercelAdapter {
     /**
      * Vercel-оптимизированная загрузка sitemap
      */
-    #createVercelLoadSitemap(generator) {
-        const originalLoadExistingSitemap = this.#originalMethods.get('_loadExistingSitemap');
+    _createVercelLoadSitemap(generator) {
+        const originalLoadExistingSitemap = this._originalMethods.get('_loadExistingSitemap');
         const self = this;
         
         return async function() {
             // Приоритет 1: Загрузка через Vercel API
             if (this._vercelAPIEnabled) {
                 try {
-                    const response = await fetch(VercelAdapter.#VERCEL_CONFIG.apiEndpoints.sitemap);
+                    // ИСПРАВЛЕНИЕ: используем _VERCEL_CONFIG вместо #VERCEL_CONFIG
+                    const response = await fetch(VercelAdapter._VERCEL_CONFIG.apiEndpoints.sitemap);
                     if (response.ok) {
                         const result = await response.json();
                         if (result && result.success) {
@@ -563,12 +569,13 @@ class VercelAdapter {
     /**
      * Сохранение sitemap через Vercel API
      */
-    async #saveToVercelAPI() {
+    async _saveToVercelAPI() {
         try {
-            const response = await fetch(VercelAdapter.#VERCEL_CONFIG.apiEndpoints.sitemap, {
+            // ИСПРАВЛЕНИЕ: используем _VERCEL_CONFIG вместо #VERCEL_CONFIG
+            const response = await fetch(VercelAdapter._VERCEL_CONFIG.apiEndpoints.sitemap, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(this.#sitemapGenerator._currentSitemap)
+                body: JSON.stringify(this._sitemapGenerator._currentSitemap)
             });
 
             if (!response.ok) {
@@ -580,15 +587,15 @@ class VercelAdapter {
             if (result && result.success) {
                 console.log('✅ Sitemap сохранен на Vercel: ' + result.path);
                 
-                if (this.#sitemapGenerator._dispatchUniversalEvent) {
-                    this.#sitemapGenerator._dispatchUniversalEvent('sitemapSaved', {
+                if (this._sitemapGenerator._dispatchUniversalEvent) {
+                    this._sitemapGenerator._dispatchUniversalEvent('sitemapSaved', {
                         path: result.path,
-                        size: JSON.stringify(this.#sitemapGenerator._currentSitemap).length,
-                        entities: this.#sitemapGenerator._currentSitemap && 
-                                 this.#sitemapGenerator._currentSitemap.entities ? 
-                                 Object.keys(this.#sitemapGenerator._currentSitemap.entities).length : 0,
-                        domain: this.#sitemapGenerator._currentSitemap ? 
-                               this.#sitemapGenerator._currentSitemap.domain : 'unknown',
+                        size: JSON.stringify(this._sitemapGenerator._currentSitemap).length,
+                        entities: this._sitemapGenerator._currentSitemap && 
+                                 this._sitemapGenerator._currentSitemap.entities ? 
+                                 Object.keys(this._sitemapGenerator._currentSitemap.entities).length : 0,
+                        domain: this._sitemapGenerator._currentSitemap ? 
+                               this._sitemapGenerator._currentSitemap.domain : 'unknown',
                         savedTo: 'vercel'
                     });
                 }
@@ -605,32 +612,32 @@ class VercelAdapter {
     /**
      * Настройка Vercel-специфичных событий
      */
-    #setupVercelEvents() {
+    _setupVercelEvents() {
         document.addEventListener('vercelApiStatusChange', (event) => {
             console.log('🔄 Vercel API статус: ' + (event.detail.available ? 'доступен' : 'недоступен'));
-            this.#vercelAPIEnabled = event.detail.available;
+            this._vercelAPIEnabled = event.detail.available;
             
             // Обновляем статус в парсере и генераторе
-            if (this.#metaParser) {
-                this.#metaParser._vercelAPIEnabled = event.detail.available;
+            if (this._metaParser) {
+                this._metaParser._vercelAPIEnabled = event.detail.available;
             }
-            if (this.#sitemapGenerator) {
-                this.#sitemapGenerator._vercelAPIEnabled = event.detail.available;
+            if (this._sitemapGenerator) {
+                this._sitemapGenerator._vercelAPIEnabled = event.detail.available;
             }
         });
 
         document.addEventListener('forceVercelDiscovery', () => {
             console.log('🔄 Принудительное Vercel обнаружение...');
-            if (this.#metaParser && this.#metaParser.parseAllPages) {
-                this.#metaParser.parseAllPages();
+            if (this._metaParser && this._metaParser.parseAllPages) {
+                this._metaParser.parseAllPages();
             }
         });
 
         // Событие для принудительного сохранения sitemap
         document.addEventListener('forceSitemapSave', () => {
             console.log('🔄 Принудительное сохранение sitemap...');
-            if (this.#sitemapGenerator && this.#sitemapGenerator._saveUniversalSitemap) {
-                this.#sitemapGenerator._saveUniversalSitemap();
+            if (this._sitemapGenerator && this._sitemapGenerator._saveUniversalSitemap) {
+                this._sitemapGenerator._saveUniversalSitemap();
             }
         });
 
@@ -640,7 +647,7 @@ class VercelAdapter {
     /**
      * Обработка ошибок API
      */
-    #setupAPIErrorHandling() {
+    _setupAPIErrorHandling() {
         const originalFetch = window.fetch;
         const self = this;
         
@@ -654,7 +661,7 @@ class VercelAdapter {
                     console.warn('⚠️ API Error: ' + args[0] + ' - ' + response.status);
                     
                     // Обновляем статус endpoint
-                    self.#apiEndpointsStatus.set(args[0], {
+                    self._apiEndpointsStatus.set(args[0], {
                         available: false,
                         statusCode: response.status,
                         lastChecked: Date.now()
@@ -667,7 +674,7 @@ class VercelAdapter {
                 
                 // Обновляем статус endpoint
                 if (args[0] && typeof args[0] === 'string' && args[0].includes('/api/')) {
-                    self.#apiEndpointsStatus.set(args[0], {
+                    self._apiEndpointsStatus.set(args[0], {
                         available: false,
                         error: error.message,
                         lastChecked: Date.now()
@@ -686,16 +693,16 @@ class VercelAdapter {
      */
     getStatus() {
         const endpointsStatus = {};
-        for (const [endpoint, status] of this.#apiEndpointsStatus) {
+        for (const [endpoint, status] of this._apiEndpointsStatus) {
             endpointsStatus[endpoint] = status;
         }
 
         return {
-            activated: this.#vercelAPIEnabled,
-            metaParserEnhanced: !!this.#originalMethods.get('parseAllPages'),
-            sitemapGeneratorEnhanced: !!this.#originalMethods.get('_saveUniversalSitemap'),
-            vercelAPI: this.#vercelAPIEnabled,
-            endpoints: VercelAdapter.#VERCEL_CONFIG.apiEndpoints,
+            activated: this._vercelAPIEnabled,
+            metaParserEnhanced: !!this._originalMethods.get('parseAllPages'),
+            sitemapGeneratorEnhanced: !!this._originalMethods.get('_saveUniversalSitemap'),
+            vercelAPI: this._vercelAPIEnabled,
+            endpoints: VercelAdapter._VERCEL_CONFIG.apiEndpoints,
             endpointsStatus: endpointsStatus,
             environment: VercelEnvironment.getEnvironmentInfo()
         };
@@ -706,15 +713,15 @@ class VercelAdapter {
      */
     deactivate() {
         // Восстанавливаем оригинальные методы
-        for (const [methodName, originalMethod] of this.#originalMethods) {
-            if (methodName.includes('parse') && this.#metaParser) {
-                this.#metaParser[methodName] = originalMethod;
-            } else if (this.#sitemapGenerator) {
-                this.#sitemapGenerator[methodName] = originalMethod;
+        for (const [methodName, originalMethod] of this._originalMethods) {
+            if (methodName.includes('parse') && this._metaParser) {
+                this._metaParser[methodName] = originalMethod;
+            } else if (this._sitemapGenerator) {
+                this._sitemapGenerator[methodName] = originalMethod;
             }
         }
 
-        this.#originalMethods.clear();
+        this._originalMethods.clear();
         console.log('🔧 Vercel Adapter деактивирован');
     }
 }
@@ -728,7 +735,7 @@ class VercelEnvironment {
                window.location.hostname.includes('.now.sh') ||
                (document.querySelector('meta[name="deployment"]') && 
                 document.querySelector('meta[name="deployment"]').content === 'vercel') ||
-               this.#hasVercelHeaders();
+               this._hasVercelHeaders();
     }
 
     static isLocalDevelopment() {
@@ -743,7 +750,7 @@ class VercelEnvironment {
         return true;
     }
 
-    static #hasVercelHeaders() {
+    static _hasVercelHeaders() {
         // Проверяем наличие Vercel-специфичных заголовков
         return document.querySelector('meta[name="vercel"]') !== null;
     }
@@ -768,7 +775,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('🚀 Инициализация Vercel Adapter v4.0...');
     
     // Ждем загрузки основных модулей
-    const maxWaitTime = VercelAdapter.#VERCEL_CONFIG.fallback.maxWaitTime;
+    const maxWaitTime = VercelAdapter._VERCEL_CONFIG.fallback.maxWaitTime;
     const startTime = Date.now();
     
     while (!window.metaParserInstance || !window.universalSitemapGenerator) {
@@ -776,7 +783,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.warn('⏰ Таймаут ожидания основных модулей');
             break;
         }
-        await new Promise(resolve => setTimeout(resolve, VercelAdapter.#VERCEL_CONFIG.fallback.retryDelay));
+        await new Promise(resolve => setTimeout(resolve, VercelAdapter._VERCEL_CONFIG.fallback.retryDelay));
     }
 
     // Создаем и активируем адаптер
@@ -843,7 +850,8 @@ window.VercelMetaParser = {
     
     // Новые методы для диагностики API
     testAPIEndpoints: async function() {
-        const endpoints = Object.values(VercelAdapter.#VERCEL_CONFIG.apiEndpoints);
+        // ИСПРАВЛЕНИЕ: используем _VERCEL_CONFIG вместо #VERCEL_CONFIG
+        const endpoints = Object.values(VercelAdapter._VERCEL_CONFIG.apiEndpoints);
         const results = {};
         
         for (const endpoint of endpoints) {
@@ -895,7 +903,8 @@ window.VercelMetaParser = {
     // Метод для получения информации о проекте
     getProjectInfo: async function() {
         try {
-            const response = await fetch(VercelAdapter.#VERCEL_CONFIG.apiEndpoints.projectStructure);
+            // ИСПРАВЛЕНИЕ: используем _VERCEL_CONFIG вместо #VERCEL_CONFIG
+            const response = await fetch(VercelAdapter._VERCEL_CONFIG.apiEndpoints.projectStructure);
             if (response.ok) {
                 return await response.json();
             }
