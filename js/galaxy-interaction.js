@@ -465,13 +465,35 @@ class GalaxyInteraction {
      * Инициализация состояния камеры
      */
     initializeCameraState() {
+        const galaxyBuilder = this.app.getComponent('galaxyBuilder');
+        let bounds = { minX: -1000, maxX: 1000, minY: -800, maxY: 800 };
+        
+        if (galaxyBuilder) {
+            // Получаем реальные границы галактики
+            const entities = galaxyBuilder.getAllEntities();
+            if (entities && entities.length > 0) {
+                const positions = entities.map(e => e.position).filter(p => p);
+                if (positions.length > 0) {
+                    const xs = positions.map(p => p.x);
+                    const ys = positions.map(p => p.y);
+                    
+                    bounds = {
+                        minX: Math.min(...xs) - 20,
+                        maxX: Math.max(...xs) + 20,
+                        minY: Math.min(...ys) - 20,
+                        maxY: Math.max(...ys) + 20
+                    };
+                }
+            }
+        }
+        
         this.cameraState = {
             zoom: 1.0,
             position: { x: 0, y: 0 },
             target: null,
             isAnimating: false,
             velocity: { x: 0, y: 0 },
-            bounds: this.cameraState?.bounds || { minX: -1000, maxX: 1000, minY: -800, maxY: 800 },
+            bounds: bounds,
             history: [],
             maxHistorySize: 10
         };
@@ -496,6 +518,51 @@ class GalaxyInteraction {
             return { x: touch.clientX, y: touch.clientY };
         }
         return { x: event.clientX, y: event.clientY };
+    }
+
+    /**
+     * Обновление позиции курсора
+     */
+    updateCursorPosition(event) {
+        const pos = this.getEventPosition(event);
+        this.cursorPosition = pos;
+    }
+
+    /**
+     * Получение сущности из события
+     */
+    getEntityFromEvent(event) {
+        // Интеграция с GalaxyBuilder для получения сущности по позиции
+        const element = event.target.closest('[data-entity-id]');
+        if (element && this.app.getComponent) {
+            const galaxyBuilder = this.app.getComponent('galaxyBuilder');
+            if (galaxyBuilder && galaxyBuilder.getEntity) {
+                const entityId = element.dataset.entityId;
+                return galaxyBuilder.getEntity(entityId);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Получение сущности по позиции
+     */
+    getEntityAtPosition(x, y, tolerance = 50) {
+        if (this.app.getComponent) {
+            const galaxyBuilder = this.app.getComponent('galaxyBuilder');
+            if (galaxyBuilder && galaxyBuilder.getEntityAtPosition) {
+                // Конвертируем координаты в проценты относительно контейнера
+                const container = this.getGalaxyContainer();
+                if (container) {
+                    const rect = container.getBoundingClientRect();
+                    const percentX = ((x - rect.left) / rect.width) * 100;
+                    const percentY = ((y - rect.top) / rect.height) * 100;
+                    
+                    return galaxyBuilder.getEntityAtPosition(percentX, percentY, tolerance);
+                }
+            }
+        }
+        return null;
     }
 
     /**
@@ -533,7 +600,7 @@ class GalaxyInteraction {
     }
 
     /**
-     * Обработка наведения на сущность
+     * Обработка наведения на сущности
      */
     handleEntityHover(entity) {
         if (!entity) return;
@@ -662,7 +729,8 @@ class GalaxyInteraction {
         };
     }
 
-    // Обработчики событий (реализации)
+    // ОБРАБОТЧИКИ СОБЫТИЙ
+
     handleMouseDown(event) {
         event.preventDefault();
         this.updateCursorPosition(event);
@@ -780,6 +848,28 @@ class GalaxyInteraction {
         this.handleTouchEnd(event);
     }
 
+    handleWheel(event) {
+        event.preventDefault();
+        
+        const delta = -Math.sign(event.deltaY);
+        const zoomFactor = 1 + delta * this.config.zoomSensitivity;
+        const newZoom = this.cameraState.zoom * zoomFactor;
+        
+        this.handleZoom(newZoom);
+    }
+
+    handleContextMenu(event) {
+        event.preventDefault();
+        
+        const entity = this.getEntityFromEvent(event);
+        if (entity) {
+            this.dispatchEvent('entityContextMenu', {
+                entity,
+                position: this.getEventPosition(event)
+            });
+        }
+    }
+
     handleKeyDown(event) {
         this.accessibility.isKeyboardNavigating = true;
 
@@ -848,6 +938,178 @@ class GalaxyInteraction {
         this.handleKeyboardNavigation(event);
     }
 
+    handleResize() {
+        this.calculateCameraBounds();
+        this.constrainCameraPosition();
+        this.updateCameraTransform();
+    }
+
+    handleLevelChange(event) {
+        const { levelId } = event.detail;
+        console.log('Level changed to:', levelId);
+        
+        // Обновляем состояние на основе нового уровня
+        this.dispatchEvent('interactionLevelChanged', { levelId });
+    }
+
+    handleContentLoaded(event) {
+        const { entityId, content } = event.detail;
+        console.log('Content loaded for:', entityId);
+        
+        // Обновляем кэш сущностей
+        this.clearEntityCache();
+    }
+
+    handleVisibilityUpdated(event) {
+        const { visibleEntities } = event.detail;
+        
+        // Оптимизируем взаимодействия на основе видимости
+        this.optimizeForVisibleEntities(visibleEntities);
+    }
+
+    handleVisibilityChange() {
+        if (document.hidden) {
+            // Приостанавливаем анимации при скрытии вкладки
+            if (this.inertiaAnimationId) {
+                cancelAnimationFrame(this.inertiaAnimationId);
+                this.inertiaAnimationId = null;
+            }
+        }
+    }
+
+    // ОБРАБОТЧИКИ ЖЕСТОВ
+
+    handlePinchGesture(touches) {
+        if (touches.length !== 2) return;
+        
+        const touch1 = touches[0];
+        const touch2 = touches[1];
+        
+        const currentDistance = this.calculateTouchDistance(touch1, touch2);
+        
+        if (!this.gestureState.isPinching) {
+            this.gestureState.isPinching = true;
+            this.gestureState.initialPinchDistance = currentDistance;
+            this.gestureState.initialZoom = this.cameraState.zoom;
+        } else {
+            const scale = currentDistance / this.gestureState.initialPinchDistance;
+            const newZoom = this.gestureState.initialZoom * scale;
+            this.handleZoom(newZoom);
+        }
+    }
+
+    handleSwipeGesture(touch) {
+        // Базовая реализация свайпа
+        if (!this.gestureState.swipeStart) {
+            this.gestureState.swipeStart = {
+                x: touch.clientX,
+                y: touch.clientY,
+                timestamp: Date.now()
+            };
+            return;
+        }
+        
+        const deltaX = touch.clientX - this.gestureState.swipeStart.x;
+        const deltaY = touch.clientY - this.gestureState.swipeStart.y;
+        
+        // Панорамирование при свайпе
+        this.handlePan(-deltaX * 0.5, -deltaY * 0.5);
+        
+        // Обновляем начальную позицию для плавного движения
+        this.gestureState.swipeStart = {
+            x: touch.clientX,
+            y: touch.clientY,
+            timestamp: Date.now()
+        };
+    }
+
+    handleRecognizedGesture(gesture) {
+        console.log('Gesture recognized:', gesture);
+        
+        switch (gesture.name) {
+            case 'tap':
+                this.handleGestureTap(gesture);
+                break;
+            case 'double-tap':
+                this.handleGestureDoubleTap(gesture);
+                break;
+            case 'pinch':
+                this.handleGesturePinch(gesture);
+                break;
+            case 'swipe':
+                this.handleGestureSwipe(gesture);
+                break;
+            case 'long-press':
+                this.handleGestureLongPress(gesture);
+                break;
+            case 'rotate':
+                this.handleGestureRotate(gesture);
+                break;
+        }
+    }
+
+    handleGestureTap(gesture) {
+        const entity = this.getEntityAtPosition(
+            gesture.data.endPosition.x, 
+            gesture.data.endPosition.y
+        );
+        if (entity) {
+            this.handleEntityClick(entity);
+        }
+    }
+
+    handleGestureDoubleTap(gesture) {
+        const entity = this.getEntityAtPosition(
+            gesture.data.endPosition.x, 
+            gesture.data.endPosition.y
+        );
+        if (entity) {
+            this.cameraZoomToEntity(entity);
+        } else {
+            // Сброс камеры при двойном тапе на пустом месте
+            this.cameraReset();
+        }
+    }
+
+    handleGesturePinch(gesture) {
+        if (gesture.data.pinchScale) {
+            const newZoom = this.cameraState.zoom * gesture.data.pinchScale;
+            this.handleZoom(newZoom);
+        }
+    }
+
+    handleGestureSwipe(gesture) {
+        const deltaX = gesture.data.endPosition.x - gesture.data.startPosition.x;
+        const deltaY = gesture.data.endPosition.y - gesture.data.startPosition.y;
+        
+        this.handlePan(-deltaX * 0.1, -deltaY * 0.1);
+    }
+
+    handleGestureLongPress(gesture) {
+        const entity = this.getEntityAtPosition(
+            gesture.data.endPosition.x, 
+            gesture.data.endPosition.y
+        );
+        if (entity) {
+            this.dispatchEvent('entityLongPress', {
+                entity,
+                position: gesture.data.endPosition,
+                duration: gesture.data.duration
+            });
+        }
+    }
+
+    handleGestureRotate(gesture) {
+        if (gesture.data.rotation) {
+            this.dispatchEvent('viewRotated', {
+                rotation: gesture.data.rotation,
+                center: gesture.data.endPosition
+            });
+        }
+    }
+
+    // СИСТЕМА ДОСТУПНОСТИ
+
     /**
      * Настройка доступности
      */
@@ -880,7 +1142,7 @@ class GalaxyInteraction {
         if (!container) return;
 
         container.setAttribute('role', 'application');
-        container.setAttribute('aria-label', 'Интерактивная галактика знаний GENOФОНД');
+        container.setAttribute('aria-label', 'Интерактивная галактика знаний BIOAPGREID');
         container.setAttribute('aria-describedby', 'galaxy-description');
 
         // Создание описания для screen readers
@@ -923,13 +1185,275 @@ class GalaxyInteraction {
         entity.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
+    // МЕТОДЫ УПРАВЛЕНИЯ КАМЕРОЙ
+
     /**
-     * Улучшенные методы из предыдущей реализации
+     * Панорамирование
      */
-    easeOutCubic(t) {
-        return 1 - Math.pow(1 - t, 3);
+    handlePan(deltaX, deltaY) {
+        if (this.cameraState.isAnimating) return;
+        
+        const sensitivity = this.config.panSensitivity / this.cameraState.zoom;
+        this.cameraState.position.x += deltaX * sensitivity;
+        this.cameraState.position.y += deltaY * sensitivity;
+        
+        this.constrainCameraPosition();
+        this.updateCameraTransform();
+        
+        // Сохраняем состояние для инерции
+        if (this.config.enableInertia) {
+            this.cameraState.velocity = {
+                x: deltaX * sensitivity * 0.1,
+                y: deltaY * sensitivity * 0.1
+            };
+        }
     }
 
+    /**
+     * Пошаговое масштабирование
+     */
+    handleStepZoom(direction) {
+        const currentZoom = this.cameraState.zoom;
+        let newZoom;
+        
+        if (direction > 0) {
+            // Увеличение
+            newZoom = currentZoom * (1 + this.config.zoomSensitivity);
+        } else {
+            // Уменьшение
+            newZoom = currentZoom * (1 - this.config.zoomSensitivity);
+        }
+        
+        this.handleZoom(newZoom);
+    }
+
+    /**
+     * Расчет оптимального зума для сущности
+     */
+    calculateOptimalZoom(entity) {
+        const baseZoom = 1.0;
+        const entitySizeFactor = this.getEntitySizeFactor(entity);
+        const importanceFactor = this.getEntityImportanceFactor(entity);
+        
+        return Math.min(
+            this.config.maxZoom,
+            baseZoom * entitySizeFactor * importanceFactor
+        );
+    }
+
+    /**
+     * Фактор размера сущности
+     */
+    getEntitySizeFactor(entity) {
+        const sizeFactors = {
+            'galaxy': 0.4,
+            'planet': 1.2,
+            'moon': 1.5,
+            'asteroid': 2.0,
+            'debris': 2.5,
+            'blackhole': 0.8,
+            'nebula': 0.6,
+            'station': 1.3,
+            'gateway': 1.1,
+            'anomaly': 1.4
+        };
+        return sizeFactors[entity.type] || 1.0;
+    }
+
+    /**
+     * Фактор важности сущности
+     */
+    getEntityImportanceFactor(entity) {
+        const importanceFactors = {
+            'high': 1.5,
+            'medium': 1.0,
+            'low': 0.7
+        };
+        return importanceFactors[entity.importance] || 1.0;
+    }
+
+    /**
+     * Расчет целевой позиции для сущности
+     */
+    calculateTargetPosition(entity) {
+        if (!entity.position) return { x: 0, y: 0 };
+        
+        // Конвертируем процентные координаты в пиксельные относительно центра
+        const container = this.getGalaxyContainer();
+        if (!container) return entity.position;
+        
+        const rect = container.getBoundingClientRect();
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        
+        // Вычисляем смещение для центрирования сущности
+        const targetX = centerX - (entity.position.x * rect.width / 100);
+        const targetY = centerY - (entity.position.y * rect.height / 100);
+        
+        return {
+            x: targetX / this.cameraState.zoom,
+            y: targetY / this.cameraState.zoom
+        };
+    }
+
+    /**
+     * Анимация перехода камеры
+     */
+    animateCameraTransition(targetPosition, targetZoom, onComplete) {
+        if (this.cameraState.isAnimating) return;
+        
+        this.cameraState.isAnimating = true;
+        this.cameraState.target = targetPosition;
+        
+        const startPosition = { ...this.cameraState.position };
+        const startZoom = this.cameraState.zoom;
+        const startTime = performance.now();
+        const duration = this.config.zoomAnimationDuration;
+        
+        const animate = (currentTime) => {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            // Применяем easing функцию
+            const easeProgress = this.easeOutCubic(progress);
+            
+            // Интерполируем позицию и зум
+            this.cameraState.position.x = startPosition.x + (targetPosition.x - startPosition.x) * easeProgress;
+            this.cameraState.position.y = startPosition.y + (targetPosition.y - startPosition.y) * easeProgress;
+            this.cameraState.zoom = startZoom + (targetZoom - startZoom) * easeProgress;
+            
+            this.constrainCameraPosition();
+            this.updateCameraTransform();
+            
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                this.cameraState.isAnimating = false;
+                if (onComplete) onComplete();
+            }
+        };
+        
+        requestAnimationFrame(animate);
+    }
+
+    /**
+     * Ограничение позиции камеры
+     */
+    constrainCameraPosition() {
+        const zoom = this.cameraState.zoom;
+        const bounds = this.cameraState.bounds;
+        
+        // Вычисляем эффективные границы с учетом зума
+        const effectiveBounds = {
+            minX: bounds.minX * zoom,
+            maxX: bounds.maxX * zoom,
+            minY: bounds.minY * zoom,
+            maxY: bounds.maxY * zoom
+        };
+        
+        this.cameraState.position.x = Math.max(
+            effectiveBounds.minX, 
+            Math.min(effectiveBounds.maxX, this.cameraState.position.x)
+        );
+        this.cameraState.position.y = Math.max(
+            effectiveBounds.minY, 
+            Math.min(effectiveBounds.maxY, this.cameraState.position.y)
+        );
+    }
+
+    /**
+     * Расчет границ камеры
+     */
+    calculateCameraBounds() {
+        const container = this.getGalaxyContainer();
+        if (!container) return;
+        
+        const rect = container.getBoundingClientRect();
+        
+        // Границы рассчитываются относительно размера контейнера
+        this.cameraState.bounds = {
+            minX: -rect.width * 0.5,
+            maxX: rect.width * 0.5,
+            minY: -rect.height * 0.5,
+            maxY: rect.height * 0.5
+        };
+    }
+
+    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+
+    /**
+     * Обработка средней кнопки мыши
+     */
+    handleMiddleMouseDown(event) {
+        // Активируем режим панорамирования
+        this.isPanning = true;
+        this.panStartPosition = this.getEventPosition(event);
+        
+        // Изменяем курсор
+        const container = this.getGalaxyContainer();
+        if (container) {
+            container.style.cursor = 'grabbing';
+        }
+        
+        event.preventDefault();
+    }
+
+    /**
+     * Расчет расстояния между касаниями
+     */
+    calculateTouchDistance(touch1, touch2) {
+        const dx = touch1.clientX - touch2.clientX;
+        const dy = touch1.clientY - touch2.clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    /**
+     * Планирование предиктивной загрузки
+     */
+    schedulePredictiveLoading(entity) {
+        if (this.predictiveLoadingTimeout) {
+            clearTimeout(this.predictiveLoadingTimeout);
+        }
+
+        this.predictiveLoadingTimeout = setTimeout(() => {
+            this.preloadRelatedContent(entity);
+        }, this.config.predictiveLoadingDelay);
+    }
+
+    /**
+     * Предзагрузка связанного контента
+     */
+    preloadRelatedContent(entity) {
+        // Предзагрузка связанного контента через ContentManager
+        if (this.app.contentManager) {
+            this.app.contentManager.preloadRelatedContent(entity.id)
+                .then(() => console.log(`🔮 Предзагружен контент для: ${entity.title}`))
+                .catch(error => console.warn('⚠️ Ошибка предзагрузки:', error));
+        }
+    }
+
+    /**
+     * Оптимизация для видимых сущностей
+     */
+    optimizeForVisibleEntities(visibleEntities) {
+        // Очищаем кэш для невидимых сущностей
+        this.entityCache.forEach((cachedEntity, entityId) => {
+            if (!visibleEntities.some(ve => ve.level === entityId)) {
+                this.entityCache.delete(entityId);
+            }
+        });
+    }
+
+    /**
+     * Очистка кэша сущностей
+     */
+    clearEntityCache() {
+        this.entityCache.clear();
+    }
+
+    /**
+     * Сохранение состояния камеры
+     */
     saveCameraState() {
         this.cameraState.history.push({
             position: { ...this.cameraState.position },
@@ -943,6 +1467,9 @@ class GalaxyInteraction {
         }
     }
 
+    /**
+     * Восстановление состояния камеры
+     */
     restoreCameraState() {
         if (this.cameraState.history.length === 0) return;
 
@@ -954,28 +1481,44 @@ class GalaxyInteraction {
         );
     }
 
-    schedulePredictiveLoading(entity) {
-        if (this.predictiveLoadingTimeout) {
-            clearTimeout(this.predictiveLoadingTimeout);
-        }
-
-        this.predictiveLoadingTimeout = setTimeout(() => {
-            this.preloadRelatedContent(entity);
-        }, this.config.predictiveLoadingDelay);
-    }
-
-    preloadRelatedContent(entity) {
-        // Предзагрузка связанного контента через ContentManager
-        if (this.app.contentManager) {
-            this.app.contentManager.preloadRelatedContent(entity.id)
-                .then(() => console.log(`🔮 Предзагружен контент для: ${entity.title}`))
-                .catch(error => console.warn('⚠️ Ошибка предзагрузки:', error));
-        }
+    /**
+     * Easing функция
+     */
+    easeOutCubic(t) {
+        return 1 - Math.pow(1 - t, 3);
     }
 
     /**
-     * Публичное API
+     * Дебаунс функция
      */
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    /**
+     * Троттлинг функция
+     */
+    throttle(func, limit) {
+        let inThrottle;
+        return function(...args) {
+            if (!inThrottle) {
+                func.apply(this, args);
+                inThrottle = true;
+                setTimeout(() => inThrottle = false, limit);
+            }
+        };
+    }
+
+    // ПУБЛИЧНОЕ API
+
     setZoom(zoomLevel) {
         this.handleZoom(zoomLevel);
     }
@@ -1014,10 +1557,20 @@ class GalaxyInteraction {
         };
     }
 
-    /**
-     * Уничтожение экземпляра
-     */
+    dispatchEvent(eventName, detail) {
+        try {
+            const event = new CustomEvent(eventName, { detail });
+            document.dispatchEvent(event);
+        } catch (error) {
+            console.error(`❌ Ошибка отправки события ${eventName}:`, error);
+        }
+    }
+
+    // УНИЧТОЖЕНИЕ ЭКЗЕМПЛЯРА
+
     destroy() {
+        console.log('🧹 Уничтожение GalaxyInteraction v2.1...');
+        
         // Остановка всех анимаций
         if (this.animationFrameId) {
             cancelAnimationFrame(this.animationFrameId);
@@ -1053,36 +1606,7 @@ class GalaxyInteraction {
         // Сохранение аналитики
         this.analytics.saveToStorage();
         
-        console.log('🧹 GalaxyInteraction v2.1 уничтожен');
-    }
-
-    // Вспомогательные методы
-    dispatchEvent(eventName, detail) {
-        const event = new CustomEvent(eventName, { detail });
-        document.dispatchEvent(event);
-    }
-
-    debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
-    }
-
-    throttle(func, limit) {
-        let inThrottle;
-        return function(...args) {
-            if (!inThrottle) {
-                func.apply(this, args);
-                inThrottle = true;
-                setTimeout(() => inThrottle = false, limit);
-            }
-        };
+        console.log('✅ GalaxyInteraction v2.1 уничтожен');
     }
 }
 
