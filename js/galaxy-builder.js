@@ -1,3 +1,7 @@
+if (typeof window.GalaxyBuilder !== 'undefined') {
+    console.warn('⚠️ GalaxyBuilder уже загружен, пропускаем повторную загрузку');
+} else {
+
 class GalaxyBuilder {
     constructor(app) {
         this.app = app;
@@ -21,7 +25,7 @@ class GalaxyBuilder {
                 asteroid: 40,
                 debris: 20,
                 blackhole: 150,
-                star: 140,
+                galaxy: 140,
                 nebula: 180,
                 station: 80,
                 gateway: 100,
@@ -765,7 +769,7 @@ class GalaxyBuilder {
             asteroid: 25,
             debris: 15,
             blackhole: 100,
-            star: 90,
+            galaxy: 90,
             nebula: 120,
             station: 35,
             gateway: 45,
@@ -790,7 +794,7 @@ class GalaxyBuilder {
     calculateZIndex(entity) {
         const typeLayers = {
             blackhole: 1000,
-            star: 900,
+            galaxy: 900,
             nebula: 800,
             planet: 700,
             moon: 600,
@@ -1514,3 +1518,6 @@ class GalaxyBuilder {
 
 // Глобальная доступность для инициализации
 window.GalaxyBuilder = GalaxyBuilder;
+
+// ЗАКРЫВАЮЩАЯ СКОБКА ДЛЯ ПРОВЕРКИ СУЩЕСТВОВАНИЯ
+}
