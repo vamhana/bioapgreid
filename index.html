@@ -108,6 +108,27 @@
     </script>
 </head>
 <body class="galaxy-portal" data-loading="true" data-interaction="enabled">
+    
+    <!-- 🚨 ЭКСТРЕННЫЙ FIX - ЗАГРУЗКА БЕЗ META-PARSER -->
+    <script>
+    // Аварийная инициализация если основные скрипты не сработали
+    setTimeout(() => {
+        if (!window.genofondApp && window.GenofondApp) {
+            console.log('🔄 Запуск аварийной инициализации...');
+            try {
+                window.app = new GenofondApp();
+                window.genofondApp = window.app;
+                window.app.init().catch(error => {
+                    console.error('❌ Ошибка аварийной инициализации:', error);
+                });
+            } catch (error) {
+                console.error('💥 Критическая ошибка при создании GenofondApp:', error);
+            }
+        }
+    }, 5000);
+    </script>
+    
+   
     <!-- Контейнер для скринридеров -->
     <div class="sr-only" aria-live="polite" aria-atomic="true">
         <h1>Галактика BIOAPGREID - интерактивная образовательная платформа</h1>
@@ -703,5 +724,64 @@
             }
         });
     </script>
+    <script>
+    // 🚨 ЭКСТРЕННАЯ ДИАГНОСТИКА ЗАГРУЗКИ
+    console.log('=== 🚨 ЭКСТРЕННАЯ ДИАГНОСТИКА ===');
+    
+    // Проверяем загрузку всех критических классов
+    const criticalClasses = {
+        'GenofondApp': typeof GenofondApp,
+        'GalaxyMetaParser': typeof GalaxyMetaParser, 
+        'UniversalGalaxySitemap': typeof UniversalGalaxySitemap,
+        'VercelAdapter': typeof VercelAdapter,
+        'PerformanceMonitor': typeof PerformanceMonitor,
+        'ErrorRecoverySystem': typeof ErrorRecoverySystem
+    };
+    
+    console.log('📋 Загруженные классы:', criticalClasses);
+    
+    // Проверяем глобальные переменные
+    console.log('🌐 Глобальные переменные:', {
+        genofondConfig: window.genofondConfig,
+        genofondAnalytics: window.genofondAnalytics,
+        genofondApp: window.genofondApp,
+        app: window.app
+    });
+    
+    // Проверяем ошибки загрузки скриптов
+    const scripts = Array.from(document.scripts);
+    console.log('📜 Загруженные скрипты:', scripts.map(s => ({
+        src: s.src,
+        status: s.complete ? 'complete' : 'loading',
+        async: s.async,
+        defer: s.defer
+    })));
+    
+    // Автоматическая диагностика проблем
+    setTimeout(() => {
+        if (!window.genofondApp) {
+            console.error('🚨 CRITICAL: GenofondApp не создан за 3 секунды');
+            
+            // Показываем ошибку пользователю
+            const preloader = document.getElementById('preloader');
+            if (preloader) {
+                preloader.innerHTML = `
+                    <div class="error-state">
+                        <div class="error-icon">💥</div>
+                        <h3>Критическая ошибка инициализации</h3>
+                        <p>Основное приложение не запустилось. Проверьте консоль браузера (F12).</p>
+                        <div class="error-actions">
+                            <button class="error-btn primary" onclick="location.reload()">Перезагрузить</button>
+                            <button class="error-btn secondary" onclick="localStorage.clear(); sessionStorage.clear(); location.reload()">Очистить кэш и перезагрузить</button>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+    }, 3000);
+    
+    console.log('=== 🎯 ДИАГНОСТИКА ЗАВЕРШЕНА ===');
+    </script>
+    
 </body>
 </html>
