@@ -1,8 +1,3 @@
-// bioapgreid/js/meta-parser/meta-parser-2.js
-/**
- * Основной класс GalaxyMetaParser - центральный процессор системы парсинга
- * @class GalaxyMetaParser
- */
 class GalaxyMetaParser {
     constructor(app) {
         if (!window.MetaCache || !window.HierarchyBuilder) {
@@ -15,6 +10,7 @@ class GalaxyMetaParser {
         this._hierarchyCache = null;
         this._pageManifest = null;
         this._eventListeners = new Map();
+        this._vercelAPIEnabled = false;
         
         this.config = window.PARSER_CONFIG;
         
@@ -25,7 +21,8 @@ class GalaxyMetaParser {
             lastParseTime: 0,
             circuitBreakerState: 'CLOSED',
             predictiveHits: 0,
-            domainsProcessed: new Set()
+            domainsProcessed: new Set(),
+            serverSideParsed: 0
         };
 
         this._circuitBreaker = {
@@ -36,7 +33,7 @@ class GalaxyMetaParser {
 
         this._hierarchyBuilder = new window.HierarchyBuilder(this.config.maxHierarchyDepth);
         
-        console.log('🔍 GalaxyMetaParser v3.0 создан');
+        console.log('🔍 GalaxyMetaParser v3.1 создан');
     }
 
     /**
@@ -44,7 +41,7 @@ class GalaxyMetaParser {
      * @returns {Promise<void>}
      */
     async init() {
-        console.log('🔍 Инициализация GalaxyMetaParser v3.0...');
+        console.log('🔍 Инициализация GalaxyMetaParser v3.1...');
         
         try {
             await this._loadPageManifest();
@@ -52,12 +49,27 @@ class GalaxyMetaParser {
             this._setupCacheCleanup();
             this._setupPredictiveLoading();
             this._integrateWithContentManager();
+            this._checkVercelIntegration();
             
-            console.log('✅ GalaxyMetaParser v3.0 инициализирован');
+            console.log('✅ GalaxyMetaParser v3.1 инициализирован');
         } catch (error) {
             console.error('❌ Ошибка инициализации GalaxyMetaParser:', error);
             this._handleCircuitBreakerError();
             throw error;
+        }
+    }
+
+    /**
+     * Проверка интеграции с Vercel
+     * @private
+     */
+    _checkVercelIntegration() {
+        // Проверяем доступность Vercel API
+        if (typeof window !== 'undefined' && window.VercelMetaParser) {
+            this._vercelAPIEnabled = true;
+            console.log('🔗 Vercel интеграция доступна');
+        } else {
+            console.log('ℹ️ Vercel интеграция недоступна');
         }
     }
 
@@ -75,7 +87,7 @@ class GalaxyMetaParser {
             const response = await fetch('/sitemap.json');
             if (response.ok) {
                 this._pageManifest = await response.json();
-                console.log(`📋 Загружен манифест с ${this._pageManifest.pages?.length ?? 0} страницами`);
+                console.log('📋 Загружен манифест с ' + (this._pageManifest.pages ? this._pageManifest.pages.length : 0) + ' страницами');
             }
         } catch (error) {
             console.warn('⚠️ Не удалось загрузить манифест страниц:', error.message);
@@ -95,13 +107,27 @@ class GalaxyMetaParser {
             ['clearMetaCache', () => this.clearCache()],
             ['predictiveLoadRequest', (event) => this._handlePredictiveLoad(event.detail)],
             ['contentManagerReady', () => this._integrateWithContentManager()],
-            ['navigationChanged', (event) => this._schedulePredictiveLoading(event.detail.currentLevel)]
+            ['navigationChanged', (event) => this._schedulePredictiveLoading(event.detail.currentLevel)],
+            ['vercelAdapterReady', (event) => this._handleVercelReady(event.detail)]
         ]);
 
         for (const [eventName, handler] of eventHandlers) {
             const boundHandler = handler.bind(this);
             this._eventListeners.set(eventName, boundHandler);
             document.addEventListener(eventName, boundHandler);
+        }
+    }
+
+    /**
+     * Обработчик готовности Vercel адаптера
+     * @private
+     */
+    _handleVercelReady(detail) {
+        this._vercelAPIEnabled = detail.activated;
+        console.log('🔗 Vercel адаптер ' + (this._vercelAPIEnabled ? 'активирован' : 'в fallback режиме'));
+        
+        if (this._vercelAPIEnabled && detail.environment) {
+            this.stats.domainsProcessed.add(detail.environment.hostname);
         }
     }
 
@@ -133,7 +159,9 @@ class GalaxyMetaParser {
             console.log('🔄 Интеграция с ContentManager v3.0');
             
             document.addEventListener('metaParsingCompleted', (event) => {
-                window.ContentManager?.analyzeContentStructure?.(event.detail.entities);
+                if (window.ContentManager && window.ContentManager.analyzeContentStructure) {
+                    window.ContentManager.analyzeContentStructure(event.detail.entities);
+                }
             });
         }
     }
@@ -154,7 +182,7 @@ class GalaxyMetaParser {
         }
 
         if (cleanedCount > 0) {
-            console.log(`🧹 Очищено ${cleanedCount} устаревших записей кэша`);
+            console.log('🧹 Очищено ' + cleanedCount + ' устаревших записей кэша');
         }
     }
 
@@ -198,10 +226,10 @@ class GalaxyMetaParser {
      * @param {string[]} pageUrls - Список URL для парсинга
      * @returns {Promise<Object>} Построенная иерархия
      */
-    async parseAllPages(pageUrls = null) {
+    async parseAllPages(pageUrls) {
         if (this._circuitBreaker.state === 'OPEN') {
             console.warn('⚠️ Circuit breaker открыт, пропускаем парсинг');
-            return this._hierarchyCache ?? this._getFallbackHierarchy();
+            return this._hierarchyCache || this._getFallbackHierarchy();
         }
 
         const startTime = performance.now();
@@ -209,28 +237,34 @@ class GalaxyMetaParser {
         try {
             this._dispatchEvent('metaParsingStarted', { 
                 timestamp: Date.now(),
-                pageCount: pageUrls?.length ?? 'auto',
-                circuitBreakerState: this._circuitBreaker.state
+                pageCount: pageUrls ? pageUrls.length : 'auto',
+                circuitBreakerState: this._circuitBreaker.state,
+                vercelEnabled: this._vercelAPIEnabled
             });
 
-            const urls = pageUrls ?? await this._discoverPageUrls();
+            const urls = pageUrls || await this._discoverPageUrls();
             
             if (urls.length === 0) {
                 throw new Error('Не найдено страниц для парсинга');
             }
 
-            console.log(`📄 Найдено ${urls.length} страниц для парсинга`);
+            console.log('📄 Найдено ' + urls.length + ' страниц для парсинга');
 
             const results = {};
             const parsingPromises = urls.map(url => this.parsePageMeta(url));
             const parsedPages = await Promise.allSettled(parsingPromises);
 
-            const { successCount, errorCount } = parsedPages.reduce((acc, result, index) => {
+            const stats = parsedPages.reduce((acc, result, index) => {
                 if (result.status === 'fulfilled') {
                     results[result.value.level] = result.value;
                     acc.successCount++;
+                    
+                    // Считаем server-side парсинг
+                    if (result.value.metadata && result.value.metadata.serverSideParsed) {
+                        this.stats.serverSideParsed++;
+                    }
                 } else {
-                    console.error(`❌ Ошибка парсинга ${urls[index]}:`, result.reason);
+                    console.error('❌ Ошибка парсинга ' + urls[index] + ':', result.reason);
                     acc.errorCount++;
                     this._dispatchEvent('metaParsingError', {
                         url: urls[index],
@@ -246,8 +280,8 @@ class GalaxyMetaParser {
             
             const parseTime = performance.now() - startTime;
 
-            this.stats.totalParsed += successCount;
-            this.stats.errors += errorCount;
+            this.stats.totalParsed += stats.successCount;
+            this.stats.errors += stats.errorCount;
             this.stats.lastParseTime = parseTime;
 
             this._handleCircuitBreakerSuccess();
@@ -257,24 +291,26 @@ class GalaxyMetaParser {
                 hierarchy: hierarchy,
                 stats: {
                     total: urls.length,
-                    successful: successCount,
-                    errors: errorCount,
+                    successful: stats.successCount,
+                    errors: stats.errorCount,
                     parseTime: parseTime,
-                    cacheEfficiency: this.stats.cacheHits / (this.stats.cacheHits + successCount)
+                    cacheEfficiency: this.stats.cacheHits / (this.stats.cacheHits + stats.successCount),
+                    serverSideParsed: this.stats.serverSideParsed
                 }
             });
 
             this._dispatchEvent('hierarchyBuilt', { 
-                hierarchy,
+                hierarchy: hierarchy,
                 entityCount: Object.keys(results).length
             });
 
             this._collectAnalytics('parse_completed', {
                 entityCount: Object.keys(results).length,
-                parseTime: parseTime
+                parseTime: parseTime,
+                vercelEnabled: this._vercelAPIEnabled
             });
 
-            console.log(`✅ Парсинг завершен: ${successCount} успешно, ${errorCount} ошибок за ${parseTime.toFixed(2)}мс`);
+            console.log('✅ Парсинг завершен: ' + stats.successCount + ' успешно, ' + stats.errorCount + ' ошибок за ' + parseTime.toFixed(2) + 'мс');
 
             return hierarchy;
 
@@ -290,7 +326,7 @@ class GalaxyMetaParser {
                 parseTime: errorTime
             });
             
-            return this._hierarchyCache ?? this._getFallbackHierarchy();
+            return this._hierarchyCache || this._getFallbackHierarchy();
         }
     }
 
@@ -323,10 +359,24 @@ class GalaxyMetaParser {
     async _discoverPageUrls() {
         console.log('🔍 Универсальное обнаружение страниц...');
 
+        // Если доступен Vercel API, пробуем использовать его
+        if (this._vercelAPIEnabled && window.VercelMetaParser) {
+            try {
+                const projectInfo = await window.VercelMetaParser.getProjectInfo();
+                if (projectInfo && projectInfo.data && projectInfo.data.pages) {
+                    const urls = projectInfo.data.pages.map(page => '/' + page.path);
+                    console.log('✅ Vercel обнаружение: ' + urls.length + ' страниц');
+                    return urls;
+                }
+            } catch (error) {
+                console.warn('⚠️ Vercel обнаружение не удалось:', error.message);
+            }
+        }
+
         try {
             const apiUrls = await this._discoverPagesViaUniversalAPI();
             if (apiUrls.length > 0) {
-                console.log(`🌐 API обнаружение: ${apiUrls.length} страниц`);
+                console.log('🌐 API обнаружение: ' + apiUrls.length + ' страниц');
                 return apiUrls;
             }
         } catch (error) {
@@ -336,7 +386,7 @@ class GalaxyMetaParser {
         try {
             const scannedUrls = await this._universalDirectoryScan();
             if (scannedUrls.length > 0) {
-                console.log(`📁 Авто-сканирование: ${scannedUrls.length} страниц`);
+                console.log('📁 Авто-сканирование: ' + scannedUrls.length + ' страниц');
                 return scannedUrls;
             }
         } catch (error) {
@@ -346,7 +396,7 @@ class GalaxyMetaParser {
         try {
             const linkUrls = await this._discoverViaSiteLinks();
             if (linkUrls.length > 0) {
-                console.log(`🔗 Анализ ссылок: ${linkUrls.length} страниц`);
+                console.log('🔗 Анализ ссылок: ' + linkUrls.length + ' страниц');
                 return linkUrls;
             }
         } catch (error) {
@@ -354,7 +404,7 @@ class GalaxyMetaParser {
         }
 
         const initialUrls = await this._createInitialStructure();
-        console.log(`🚀 Создана начальная структура: ${initialUrls.length} страниц`);
+        console.log('🚀 Создана начальная структура: ' + initialUrls.length + ' страниц');
         return initialUrls;
     }
 
@@ -367,14 +417,14 @@ class GalaxyMetaParser {
         const basePath = this._detectBasePath();
         
         const apiEndpoints = [
-            `${basePath}/api/pages`,
-            `${basePath}/api/sitemap`,
-            `${basePath}/data/pages.json`,
-            `${basePath}/manifest.json`,
-            `${basePath}/sitemap.xml`,
-            `${basePath}/api/galaxy/pages`,
-            `${basePath}/data/galaxy.json`,
-            `${basePath}/meta/pages`,
+            basePath + '/api/pages',
+            basePath + '/api/sitemap',
+            basePath + '/data/pages.json',
+            basePath + '/manifest.json',
+            basePath + '/sitemap.xml',
+            basePath + '/api/galaxy/pages',
+            basePath + '/data/galaxy.json',
+            basePath + '/meta/pages',
             '/api/pages',
             '/sitemap.json',
             '/pages.json'
@@ -384,7 +434,7 @@ class GalaxyMetaParser {
 
         for (const endpoint of uniqueEndpoints) {
             try {
-                console.log(`🔍 Проверка endpoint: ${endpoint}`);
+                console.log('🔍 Проверка endpoint: ' + endpoint);
                 const response = await fetch(endpoint, { 
                     method: 'GET',
                     headers: { 'Accept': 'application/json,application/xml,*/*' }
@@ -394,9 +444,9 @@ class GalaxyMetaParser {
                     const contentType = response.headers.get('content-type');
                     let data;
                     
-                    if (contentType?.includes('application/json')) {
+                    if (contentType && contentType.includes('application/json')) {
                         data = await response.json();
-                    } else if (contentType?.includes('application/xml') || endpoint.endsWith('.xml')) {
+                    } else if ((contentType && contentType.includes('application/xml')) || endpoint.endsWith('.xml')) {
                         data = await this._parseSitemapXML(await response.text());
                     } else {
                         data = await response.text();
@@ -405,7 +455,7 @@ class GalaxyMetaParser {
                     
                     const urls = this._extractUrlsFromUniversalResponse(data, endpoint);
                     if (urls.length > 0) {
-                        console.log(`✅ Найдено ${urls.length} URLs через ${endpoint}`);
+                        console.log('✅ Найдено ' + urls.length + ' URLs через ' + endpoint);
                         return urls;
                     }
                 }
@@ -427,7 +477,7 @@ class GalaxyMetaParser {
         const pathParts = currentPath.split('/').filter(Boolean);
         
         if (pathParts.length > 1 && pathParts[0] !== 'pages') {
-            return `/${pathParts[0]}`;
+            return '/' + pathParts[0];
         }
         
         return '';
@@ -471,16 +521,16 @@ class GalaxyMetaParser {
         const discoveredUrls = [];
         const checkPromises = commonPageNames.map(async (pageName) => {
             const possibleUrls = [
-                `/${directoryName}/${pageName}.html`,
-                `/${directoryName}/${pageName}/index.html`,
-                `/${directoryName}/${pageName}.php`,
-                `/${directoryName}/${pageName}.htm`
+                '/' + directoryName + '/' + pageName + '.html',
+                '/' + directoryName + '/' + pageName + '/index.html',
+                '/' + directoryName + '/' + pageName + '.php',
+                '/' + directoryName + '/' + pageName + '.htm'
             ];
 
             for (const url of possibleUrls) {
                 if (await this._checkPageExists(url)) {
                     discoveredUrls.push(url);
-                    console.log(`📄 Обнаружена страница: ${url}`);
+                    console.log('📄 Обнаружена страница: ' + url);
                     break;
                 }
             }
@@ -504,9 +554,9 @@ class GalaxyMetaParser {
 
         const discoveredUrls = [];
         const checkPromises = rootFiles.map(async (fileName) => {
-            if (await this._checkPageExists(`/${fileName}`)) {
-                discoveredUrls.push(`/${fileName}`);
-                console.log(`📄 Обнаружена корневая страница: /${fileName}`);
+            if (await this._checkPageExists('/' + fileName)) {
+                discoveredUrls.push('/' + fileName);
+                console.log('📄 Обнаружена корневая страница: /' + fileName);
             }
         });
 
@@ -547,13 +597,13 @@ class GalaxyMetaParser {
                 })
                 .map(href => {
                     if (href === '/') return '/index.html';
-                    if (!href.startsWith('/')) return `/${href}`;
-                    if (!href.includes('.') && !href.endsWith('/')) return `${href}.html`;
+                    if (!href.startsWith('/')) return '/' + href;
+                    if (!href.includes('.') && !href.endsWith('/')) return href + '.html';
                     return href;
                 })
                 .filter((url, index, self) => self.indexOf(url) === index);
             
-            console.log(`🔗 Найдено ${internalUrls.length} внутренних ссылок`);
+            console.log('🔗 Найдено ' + internalUrls.length + ' внутренних ссылок');
             return internalUrls;
             
         } catch (error) {
@@ -590,7 +640,7 @@ class GalaxyMetaParser {
         const existingUrls = [];
         for (const page of initialPages) {
             if (!await this._checkPageExists(page.url)) {
-                console.log(`📝 Создана начальная страница: ${page.url}`);
+                console.log('📝 Создана начальная страница: ' + page.url);
             } else {
                 existingUrls.push(page.url);
             }
@@ -614,7 +664,7 @@ class GalaxyMetaParser {
                 .map(loc => loc.textContent)
                 .filter(url => url && url.includes(window.location.hostname));
                 
-            return { urls };
+            return { urls: urls };
         } catch (error) {
             console.warn('⚠️ Ошибка парсинга sitemap.xml:', error.message);
             return { urls: [] };
@@ -646,17 +696,17 @@ class GalaxyMetaParser {
         if (!data) return [];
         
         const extractionStrategies = [
-            () => Array.isArray(data) ? data.filter(url => typeof url === 'string') : null,
-            () => data.urls?.map?.(url => typeof url === 'string' ? url : url.loc),
-            () => data.urlset?.url?.map?.(url => url.loc),
-            () => data.pages?.map?.(page => page.url || page.path),
-            () => Object.keys(data).map(key => `/pages/${key}.html`),
-            () => Object.keys(data).filter(key => key.startsWith('/')),
-            () => {
+            function() { return Array.isArray(data) ? data.filter(url => typeof url === 'string') : null; },
+            function() { return data.urls ? data.urls.map(function(url) { return typeof url === 'string' ? url : url.loc; }) : null; },
+            function() { return data.urlset && data.urlset.url ? data.urlset.url.map(function(url) { return url.loc; }) : null; },
+            function() { return data.pages ? data.pages.map(function(page) { return page.url || page.path; }) : null; },
+            function() { return Object.keys(data).map(function(key) { return '/pages/' + key + '.html'; }); },
+            function() { return Object.keys(data).filter(function(key) { return key.startsWith('/'); }); },
+            function() {
                 if (typeof data === 'string') {
                     const urlRegex = /["'](\/pages\/[^"']+\.html)["']/g;
                     const matches = [...data.matchAll(urlRegex)];
-                    return matches.map(match => match[1]);
+                    return matches.map(function(match) { return match[1]; });
                 }
                 return null;
             }
@@ -769,7 +819,7 @@ class GalaxyMetaParser {
             return url;
         }
         
-        return `/pages/${cleanUrl}`;
+        return '/pages/' + cleanUrl;
     }
 
     /**
@@ -779,7 +829,7 @@ class GalaxyMetaParser {
      */
     async parsePageMeta(pageUrl) {
         const cached = this._cache.get(pageUrl);
-        if (cached?.data && (Date.now() - cached.timestamp < this.config.cacheTTL)) {
+        if (cached && cached.data && (Date.now() - cached.timestamp < this.config.cacheTTL)) {
             this.stats.cacheHits++;
             return cached.data;
         }
@@ -787,7 +837,7 @@ class GalaxyMetaParser {
         try {
             const response = await this._fetchWithRetry(pageUrl);
             if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                throw new Error('HTTP ' + response.status + ': ' + response.statusText);
             }
 
             const html = await response.text();
@@ -808,11 +858,11 @@ class GalaxyMetaParser {
             
             this._entityCache.set(enrichedEntity.level, enrichedEntity);
 
-            console.log(`✅ Успешно распаршена: ${pageUrl} → ${enrichedEntity.title} (${enrichedEntity.type})`);
+            console.log('✅ Успешно распаршена: ' + pageUrl + ' → ' + enrichedEntity.title + ' (' + enrichedEntity.type + ')');
             return enrichedEntity;
 
         } catch (error) {
-            console.error(`❌ Ошибка парсинга ${pageUrl}:`, error);
+            console.error('❌ Ошибка парсинга ' + pageUrl + ':', error);
             
             this._cache.set(pageUrl, {
                 data: null,
@@ -831,8 +881,10 @@ class GalaxyMetaParser {
      * @param {number} maxRetries - Максимальное количество попыток
      * @returns {Promise<Response>} Ответ
      */
-    async _fetchWithRetry(url, maxRetries = this.config.maxRetries) {
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    async _fetchWithRetry(url, maxRetries) {
+        const retries = maxRetries || this.config.maxRetries;
+        
+        for (let attempt = 1; attempt <= retries; attempt++) {
             try {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), this.config.requestTimeout);
@@ -845,14 +897,14 @@ class GalaxyMetaParser {
                 
                 if (response.ok) return response;
                 
-                if (attempt === maxRetries) {
-                    throw new Error(`Не удалось загрузить ${url} после ${maxRetries} попыток (${response.status})`);
+                if (attempt === retries) {
+                    throw new Error('Не удалось загрузить ' + url + ' после ' + retries + ' попыток (' + response.status + ')');
                 }
                 
-                await this._delay(2 ** attempt * 1000);
+                await this._delay(Math.pow(2, attempt) * 1000);
             } catch (error) {
-                if (attempt === maxRetries) throw error;
-                await this._delay(2 ** attempt * 1000);
+                if (attempt === retries) throw error;
+                await this._delay(Math.pow(2, attempt) * 1000);
             }
         }
     }
@@ -874,7 +926,7 @@ class GalaxyMetaParser {
             const metaElements = doc.querySelectorAll('meta[name^="galaxy:"]');
             
             metaElements.forEach(meta => {
-                const name = meta.getAttribute('name')?.replace('galaxy:', '');
+                const name = meta.getAttribute('name') ? meta.getAttribute('name').replace('galaxy:', '') : null;
                 const content = meta.getAttribute('content');
                 
                 if (name && content !== null) {
@@ -882,11 +934,18 @@ class GalaxyMetaParser {
                 }
             });
 
-            metaTags.title ??= doc.querySelector('title')?.textContent?.trim();
-            metaTags.description ??= doc.querySelector('meta[name="description"]')?.getAttribute('content');
+            if (!metaTags.title) {
+                const titleElement = doc.querySelector('title');
+                metaTags.title = titleElement ? titleElement.textContent.trim() : null;
+            }
+
+            if (!metaTags.description) {
+                const descElement = doc.querySelector('meta[name="description"]');
+                metaTags.description = descElement ? descElement.getAttribute('content') : null;
+            }
 
         } catch (error) {
-            console.warn(`⚠️ Ошибка парсинга HTML для ${pageUrl}:`, error.message);
+            console.warn('⚠️ Ошибка парсинга HTML для ' + pageUrl + ':', error.message);
         }
 
         return metaTags;
@@ -904,28 +963,28 @@ class GalaxyMetaParser {
         
         if (missingRequired.length > 0) {
             throw new Error(
-                `Отсутствуют обязательные мета-теги: ${missingRequired.join(', ')} в ${pageUrl}`
+                'Отсутствуют обязательные мета-теги: ' + missingRequired.join(', ') + ' в ' + pageUrl
             );
         }
 
         if (metaTags.type && !this.config.supportedEntityTypes.includes(metaTags.type)) {
-            throw new Error(`Неподдерживаемый тип сущности: ${metaTags.type} в ${pageUrl}`);
+            throw new Error('Неподдерживаемый тип сущности: ' + metaTags.type + ' в ' + pageUrl);
         }
 
         if (metaTags.level && !this._isValidLevelFormat(metaTags.level)) {
-            throw new Error(`Некорректный формат уровня: ${metaTags.level} в ${pageUrl}`);
+            throw new Error('Некорректный формат уровня: ' + metaTags.level + ' в ' + pageUrl);
         }
 
         if (metaTags['orbit-radius'] && isNaN(parseFloat(metaTags['orbit-radius']))) {
-            throw new Error(`Некорректный радиус орбиты: ${metaTags['orbit-radius']} в ${pageUrl}`);
+            throw new Error('Некорректный радиус орбиты: ' + metaTags['orbit-radius'] + ' в ' + pageUrl);
         }
 
         if (metaTags['orbit-angle'] && isNaN(parseFloat(metaTags['orbit-angle']))) {
-            throw new Error(`Некорректный угол орбиты: ${metaTags['orbit-angle']} в ${pageUrl}`);
+            throw new Error('Некорректный угол орбиты: ' + metaTags['orbit-angle'] + ' в ' + pageUrl);
         }
 
         if (metaTags.color && !this._isValidColor(metaTags.color)) {
-            throw new Error(`Некорректный формат цвета: ${metaTags.color} в ${pageUrl}`);
+            throw new Error('Некорректный формат цвета: ' + metaTags.color + ' в ' + pageUrl);
         }
     }
 
@@ -986,14 +1045,14 @@ class GalaxyMetaParser {
             ])
         };
 
-        entity['orbit-radius'] ??= typeConfig.orbitRadii.get(entity.type) ?? 100;
-        entity['orbit-angle'] ??= this._calculateAutoAngle(entity);
-        entity.color ??= typeConfig.colors.get(entity.type) ?? this._generateRandomColor();
-        entity.importance ??= this._calculateImportance(entity);
-        entity.description ??= `Раздел "${entity.title}" во вселенной BIOAPGREID`;
-        entity.icon ??= typeConfig.icons.get(entity.type) ?? '🔮';
-        entity['content-priority'] ??= this._calculateContentPriority(entity);
-        entity['analytics-category'] ??= typeConfig.analyticsCategories.get(entity.type) ?? 'general';
+        entity['orbit-radius'] = entity['orbit-radius'] || typeConfig.orbitRadii.get(entity.type) || 100;
+        entity['orbit-angle'] = entity['orbit-angle'] || this._calculateAutoAngle(entity);
+        entity.color = entity.color || typeConfig.colors.get(entity.type) || this._generateRandomColor();
+        entity.importance = entity.importance || this._calculateImportance(entity);
+        entity.description = entity.description || 'Раздел "' + entity.title + '" во вселенной BIOAPGREID';
+        entity.icon = entity.icon || typeConfig.icons.get(entity.type) || '🔮';
+        entity['content-priority'] = entity['content-priority'] || this._calculateContentPriority(entity);
+        entity['analytics-category'] = entity['analytics-category'] || typeConfig.analyticsCategories.get(entity.type) || 'general';
 
         const numericFields = ['orbit-radius', 'orbit-angle', 'size-modifier'];
         numericFields.forEach(field => {
@@ -1026,12 +1085,12 @@ class GalaxyMetaParser {
             metadata: {
                 sourceUrl: pageUrl,
                 parsedAt: new Date().toISOString(),
-                version: '3.0',
+                version: '3.1',
                 cacheKey: this._generateCacheKey(entity.level),
                 predictiveScore: 0,
                 ...entity.metadata
             },
-            position: entity.position ?? { x: 0, y: 0 },
+            position: entity.position || { x: 0, y: 0 },
             id: entity.level,
             analytics: {
                 parseCount: 0,
@@ -1049,7 +1108,7 @@ class GalaxyMetaParser {
      * @returns {string} Ключ кэша
      */
     _generateCacheKey(level) {
-        return `meta_v3.0_${level}_${Date.now().toString(36)}`;
+        return 'meta_v3.1_' + level + '_' + Date.now().toString(36);
     }
 
     /**
@@ -1074,7 +1133,7 @@ class GalaxyMetaParser {
      */
     _generateRandomColor() {
         const hue = Math.floor(Math.random() * 360);
-        return `hsl(${hue}, 70%, 60%)`;
+        return 'hsl(' + hue + ', 70%, 60%)';
     }
 
     /**
@@ -1111,15 +1170,15 @@ class GalaxyMetaParser {
         this._checkCircularDependencies(entity);
 
         if (entity['orbit-radius'] < 0) {
-            throw new Error(`Отрицательный радиус орбиты: ${entity['orbit-radius']} для ${entity.title}`);
+            throw new Error('Отрицательный радиус орбиты: ' + entity['orbit-radius'] + ' для ' + entity.title);
         }
 
         if (entity['orbit-radius'] > 1000) {
-            console.warn(`⚠️ Слишком большой радиус орбиты: ${entity['orbit-radius']} для ${entity.title}`);
+            console.warn('⚠️ Слишком большой радиус орбиты: ' + entity['orbit-radius'] + ' для ' + entity.title);
         }
 
         if (entity['orbit-angle'] < 0 || entity['orbit-angle'] >= 360) {
-            console.warn(`⚠️ Угол орбиты вне диапазона 0-360: ${entity['orbit-angle']} для ${entity.title}`);
+            console.warn('⚠️ Угол орбиты вне диапазона 0-360: ' + entity['orbit-angle'] + ' для ' + entity.title);
         }
     }
 
@@ -1134,9 +1193,9 @@ class GalaxyMetaParser {
         const visited = new Set([entity.level]);
         let current = entity;
         
-        while (current?.parent) {
+        while (current && current.parent) {
             if (visited.has(current.parent)) {
-                throw new Error(`Обнаружена циклическая зависимость: ${current.level} -> ${current.parent}`);
+                throw new Error('Обнаружена циклическая зависимость: ' + current.level + ' -> ' + current.parent);
             }
             
             visited.add(current.parent);
@@ -1177,24 +1236,24 @@ class GalaxyMetaParser {
     updateEntityMetadata(levelId, updates) {
         const entity = this._entityCache.get(levelId);
         if (!entity) {
-            throw new Error(`Сущность с level ${levelId} не найдена`);
+            throw new Error('Сущность с level ' + levelId + ' не найдена');
         }
 
         Object.assign(entity, updates);
         this._hierarchyCache = null;
         
-        console.log(`✏️ Обновлены мета-данные для ${levelId}`);
+        console.log('✏️ Обновлены мета-данные для ' + levelId);
 
         this._dispatchEvent('entityMetadataUpdated', {
-            levelId,
-            updates,
-            entity
+            levelId: levelId,
+            updates: updates,
+            entity: entity
         });
 
         return entity;
     }
 
-    // Predictive Loading v3.0
+    // Predictive Loading v3.1
     _schedulePredictiveLoading(currentLevel) {
         if (!this.config.predictiveLoading.enabled) return;
 
@@ -1210,7 +1269,7 @@ class GalaxyMetaParser {
         const toPreload = this._findEntitiesToPreload(currentEntity);
         
         if (toPreload.length > 0) {
-            console.log(`🎯 Предиктивная загрузка: ${toPreload.length} сущностей`);
+            console.log('🎯 Предиктивная загрузка: ' + toPreload.length + ' сущностей');
             
             this._dispatchEvent('predictiveLoadScheduled', {
                 source: currentLevel,
@@ -1226,21 +1285,22 @@ class GalaxyMetaParser {
         }
     }
 
-    _findEntitiesToPreload(entity, depth = 0) {
-        if (depth >= this.config.predictiveLoading.depth) return [];
+    _findEntitiesToPreload(entity, depth) {
+        const currentDepth = depth || 0;
+        if (currentDepth >= this.config.predictiveLoading.depth) return [];
 
         const toPreload = [];
         
         if (entity.children) {
             for (const child of entity.children) {
                 toPreload.push(child.level);
-                toPreload.push(...this._findEntitiesToPreload(child, depth + 1));
+                toPreload.push(...this._findEntitiesToPreload(child, currentDepth + 1));
             }
         }
 
         if (entity.parent) {
             const parent = this._entityCache.get(entity.parent);
-            if (parent?.children) {
+            if (parent && parent.children) {
                 for (const sibling of parent.children) {
                     if (sibling.level !== entity.level) {
                         toPreload.push(sibling.level);
@@ -1256,25 +1316,26 @@ class GalaxyMetaParser {
         const entity = this._entityCache.get(entityId);
         if (!entity) return;
 
-        entity.metadata.predictiveScore = (entity.metadata.predictiveScore ?? 0) + 1;
+        entity.metadata.predictiveScore = (entity.metadata.predictiveScore || 0) + 1;
 
         this._dispatchEvent('entityPreloadInitiated', {
-            entityId,
+            entityId: entityId,
             predictiveScore: entity.metadata.predictiveScore
         });
     }
 
     _handlePredictiveLoad(request) {
-        const { entityId, priority } = request;
+        const entityId = request.entityId;
+        const priority = request.priority;
         this._preloadEntity(entityId);
     }
 
-    // Analytics v3.0
+    // Analytics v3.1
     _collectAnalytics(eventType, data) {
         const analyticsData = {
-            eventType,
+            eventType: eventType,
             timestamp: Date.now(),
-            parserVersion: '3.0',
+            parserVersion: '3.1',
             circuitBreakerState: this._circuitBreaker.state,
             cacheStats: {
                 size: this._cache.size,
@@ -1285,12 +1346,12 @@ class GalaxyMetaParser {
 
         this._dispatchEvent('metaAnalyticsCollected', analyticsData);
 
-        if (this._app?.recordAnalytics) {
+        if (this._app && this._app.recordAnalytics) {
             this._app.recordAnalytics('meta_parser', analyticsData);
         }
     }
 
-    // Public API v3.0
+    // Public API v3.1
     getEntity(levelId) {
         return this._entityCache.get(levelId);
     }
@@ -1311,8 +1372,8 @@ class GalaxyMetaParser {
 
     getPredictiveCandidates() {
         return this.getAllEntities()
-            .filter(entity => (entity.metadata.predictiveScore ?? 0) > 0)
-            .sort((a, b) => (b.metadata.predictiveScore ?? 0) - (a.metadata.predictiveScore ?? 0));
+            .filter(entity => (entity.metadata.predictiveScore || 0) > 0)
+            .sort((a, b) => (b.metadata.predictiveScore || 0) - (a.metadata.predictiveScore || 0));
     }
 
     getStats() {
@@ -1322,7 +1383,8 @@ class GalaxyMetaParser {
             entityCacheSize: this._entityCache.size,
             hierarchyCache: !!this._hierarchyCache,
             predictiveCandidates: this.getPredictiveCandidates().length,
-            domains: Array.from(this.stats.domainsProcessed)
+            domains: Array.from(this.stats.domainsProcessed),
+            vercelEnabled: this._vercelAPIEnabled
         };
     }
 
@@ -1341,10 +1403,10 @@ class GalaxyMetaParser {
 
     _dispatchEvent(eventName, detail) {
         try {
-            const event = new CustomEvent(eventName, { detail });
+            const event = new CustomEvent(eventName, { detail: detail });
             document.dispatchEvent(event);
         } catch (error) {
-            console.error(`❌ Ошибка отправки события ${eventName}:`, error);
+            console.error('❌ Ошибка отправки события ' + eventName + ':', error);
         }
     }
 
@@ -1359,26 +1421,26 @@ class GalaxyMetaParser {
         return parser;
     }
 
-    // Методы жизненного цикла v3.0
+    // Методы жизненного цикла v3.1
     async start() {
-        console.log('🔍 GalaxyMetaParser v3.0 запущен');
+        console.log('🔍 GalaxyMetaParser v3.1 запущен');
         return Promise.resolve();
     }
 
     async recover() {
-        console.log('🔄 Восстановление GalaxyMetaParser v3.0...');
+        console.log('🔄 Восстановление GalaxyMetaParser v3.1...');
         
         const savedStats = { ...this.stats };
         this.clearCache();
         this.stats = savedStats;
         this._circuitBreaker.state = 'HALF_OPEN';
         
-        console.log('✅ GalaxyMetaParser v3.0 восстановлен');
+        console.log('✅ GalaxyMetaParser v3.1 восстановлен');
         return true;
     }
 
     destroy() {
-        console.log('🧹 Очистка GalaxyMetaParser v3.0...');
+        console.log('🧹 Очистка GalaxyMetaParser v3.1...');
         
         for (const [eventName, handler] of this._eventListeners) {
             document.removeEventListener(eventName, handler);
@@ -1389,7 +1451,50 @@ class GalaxyMetaParser {
         this._pageManifest = null;
         this._circuitBreaker.state = 'CLOSED';
         
-        console.log('✅ GalaxyMetaParser v3.0 очищен');
+        console.log('✅ GalaxyMetaParser v3.1 очищен');
+    }
+
+    // Новые методы для интеграции с Vercel
+    isVercelEnabled() {
+        return this._vercelAPIEnabled;
+    }
+
+    getVercelStatus() {
+        return {
+            enabled: this._vercelAPIEnabled,
+            adapter: window.vercelAdapter ? window.vercelAdapter.getStatus() : null
+        };
+    }
+
+    /**
+     * Сохранение текущей иерархии в sitemap.json
+     * @returns {Promise<boolean>} Успешно ли сохранение
+     */
+    async saveSitemap() {
+        try {
+            if (!this._hierarchyCache) {
+                console.warn('⚠️ Нет данных иерархии для сохранения');
+                return false;
+            }
+            
+            // Получаем все сущности
+            const entities = this.getAllEntities().reduce((acc, entity) => {
+                acc[entity.level] = entity;
+                return acc;
+            }, {});
+            
+            // Сохраняем через SitemapGenerator если доступен
+            if (window.universalSitemapGenerator && window.universalSitemapGenerator.saveToDataFile) {
+                return await window.universalSitemapGenerator.saveToDataFile();
+            }
+            
+            console.warn('⚠️ SitemapGenerator не доступен для сохранения');
+            return false;
+            
+        } catch (error) {
+            console.error('❌ Ошибка сохранения sitemap:', error);
+            return false;
+        }
     }
 }
 
