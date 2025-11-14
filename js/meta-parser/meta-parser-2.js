@@ -1,93 +1,40 @@
 // bioapgreid/js/meta-parser/meta-parser-2.js
-
 /**
  * Основной класс GalaxyMetaParser - центральный процессор системы парсинга
  * @class GalaxyMetaParser
  */
 class GalaxyMetaParser {
-    #app;
-    #cache;
-    #entityCache;
-    #hierarchyCache;
-    #pageManifest;
-    #circuitBreaker;
-    #hierarchyBuilder;
-    #eventListeners;
-    
-    // Статические константы
-    static #DEFAULT_RETRIES = 3;
-    static #CIRCUIT_BREAKER_STATES = Object.freeze({
-        CLOSED: 'CLOSED',
-        OPEN: 'OPEN', 
-        HALF_OPEN: 'HALF_OPEN'
-    });
-
-    // Приватные константы
-    #requiredMetaTags = Object.freeze(['level', 'type', 'title']);
-    #optionalMetaTags = Object.freeze([
-        'parent', 'orbit-radius', 'orbit-angle', 'color', 
-        'size-modifier', 'importance', 'description', 'icon', 'unlocked',
-        'tags', 'depth', 'created', 'updated', 'content-priority', 'analytics-category'
-    ]);
-
-    #typeConfig = Object.freeze({
-        orbitRadii: new Map([
-            ['galaxy', 0], ['planet', 150], ['moon', 60], ['asteroid', 40],
-            ['debris', 20], ['blackhole', 200], ['nebula', 250], ['station', 80],
-            ['gateway', 120], ['anomaly', 180]
-        ]),
-        icons: new Map([
-            ['galaxy', '⭐'], ['planet', '🪐'], ['moon', '🌙'], ['asteroid', '☄️'],
-            ['debris', '🛰️'], ['blackhole', '🌀'], ['nebula', '🌌'], ['station', '🚀'],
-            ['gateway', '🌐'], ['anomaly', '💫']
-        ]),
-        colors: new Map([
-            ['galaxy', '#FFD700'], ['planet', '#4ECDC4'], ['moon', '#C7F464'],
-            ['asteroid', '#FF6B6B'], ['debris', '#A8E6CF'], ['blackhole', '#2C3E50'],
-            ['nebula', '#D4A5FF'], ['station', '#FFD166'], ['gateway', '#9B5DE5'],
-            ['anomaly', '#00BBF9']
-        ]),
-        analyticsCategories: new Map([
-            ['galaxy', 'core'], ['planet', 'primary'], ['moon', 'secondary'],
-            ['asteroid', 'supplementary'], ['debris', 'supplementary'],
-            ['blackhole', 'special'], ['nebula', 'special'], ['station', 'interactive'],
-            ['gateway', 'navigation'], ['anomaly', 'special']
-        ])
-    });
-
     constructor(app) {
         if (!window.MetaCache || !window.HierarchyBuilder) {
             throw new Error('Модуль 1 (meta-parser-1.js) должен быть загружен перед этим модулем');
         }
 
-        this.#app = app;
-        this.#cache = new window.MetaCache(100);
-        this.#entityCache = new window.MetaCache(100);
-        this.#hierarchyCache = null;
-        this.#pageManifest = null;
-        this.#eventListeners = new Map();
+        this._app = app;
+        this._cache = new window.MetaCache(100);
+        this._entityCache = new window.MetaCache(100);
+        this._hierarchyCache = null;
+        this._pageManifest = null;
+        this._eventListeners = new Map();
         
-        // Конфигурация из модуля 1
         this.config = window.PARSER_CONFIG;
         
-        // Статистика v3.0
         this.stats = {
             totalParsed: 0,
             cacheHits: 0,
             errors: 0,
             lastParseTime: 0,
-            circuitBreakerState: GalaxyMetaParser.#CIRCUIT_BREAKER_STATES.CLOSED,
+            circuitBreakerState: 'CLOSED',
             predictiveHits: 0,
             domainsProcessed: new Set()
         };
 
-        this.#circuitBreaker = {
+        this._circuitBreaker = {
             failures: 0,
             lastFailure: 0,
-            state: GalaxyMetaParser.#CIRCUIT_BREAKER_STATES.CLOSED
+            state: 'CLOSED'
         };
 
-        this.#hierarchyBuilder = new window.HierarchyBuilder(this.config.maxHierarchyDepth);
+        this._hierarchyBuilder = new window.HierarchyBuilder(this.config.maxHierarchyDepth);
         
         console.log('🔍 GalaxyMetaParser v3.0 создан');
     }
@@ -100,16 +47,16 @@ class GalaxyMetaParser {
         console.log('🔍 Инициализация GalaxyMetaParser v3.0...');
         
         try {
-            await this.#loadPageManifest();
-            this.#setupEventListeners();
-            this.#setupCacheCleanup();
-            this.#setupPredictiveLoading();
-            this.#integrateWithContentManager();
+            await this._loadPageManifest();
+            this._setupEventListeners();
+            this._setupCacheCleanup();
+            this._setupPredictiveLoading();
+            this._integrateWithContentManager();
             
             console.log('✅ GalaxyMetaParser v3.0 инициализирован');
         } catch (error) {
             console.error('❌ Ошибка инициализации GalaxyMetaParser:', error);
-            this.#handleCircuitBreakerError();
+            this._handleCircuitBreakerError();
             throw error;
         }
     }
@@ -118,8 +65,8 @@ class GalaxyMetaParser {
      * Загрузка манифеста страниц
      * @private
      */
-    async #loadPageManifest() {
-        if (this.#circuitBreaker.state === GalaxyMetaParser.#CIRCUIT_BREAKER_STATES.OPEN) {
+    async _loadPageManifest() {
+        if (this._circuitBreaker.state === 'OPEN') {
             console.warn('⚠️ Circuit breaker открыт, пропускаем загрузку манифеста');
             return;
         }
@@ -127,12 +74,12 @@ class GalaxyMetaParser {
         try {
             const response = await fetch('/sitemap.json');
             if (response.ok) {
-                this.#pageManifest = await response.json();
-                console.log(`📋 Загружен манифест с ${this.#pageManifest.pages?.length ?? 0} страницами`);
+                this._pageManifest = await response.json();
+                console.log(`📋 Загружен манифест с ${this._pageManifest.pages?.length ?? 0} страницами`);
             }
         } catch (error) {
             console.warn('⚠️ Не удалось загрузить манифест страниц:', error.message);
-            this.#handleCircuitBreakerError();
+            this._handleCircuitBreakerError();
         }
     }
 
@@ -140,21 +87,20 @@ class GalaxyMetaParser {
      * Настройка обработчиков событий
      * @private
      */
-    #setupEventListeners() {
+    _setupEventListeners() {
         const eventHandlers = new Map([
             ['parseMetaData', (event) => this.parseAllPages(event.detail.pageUrls)],
             ['rebuildHierarchy', (event) => this.rebuildHierarchy(event.detail.entities)],
             ['updateEntityMetadata', (event) => this.updateEntityMetadata(event.detail.levelId, event.detail.updates)],
             ['clearMetaCache', () => this.clearCache()],
-            ['predictiveLoadRequest', (event) => this.#handlePredictiveLoad(event.detail)],
-            ['contentManagerReady', () => this.#integrateWithContentManager()],
-            ['navigationChanged', (event) => this.#schedulePredictiveLoading(event.detail.currentLevel)]
+            ['predictiveLoadRequest', (event) => this._handlePredictiveLoad(event.detail)],
+            ['contentManagerReady', () => this._integrateWithContentManager()],
+            ['navigationChanged', (event) => this._schedulePredictiveLoading(event.detail.currentLevel)]
         ]);
 
-        // Сохраняем ссылки на обработчики для последующей очистки
         for (const [eventName, handler] of eventHandlers) {
             const boundHandler = handler.bind(this);
-            this.#eventListeners.set(eventName, boundHandler);
+            this._eventListeners.set(eventName, boundHandler);
             document.addEventListener(eventName, boundHandler);
         }
     }
@@ -163,10 +109,9 @@ class GalaxyMetaParser {
      * Настройка периодической очистки кэша
      * @private
      */
-    #setupCacheCleanup() {
-        // Периодическая очистка устаревшего кэша
+    _setupCacheCleanup() {
         setInterval(() => {
-            this.#cleanupExpiredCache();
+            this._cleanupExpiredCache();
         }, this.config.cacheTTL);
     }
 
@@ -174,9 +119,8 @@ class GalaxyMetaParser {
      * Настройка системы предиктивной загрузки
      * @private
      */
-    #setupPredictiveLoading() {
+    _setupPredictiveLoading() {
         if (!this.config.predictiveLoading.enabled) return;
-
         console.log('🎯 Предиктивная загрузка активирована');
     }
 
@@ -184,7 +128,7 @@ class GalaxyMetaParser {
      * Интеграция с ContentManager
      * @private
      */
-    #integrateWithContentManager() {
+    _integrateWithContentManager() {
         if (window.ContentManager) {
             console.log('🔄 Интеграция с ContentManager v3.0');
             
@@ -198,14 +142,13 @@ class GalaxyMetaParser {
      * Очистка устаревшего кэша
      * @private
      */
-    #cleanupExpiredCache() {
+    _cleanupExpiredCache() {
         const now = Date.now();
         let cleanedCount = 0;
 
-        // Очищаем только entity cache, MetaCache сам управляет размером
-        for (const [url, cached] of this.#cache.cache.entries()) {
+        for (const [url, cached] of this._cache.getAll().entries()) {
             if (now - cached.timestamp > this.config.cacheTTL) {
-                this.#cache.delete(url);
+                this._cache.delete(url);
                 cleanedCount++;
             }
         }
@@ -219,20 +162,19 @@ class GalaxyMetaParser {
      * Обработка ошибок Circuit Breaker
      * @private
      */
-    #handleCircuitBreakerError() {
-        this.#circuitBreaker.failures++;
-        this.#circuitBreaker.lastFailure = Date.now();
+    _handleCircuitBreakerError() {
+        this._circuitBreaker.failures++;
+        this._circuitBreaker.lastFailure = Date.now();
 
-        if (this.#circuitBreaker.failures >= this.config.circuitBreaker.failureThreshold) {
-            this.#circuitBreaker.state = GalaxyMetaParser.#CIRCUIT_BREAKER_STATES.OPEN;
-            this.stats.circuitBreakerState = GalaxyMetaParser.#CIRCUIT_BREAKER_STATES.OPEN;
+        if (this._circuitBreaker.failures >= this.config.circuitBreaker.failureThreshold) {
+            this._circuitBreaker.state = 'OPEN';
+            this.stats.circuitBreakerState = 'OPEN';
             console.warn('🚨 Circuit breaker открыт из-за множественных ошибок');
             
-            // Автоматическое восстановление через resetTimeout
             setTimeout(() => {
-                this.#circuitBreaker.state = GalaxyMetaParser.#CIRCUIT_BREAKER_STATES.HALF_OPEN;
-                this.#circuitBreaker.failures = 0;
-                this.stats.circuitBreakerState = GalaxyMetaParser.#CIRCUIT_BREAKER_STATES.HALF_OPEN;
+                this._circuitBreaker.state = 'HALF_OPEN';
+                this._circuitBreaker.failures = 0;
+                this.stats.circuitBreakerState = 'HALF_OPEN';
                 console.log('🔄 Circuit breaker переходит в HALF_OPEN состояние');
             }, this.config.circuitBreaker.resetTimeout);
         }
@@ -242,13 +184,13 @@ class GalaxyMetaParser {
      * Обработка успешных операций Circuit Breaker
      * @private
      */
-    #handleCircuitBreakerSuccess() {
-        if (this.#circuitBreaker.state === GalaxyMetaParser.#CIRCUIT_BREAKER_STATES.HALF_OPEN) {
-            this.#circuitBreaker.state = GalaxyMetaParser.#CIRCUIT_BREAKER_STATES.CLOSED;
-            this.stats.circuitBreakerState = GalaxyMetaParser.#CIRCUIT_BREAKER_STATES.CLOSED;
+    _handleCircuitBreakerSuccess() {
+        if (this._circuitBreaker.state === 'HALF_OPEN') {
+            this._circuitBreaker.state = 'CLOSED';
+            this.stats.circuitBreakerState = 'CLOSED';
             console.log('✅ Circuit breaker закрыт - операции восстановлены');
         }
-        this.#circuitBreaker.failures = 0;
+        this._circuitBreaker.failures = 0;
     }
 
     /**
@@ -257,22 +199,21 @@ class GalaxyMetaParser {
      * @returns {Promise<Object>} Построенная иерархия
      */
     async parseAllPages(pageUrls = null) {
-        if (this.#circuitBreaker.state === GalaxyMetaParser.#CIRCUIT_BREAKER_STATES.OPEN) {
+        if (this._circuitBreaker.state === 'OPEN') {
             console.warn('⚠️ Circuit breaker открыт, пропускаем парсинг');
-            return this.#hierarchyCache ?? this.#getFallbackHierarchy();
+            return this._hierarchyCache ?? this._getFallbackHierarchy();
         }
 
         const startTime = performance.now();
         
         try {
-            this.#dispatchEvent('metaParsingStarted', { 
+            this._dispatchEvent('metaParsingStarted', { 
                 timestamp: Date.now(),
                 pageCount: pageUrls?.length ?? 'auto',
-                circuitBreakerState: this.#circuitBreaker.state
+                circuitBreakerState: this._circuitBreaker.state
             });
 
-            // Если URLs не предоставлены, автоматически обнаруживаем страницы
-            const urls = pageUrls ?? await this.#discoverPageUrls();
+            const urls = pageUrls ?? await this._discoverPageUrls();
             
             if (urls.length === 0) {
                 throw new Error('Не найдено страниц для парсинга');
@@ -284,7 +225,6 @@ class GalaxyMetaParser {
             const parsingPromises = urls.map(url => this.parsePageMeta(url));
             const parsedPages = await Promise.allSettled(parsingPromises);
 
-            // Обрабатываем результаты с использованием современных методов
             const { successCount, errorCount } = parsedPages.reduce((acc, result, index) => {
                 if (result.status === 'fulfilled') {
                     results[result.value.level] = result.value;
@@ -292,7 +232,7 @@ class GalaxyMetaParser {
                 } else {
                     console.error(`❌ Ошибка парсинга ${urls[index]}:`, result.reason);
                     acc.errorCount++;
-                    this.#dispatchEvent('metaParsingError', {
+                    this._dispatchEvent('metaParsingError', {
                         url: urls[index],
                         error: result.reason.message,
                         critical: false
@@ -301,9 +241,8 @@ class GalaxyMetaParser {
                 return acc;
             }, { successCount: 0, errorCount: 0 });
 
-            // Строим иерархию
             const hierarchy = this.buildEntityHierarchy(results);
-            this.#hierarchyCache = hierarchy;
+            this._hierarchyCache = hierarchy;
             
             const parseTime = performance.now() - startTime;
 
@@ -311,10 +250,9 @@ class GalaxyMetaParser {
             this.stats.errors += errorCount;
             this.stats.lastParseTime = parseTime;
 
-            // Успешная операция - сбрасываем circuit breaker
-            this.#handleCircuitBreakerSuccess();
+            this._handleCircuitBreakerSuccess();
 
-            this.#dispatchEvent('metaParsingCompleted', {
+            this._dispatchEvent('metaParsingCompleted', {
                 entities: results,
                 hierarchy: hierarchy,
                 stats: {
@@ -326,13 +264,12 @@ class GalaxyMetaParser {
                 }
             });
 
-            this.#dispatchEvent('hierarchyBuilt', { 
+            this._dispatchEvent('hierarchyBuilt', { 
                 hierarchy,
                 entityCount: Object.keys(results).length
             });
 
-            // Сбор аналитики v3.0
-            this.#collectAnalytics('parse_completed', {
+            this._collectAnalytics('parse_completed', {
                 entityCount: Object.keys(results).length,
                 parseTime: parseTime
             });
@@ -345,15 +282,15 @@ class GalaxyMetaParser {
             const errorTime = performance.now() - startTime;
             console.error('💥 Ошибка при парсинге всех страниц:', error);
             
-            this.#handleCircuitBreakerError();
+            this._handleCircuitBreakerError();
             
-            this.#dispatchEvent('metaParsingError', { 
+            this._dispatchEvent('metaParsingError', { 
                 error: error.message,
                 critical: true,
                 parseTime: errorTime
             });
             
-            return this.#hierarchyCache ?? this.#getFallbackHierarchy();
+            return this._hierarchyCache ?? this._getFallbackHierarchy();
         }
     }
 
@@ -362,7 +299,7 @@ class GalaxyMetaParser {
      * @private
      * @returns {Object} Fallback иерархия
      */
-    #getFallbackHierarchy() {
+    _getFallbackHierarchy() {
         console.warn('🔄 Использование fallback иерархии');
         const fallbackEntities = {
             'index': {
@@ -383,12 +320,11 @@ class GalaxyMetaParser {
      * @private
      * @returns {Promise<string[]>} Массив URL страниц
      */
-    async #discoverPageUrls() {
+    async _discoverPageUrls() {
         console.log('🔍 Универсальное обнаружение страниц...');
 
-        // Приоритет 1: Динамическое API обнаружение
         try {
-            const apiUrls = await this.#discoverPagesViaUniversalAPI();
+            const apiUrls = await this._discoverPagesViaUniversalAPI();
             if (apiUrls.length > 0) {
                 console.log(`🌐 API обнаружение: ${apiUrls.length} страниц`);
                 return apiUrls;
@@ -397,9 +333,8 @@ class GalaxyMetaParser {
             console.warn('⚠️ API обнаружение не удалось:', error.message);
         }
 
-        // Приоритет 2: Автоматическое сканирование структуры
         try {
-            const scannedUrls = await this.#universalDirectoryScan();
+            const scannedUrls = await this._universalDirectoryScan();
             if (scannedUrls.length > 0) {
                 console.log(`📁 Авто-сканирование: ${scannedUrls.length} страниц`);
                 return scannedUrls;
@@ -408,9 +343,8 @@ class GalaxyMetaParser {
             console.warn('⚠️ Авто-сканирование не удалось:', error.message);
         }
 
-        // Приоритет 3: Анализ существующих ссылок на сайте
         try {
-            const linkUrls = await this.#discoverViaSiteLinks();
+            const linkUrls = await this._discoverViaSiteLinks();
             if (linkUrls.length > 0) {
                 console.log(`🔗 Анализ ссылок: ${linkUrls.length} страниц`);
                 return linkUrls;
@@ -419,8 +353,7 @@ class GalaxyMetaParser {
             console.warn('⚠️ Анализ ссылок не удался:', error.message);
         }
 
-        // Приоритет 4: Создание минимальной начальной структуры
-        const initialUrls = await this.#createInitialStructure();
+        const initialUrls = await this._createInitialStructure();
         console.log(`🚀 Создана начальная структура: ${initialUrls.length} страниц`);
         return initialUrls;
     }
@@ -430,23 +363,18 @@ class GalaxyMetaParser {
      * @private
      * @returns {Promise<string[]>} Массив URL
      */
-    async #discoverPagesViaUniversalAPI() {
-        const basePath = this.#detectBasePath();
+    async _discoverPagesViaUniversalAPI() {
+        const basePath = this._detectBasePath();
         
         const apiEndpoints = [
-            // Стандартные endpoints
             `${basePath}/api/pages`,
             `${basePath}/api/sitemap`,
             `${basePath}/data/pages.json`,
             `${basePath}/manifest.json`,
             `${basePath}/sitemap.xml`,
-            
-            // Galaxy-specific endpoints
             `${basePath}/api/galaxy/pages`,
             `${basePath}/data/galaxy.json`,
             `${basePath}/meta/pages`,
-            
-            // Корневые endpoints
             '/api/pages',
             '/sitemap.json',
             '/pages.json'
@@ -469,13 +397,13 @@ class GalaxyMetaParser {
                     if (contentType?.includes('application/json')) {
                         data = await response.json();
                     } else if (contentType?.includes('application/xml') || endpoint.endsWith('.xml')) {
-                        data = await this.#parseSitemapXML(await response.text());
+                        data = await this._parseSitemapXML(await response.text());
                     } else {
                         data = await response.text();
-                        data = this.#tryParseAsJSON(data);
+                        data = this._tryParseAsJSON(data);
                     }
                     
-                    const urls = this.#extractUrlsFromUniversalResponse(data, endpoint);
+                    const urls = this._extractUrlsFromUniversalResponse(data, endpoint);
                     if (urls.length > 0) {
                         console.log(`✅ Найдено ${urls.length} URLs через ${endpoint}`);
                         return urls;
@@ -494,7 +422,7 @@ class GalaxyMetaParser {
      * @private
      * @returns {string} Базовый путь
      */
-    #detectBasePath() {
+    _detectBasePath() {
         const currentPath = window.location.pathname;
         const pathParts = currentPath.split('/').filter(Boolean);
         
@@ -510,19 +438,17 @@ class GalaxyMetaParser {
      * @private
      * @returns {Promise<string[]>} Массив URL
      */
-    async #universalDirectoryScan() {
+    async _universalDirectoryScan() {
         const discoveredUrls = [];
         
-        // Сканируем возможные корневые директории
         const rootDirectories = ['pages', 'content', 'docs', 'articles', 'posts', 'galaxy'];
         
         for (const directory of rootDirectories) {
-            const urls = await this.#scanDirectory(directory);
+            const urls = await this._scanDirectory(directory);
             discoveredUrls.push(...urls);
         }
         
-        // Ищем HTML файлы в корне
-        const rootFiles = await this.#scanRootHTMLFiles();
+        const rootFiles = await this._scanRootHTMLFiles();
         discoveredUrls.push(...rootFiles);
         
         return [...new Set(discoveredUrls)];
@@ -534,13 +460,10 @@ class GalaxyMetaParser {
      * @param {string} directoryName - Имя директории
      * @returns {Promise<string[]>} Массив URL
      */
-    async #scanDirectory(directoryName) {
+    async _scanDirectory(directoryName) {
         const commonPageNames = [
-            // Универсальные имена страниц
             'index', 'home', 'main', 'start', 'welcome',
             'about', 'contact', 'help', 'docs', 'api',
-            
-            // Galaxy-ориентированные имена
             'galaxy', 'universe', 'world', 'space',
             'planets', 'stars', 'systems', 'navigation'
         ];
@@ -555,7 +478,7 @@ class GalaxyMetaParser {
             ];
 
             for (const url of possibleUrls) {
-                if (await this.#checkPageExists(url)) {
+                if (await this._checkPageExists(url)) {
                     discoveredUrls.push(url);
                     console.log(`📄 Обнаружена страница: ${url}`);
                     break;
@@ -572,7 +495,7 @@ class GalaxyMetaParser {
      * @private
      * @returns {Promise<string[]>} Массив URL
      */
-    async #scanRootHTMLFiles() {
+    async _scanRootHTMLFiles() {
         const rootFiles = [
             'index.html', 'index.php', 'index.htm',
             'home.html', 'main.html', 'default.html',
@@ -581,7 +504,7 @@ class GalaxyMetaParser {
 
         const discoveredUrls = [];
         const checkPromises = rootFiles.map(async (fileName) => {
-            if (await this.#checkPageExists(`/${fileName}`)) {
+            if (await this._checkPageExists(`/${fileName}`)) {
                 discoveredUrls.push(`/${fileName}`);
                 console.log(`📄 Обнаружена корневая страница: /${fileName}`);
             }
@@ -596,9 +519,8 @@ class GalaxyMetaParser {
      * @private
      * @returns {Promise<string[]>} Массив URL
      */
-    async #discoverViaSiteLinks() {
+    async _discoverViaSiteLinks() {
         try {
-            // Загружаем главную страницу и анализируем все ссылки
             const response = await fetch('/');
             if (!response.ok) return [];
             
@@ -606,7 +528,6 @@ class GalaxyMetaParser {
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
             
-            // Собираем все внутренние ссылки
             const links = Array.from(doc.querySelectorAll('a[href]'));
             const internalUrls = links
                 .map(link => link.getAttribute('href'))
@@ -646,7 +567,7 @@ class GalaxyMetaParser {
      * @private
      * @returns {Promise<string[]>} Массив URL
      */
-    async #createInitialStructure() {
+    async _createInitialStructure() {
         console.log('🚀 Создание начальной структуры для новой галактики...');
         
         const initialPages = [
@@ -666,10 +587,9 @@ class GalaxyMetaParser {
             }
         ];
 
-        // Проверяем, есть ли уже эти страницы
         const existingUrls = [];
         for (const page of initialPages) {
-            if (!await this.#checkPageExists(page.url)) {
+            if (!await this._checkPageExists(page.url)) {
                 console.log(`📝 Создана начальная страница: ${page.url}`);
             } else {
                 existingUrls.push(page.url);
@@ -685,7 +605,7 @@ class GalaxyMetaParser {
      * @param {string} xmlContent - XML содержимое
      * @returns {Object} Распарсенные данные
      */
-    async #parseSitemapXML(xmlContent) {
+    async _parseSitemapXML(xmlContent) {
         try {
             const parser = new DOMParser();
             const xmlDoc = parser.parseFromString(xmlContent, 'text/xml');
@@ -707,7 +627,7 @@ class GalaxyMetaParser {
      * @param {string} text - Текст для парсинга
      * @returns {*} Распарсенные данные или исходный текст
      */
-    #tryParseAsJSON(text) {
+    _tryParseAsJSON(text) {
         try {
             return JSON.parse(text);
         } catch {
@@ -722,7 +642,7 @@ class GalaxyMetaParser {
      * @param {string} endpoint - Endpoint
      * @returns {string[]} Массив URL
      */
-    #extractUrlsFromUniversalResponse(data, endpoint) {
+    _extractUrlsFromUniversalResponse(data, endpoint) {
         if (!data) return [];
         
         const extractionStrategies = [
@@ -747,7 +667,7 @@ class GalaxyMetaParser {
                 const urls = strategy();
                 if (urls && urls.length > 0) {
                     return urls
-                        .map(url => this.#normalizePageUrl(url))
+                        .map(url => this._normalizePageUrl(url))
                         .filter(url => url && typeof url === 'string')
                         .filter((url, index, self) => self.indexOf(url) === index);
                 }
@@ -765,11 +685,11 @@ class GalaxyMetaParser {
      * @param {string} url - URL для проверки
      * @returns {Promise<boolean>} Существует ли страница
      */
-    async #checkPageExists(url) {
+    async _checkPageExists(url) {
         const methods = [
-            () => this.#checkWithHEAD(url),
-            () => this.#checkWithGET(url),
-            () => this.#checkWithFetch(url, { method: 'OPTIONS' })
+            () => this._checkWithHEAD(url),
+            () => this._checkWithGET(url),
+            () => this._checkWithFetch(url, { method: 'OPTIONS' })
         ];
 
         for (const method of methods) {
@@ -785,7 +705,7 @@ class GalaxyMetaParser {
         return false;
     }
 
-    async #checkWithHEAD(url) {
+    async _checkWithHEAD(url) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 2000);
 
@@ -802,7 +722,7 @@ class GalaxyMetaParser {
         }
     }
 
-    async #checkWithGET(url) {
+    async _checkWithGET(url) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3000);
 
@@ -819,7 +739,7 @@ class GalaxyMetaParser {
         }
     }
 
-    async #checkWithFetch(url, options) {
+    async _checkWithFetch(url, options) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 1000);
 
@@ -842,7 +762,7 @@ class GalaxyMetaParser {
      * @param {string} url - URL для нормализации
      * @returns {string} Нормализованный URL
      */
-    #normalizePageUrl(url) {
+    _normalizePageUrl(url) {
         const cleanUrl = url.replace(/^\//, '');
         
         if (url.startsWith('http') || url.startsWith('/pages/')) {
@@ -858,41 +778,35 @@ class GalaxyMetaParser {
      * @returns {Promise<Object>} Мета-данные сущности
      */
     async parsePageMeta(pageUrl) {
-        // Проверяем кэш
-        const cached = this.#cache.get(pageUrl);
+        const cached = this._cache.get(pageUrl);
         if (cached?.data && (Date.now() - cached.timestamp < this.config.cacheTTL)) {
             this.stats.cacheHits++;
             return cached.data;
         }
 
         try {
-            const response = await this.#fetchWithRetry(pageUrl);
+            const response = await this._fetchWithRetry(pageUrl);
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
 
             const html = await response.text();
-            const metaTags = this.#extractMetaTags(html, pageUrl);
+            const metaTags = this._extractMetaTags(html, pageUrl);
             
-            // Валидация обязательных полей
-            this.#validateMetaTags(metaTags, pageUrl);
+            this._validateMetaTags(metaTags, pageUrl);
             
-            // Автозаполнение недостающих данных
-            const completeEntity = this.#generateMissingData(metaTags, pageUrl);
+            const completeEntity = this._generateMissingData(metaTags, pageUrl);
             
-            // Дополнительная валидация структуры
-            this.#validateEntityStructure(completeEntity);
+            this._validateEntityStructure(completeEntity);
 
-            // Обогащаем entity дополнительными мета-данными v3.0
-            const enrichedEntity = this.#enrichEntityData(completeEntity, pageUrl);
+            const enrichedEntity = this._enrichEntityData(completeEntity, pageUrl);
 
-            // Сохраняем в кэш
-            this.#cache.set(pageUrl, {
+            this._cache.set(pageUrl, {
                 data: enrichedEntity,
                 timestamp: Date.now()
             });
             
-            this.#entityCache.set(enrichedEntity.level, enrichedEntity);
+            this._entityCache.set(enrichedEntity.level, enrichedEntity);
 
             console.log(`✅ Успешно распаршена: ${pageUrl} → ${enrichedEntity.title} (${enrichedEntity.type})`);
             return enrichedEntity;
@@ -900,8 +814,7 @@ class GalaxyMetaParser {
         } catch (error) {
             console.error(`❌ Ошибка парсинга ${pageUrl}:`, error);
             
-            // Сохраняем информацию об ошибке в кэш
-            this.#cache.set(pageUrl, {
+            this._cache.set(pageUrl, {
                 data: null,
                 timestamp: Date.now(),
                 error: error.message
@@ -918,7 +831,7 @@ class GalaxyMetaParser {
      * @param {number} maxRetries - Максимальное количество попыток
      * @returns {Promise<Response>} Ответ
      */
-    async #fetchWithRetry(url, maxRetries = this.config.maxRetries) {
+    async _fetchWithRetry(url, maxRetries = this.config.maxRetries) {
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
             try {
                 const controller = new AbortController();
@@ -936,10 +849,10 @@ class GalaxyMetaParser {
                     throw new Error(`Не удалось загрузить ${url} после ${maxRetries} попыток (${response.status})`);
                 }
                 
-                await this.#delay(2 ** attempt * 1000);
+                await this._delay(2 ** attempt * 1000);
             } catch (error) {
                 if (attempt === maxRetries) throw error;
-                await this.#delay(2 ** attempt * 1000);
+                await this._delay(2 ** attempt * 1000);
             }
         }
     }
@@ -951,14 +864,13 @@ class GalaxyMetaParser {
      * @param {string} pageUrl - URL страницы
      * @returns {Object} Извлеченные мета-теги
      */
-    #extractMetaTags(html, pageUrl) {
+    _extractMetaTags(html, pageUrl) {
         const metaTags = {};
         const parser = new DOMParser();
         
         try {
             const doc = parser.parseFromString(html, 'text/html');
 
-            // Извлекаем все meta-теги с name начинающимся на "galaxy:"
             const metaElements = doc.querySelectorAll('meta[name^="galaxy:"]');
             
             metaElements.forEach(meta => {
@@ -970,10 +882,7 @@ class GalaxyMetaParser {
                 }
             });
 
-            // Также извлекаем title страницы как fallback
             metaTags.title ??= doc.querySelector('title')?.textContent?.trim();
-
-            // Извлекаем описание из meta description
             metaTags.description ??= doc.querySelector('meta[name="description"]')?.getAttribute('content');
 
         } catch (error) {
@@ -989,8 +898,9 @@ class GalaxyMetaParser {
      * @param {Object} metaTags - Мета-теги для валидации
      * @param {string} pageUrl - URL страницы
      */
-    #validateMetaTags(metaTags, pageUrl) {
-        const missingRequired = this.#requiredMetaTags.filter(tag => !metaTags[tag]);
+    _validateMetaTags(metaTags, pageUrl) {
+        const requiredMetaTags = ['level', 'type', 'title'];
+        const missingRequired = requiredMetaTags.filter(tag => !metaTags[tag]);
         
         if (missingRequired.length > 0) {
             throw new Error(
@@ -998,13 +908,11 @@ class GalaxyMetaParser {
             );
         }
 
-        // Валидация типа сущности
         if (metaTags.type && !this.config.supportedEntityTypes.includes(metaTags.type)) {
             throw new Error(`Неподдерживаемый тип сущности: ${metaTags.type} в ${pageUrl}`);
         }
 
-        // Валидация форматов
-        if (metaTags.level && !this.#isValidLevelFormat(metaTags.level)) {
+        if (metaTags.level && !this._isValidLevelFormat(metaTags.level)) {
             throw new Error(`Некорректный формат уровня: ${metaTags.level} в ${pageUrl}`);
         }
 
@@ -1016,7 +924,7 @@ class GalaxyMetaParser {
             throw new Error(`Некорректный угол орбиты: ${metaTags['orbit-angle']} в ${pageUrl}`);
         }
 
-        if (metaTags.color && !this.#isValidColor(metaTags.color)) {
+        if (metaTags.color && !this._isValidColor(metaTags.color)) {
             throw new Error(`Некорректный формат цвета: ${metaTags.color} в ${pageUrl}`);
         }
     }
@@ -1027,7 +935,7 @@ class GalaxyMetaParser {
      * @param {string} level - Уровень для проверки
      * @returns {boolean} Валиден ли формат
      */
-    #isValidLevelFormat(level) {
+    _isValidLevelFormat(level) {
         return typeof level === 'string' && level.length > 0 && /^[a-zA-Z0-9_-]+$/.test(level);
     }
 
@@ -1037,7 +945,7 @@ class GalaxyMetaParser {
      * @param {string} color - Цвет для проверки
      * @returns {boolean} Валиден ли цвет
      */
-    #isValidColor(color) {
+    _isValidColor(color) {
         return /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(color) || 
                /^rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)$/i.test(color) ||
                /^rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*[\d.]+\s*\)$/i.test(color);
@@ -1050,20 +958,43 @@ class GalaxyMetaParser {
      * @param {string} pageUrl - URL страницы
      * @returns {Object} Полная сущность
      */
-    #generateMissingData(metaTags, pageUrl) {
+    _generateMissingData(metaTags, pageUrl) {
         const entity = { ...metaTags };
         
-        // Автозаполнение на основе типа
-        entity['orbit-radius'] ??= this.#typeConfig.orbitRadii.get(entity.type) ?? 100;
-        entity['orbit-angle'] ??= this.#calculateAutoAngle(entity);
-        entity.color ??= this.#typeConfig.colors.get(entity.type) ?? this.#generateRandomColor();
-        entity.importance ??= this.#calculateImportance(entity);
-        entity.description ??= `Раздел "${entity.title}" во вселенной BIOAPGREID`;
-        entity.icon ??= this.#typeConfig.icons.get(entity.type) ?? '🔮';
-        entity['content-priority'] ??= this.#calculateContentPriority(entity);
-        entity['analytics-category'] ??= this.#typeConfig.analyticsCategories.get(entity.type) ?? 'general';
+        const typeConfig = {
+            orbitRadii: new Map([
+                ['galaxy', 0], ['planet', 150], ['moon', 60], ['asteroid', 40],
+                ['debris', 20], ['blackhole', 200], ['nebula', 250], ['station', 80],
+                ['gateway', 120], ['anomaly', 180]
+            ]),
+            icons: new Map([
+                ['galaxy', '⭐'], ['planet', '🪐'], ['moon', '🌙'], ['asteroid', '☄️'],
+                ['debris', '🛰️'], ['blackhole', '🌀'], ['nebula', '🌌'], ['station', '🚀'],
+                ['gateway', '🌐'], ['anomaly', '💫']
+            ]),
+            colors: new Map([
+                ['galaxy', '#FFD700'], ['planet', '#4ECDC4'], ['moon', '#C7F464'],
+                ['asteroid', '#FF6B6B'], ['debris', '#A8E6CF'], ['blackhole', '#2C3E50'],
+                ['nebula', '#D4A5FF'], ['station', '#FFD166'], ['gateway', '#9B5DE5'],
+                ['anomaly', '#00BBF9']
+            ]),
+            analyticsCategories: new Map([
+                ['galaxy', 'core'], ['planet', 'primary'], ['moon', 'secondary'],
+                ['asteroid', 'supplementary'], ['debris', 'supplementary'],
+                ['blackhole', 'special'], ['nebula', 'special'], ['station', 'interactive'],
+                ['gateway', 'navigation'], ['anomaly', 'special']
+            ])
+        };
 
-        // Конвертация числовых значений
+        entity['orbit-radius'] ??= typeConfig.orbitRadii.get(entity.type) ?? 100;
+        entity['orbit-angle'] ??= this._calculateAutoAngle(entity);
+        entity.color ??= typeConfig.colors.get(entity.type) ?? this._generateRandomColor();
+        entity.importance ??= this._calculateImportance(entity);
+        entity.description ??= `Раздел "${entity.title}" во вселенной BIOAPGREID`;
+        entity.icon ??= typeConfig.icons.get(entity.type) ?? '🔮';
+        entity['content-priority'] ??= this._calculateContentPriority(entity);
+        entity['analytics-category'] ??= typeConfig.analyticsCategories.get(entity.type) ?? 'general';
+
         const numericFields = ['orbit-radius', 'orbit-angle', 'size-modifier'];
         numericFields.forEach(field => {
             if (entity[field]) {
@@ -1071,10 +1002,8 @@ class GalaxyMetaParser {
             }
         });
 
-        // Преобразование unlocked в boolean
         entity.unlocked = entity.unlocked !== 'false';
 
-        // Обработка тегов
         if (entity.tags && typeof entity.tags === 'string') {
             entity.tags = entity.tags.split(',').map(tag => tag.trim()).filter(Boolean);
         } else {
@@ -1091,14 +1020,14 @@ class GalaxyMetaParser {
      * @param {string} pageUrl - URL страницы
      * @returns {Object} Обогащенная сущность
      */
-    #enrichEntityData(entity, pageUrl) {
+    _enrichEntityData(entity, pageUrl) {
         return {
             ...entity,
             metadata: {
                 sourceUrl: pageUrl,
                 parsedAt: new Date().toISOString(),
                 version: '3.0',
-                cacheKey: this.#generateCacheKey(entity.level),
+                cacheKey: this._generateCacheKey(entity.level),
                 predictiveScore: 0,
                 ...entity.metadata
             },
@@ -1119,7 +1048,7 @@ class GalaxyMetaParser {
      * @param {string} level - Уровень сущности
      * @returns {string} Ключ кэша
      */
-    #generateCacheKey(level) {
+    _generateCacheKey(level) {
         return `meta_v3.0_${level}_${Date.now().toString(36)}`;
     }
 
@@ -1129,7 +1058,7 @@ class GalaxyMetaParser {
      * @param {Object} entity - Сущность
      * @returns {number} Угол орбиты
      */
-    #calculateAutoAngle(entity) {
+    _calculateAutoAngle(entity) {
         let hash = 0;
         for (let i = 0; i < entity.level.length; i++) {
             hash = ((hash << 5) - hash) + entity.level.charCodeAt(i);
@@ -1143,7 +1072,7 @@ class GalaxyMetaParser {
      * @private
      * @returns {string} Случайный цвет
      */
-    #generateRandomColor() {
+    _generateRandomColor() {
         const hue = Math.floor(Math.random() * 360);
         return `hsl(${hue}, 70%, 60%)`;
     }
@@ -1154,7 +1083,7 @@ class GalaxyMetaParser {
      * @param {Object} entity - Сущность
      * @returns {string} Важность
      */
-    #calculateImportance(entity) {
+    _calculateImportance(entity) {
         if (entity.type === 'galaxy' || entity.type === 'blackhole') return 'high';
         if (entity.type === 'planet' || entity.type === 'nebula' || entity.type === 'gateway') return 'medium';
         return 'low';
@@ -1166,7 +1095,7 @@ class GalaxyMetaParser {
      * @param {Object} entity - Сущность
      * @returns {string} Приоритет контента
      */
-    #calculateContentPriority(entity) {
+    _calculateContentPriority(entity) {
         if (entity.type === 'galaxy') return 'critical';
         if (entity.importance === 'high') return 'high';
         if (entity.importance === 'medium') return 'medium';
@@ -1178,8 +1107,8 @@ class GalaxyMetaParser {
      * @private
      * @param {Object} entity - Сущность для валидации
      */
-    #validateEntityStructure(entity) {
-        this.#checkCircularDependencies(entity);
+    _validateEntityStructure(entity) {
+        this._checkCircularDependencies(entity);
 
         if (entity['orbit-radius'] < 0) {
             throw new Error(`Отрицательный радиус орбиты: ${entity['orbit-radius']} для ${entity.title}`);
@@ -1199,7 +1128,7 @@ class GalaxyMetaParser {
      * @private
      * @param {Object} entity - Сущность для проверки
      */
-    #checkCircularDependencies(entity) {
+    _checkCircularDependencies(entity) {
         if (!entity.parent) return;
 
         const visited = new Set([entity.level]);
@@ -1211,7 +1140,7 @@ class GalaxyMetaParser {
             }
             
             visited.add(current.parent);
-            const parentEntity = this.#entityCache.get(current.parent);
+            const parentEntity = this._entityCache.get(current.parent);
             
             if (!parentEntity) break;
             current = parentEntity;
@@ -1224,7 +1153,7 @@ class GalaxyMetaParser {
      * @returns {Object} Построенная иерархия
      */
     buildEntityHierarchy(entities) {
-        return this.#hierarchyBuilder.build(entities);
+        return this._hierarchyBuilder.build(entities);
     }
 
     /**
@@ -1235,7 +1164,7 @@ class GalaxyMetaParser {
     rebuildHierarchy(entities) {
         console.log('🔄 Перестроение иерархии сущностей...');
         
-        this.#hierarchyCache = null;
+        this._hierarchyCache = null;
         return this.buildEntityHierarchy(entities);
     }
 
@@ -1246,17 +1175,17 @@ class GalaxyMetaParser {
      * @returns {Object} Обновленная сущность
      */
     updateEntityMetadata(levelId, updates) {
-        const entity = this.#entityCache.get(levelId);
+        const entity = this._entityCache.get(levelId);
         if (!entity) {
             throw new Error(`Сущность с level ${levelId} не найдена`);
         }
 
         Object.assign(entity, updates);
-        this.#hierarchyCache = null;
+        this._hierarchyCache = null;
         
         console.log(`✏️ Обновлены мета-данные для ${levelId}`);
 
-        this.#dispatchEvent('entityMetadataUpdated', {
+        this._dispatchEvent('entityMetadataUpdated', {
             levelId,
             updates,
             entity
@@ -1266,53 +1195,51 @@ class GalaxyMetaParser {
     }
 
     // Predictive Loading v3.0
-    #schedulePredictiveLoading(currentLevel) {
+    _schedulePredictiveLoading(currentLevel) {
         if (!this.config.predictiveLoading.enabled) return;
 
         setTimeout(() => {
-            this.#performPredictiveLoading(currentLevel);
+            this._performPredictiveLoading(currentLevel);
         }, this.config.predictiveLoading.preloadDelay);
     }
 
-    #performPredictiveLoading(currentLevel) {
-        const currentEntity = this.#entityCache.get(currentLevel);
+    _performPredictiveLoading(currentLevel) {
+        const currentEntity = this._entityCache.get(currentLevel);
         if (!currentEntity) return;
 
-        const toPreload = this.#findEntitiesToPreload(currentEntity);
+        const toPreload = this._findEntitiesToPreload(currentEntity);
         
         if (toPreload.length > 0) {
             console.log(`🎯 Предиктивная загрузка: ${toPreload.length} сущностей`);
             
-            this.#dispatchEvent('predictiveLoadScheduled', {
+            this._dispatchEvent('predictiveLoadScheduled', {
                 source: currentLevel,
                 targets: toPreload,
                 depth: this.config.predictiveLoading.depth
             });
 
             toPreload.forEach(entityId => {
-                this.#preloadEntity(entityId);
+                this._preloadEntity(entityId);
             });
 
             this.stats.predictiveHits++;
         }
     }
 
-    #findEntitiesToPreload(entity, depth = 0) {
+    _findEntitiesToPreload(entity, depth = 0) {
         if (depth >= this.config.predictiveLoading.depth) return [];
 
         const toPreload = [];
         
-        // Предзагружаем детей текущей сущности
         if (entity.children) {
             for (const child of entity.children) {
                 toPreload.push(child.level);
-                toPreload.push(...this.#findEntitiesToPreload(child, depth + 1));
+                toPreload.push(...this._findEntitiesToPreload(child, depth + 1));
             }
         }
 
-        // Предзагружаем соседей
         if (entity.parent) {
-            const parent = this.#entityCache.get(entity.parent);
+            const parent = this._entityCache.get(entity.parent);
             if (parent?.children) {
                 for (const sibling of parent.children) {
                     if (sibling.level !== entity.level) {
@@ -1325,55 +1252,55 @@ class GalaxyMetaParser {
         return [...new Set(toPreload)];
     }
 
-    #preloadEntity(entityId) {
-        const entity = this.#entityCache.get(entityId);
+    _preloadEntity(entityId) {
+        const entity = this._entityCache.get(entityId);
         if (!entity) return;
 
         entity.metadata.predictiveScore = (entity.metadata.predictiveScore ?? 0) + 1;
 
-        this.#dispatchEvent('entityPreloadInitiated', {
+        this._dispatchEvent('entityPreloadInitiated', {
             entityId,
             predictiveScore: entity.metadata.predictiveScore
         });
     }
 
-    #handlePredictiveLoad(request) {
+    _handlePredictiveLoad(request) {
         const { entityId, priority } = request;
-        this.#preloadEntity(entityId);
+        this._preloadEntity(entityId);
     }
 
     // Analytics v3.0
-    #collectAnalytics(eventType, data) {
+    _collectAnalytics(eventType, data) {
         const analyticsData = {
             eventType,
             timestamp: Date.now(),
             parserVersion: '3.0',
-            circuitBreakerState: this.#circuitBreaker.state,
+            circuitBreakerState: this._circuitBreaker.state,
             cacheStats: {
-                size: this.#cache.size,
-                entitySize: this.#entityCache.size
+                size: this._cache.size,
+                entitySize: this._entityCache.size
             },
             ...data
         };
 
-        this.#dispatchEvent('metaAnalyticsCollected', analyticsData);
+        this._dispatchEvent('metaAnalyticsCollected', analyticsData);
 
-        if (this.#app?.recordAnalytics) {
-            this.#app.recordAnalytics('meta_parser', analyticsData);
+        if (this._app?.recordAnalytics) {
+            this._app.recordAnalytics('meta_parser', analyticsData);
         }
     }
 
     // Public API v3.0
     getEntity(levelId) {
-        return this.#entityCache.get(levelId);
+        return this._entityCache.get(levelId);
     }
 
     getAllEntities() {
-        return Array.from(this.#entityCache.cache.values()).map(item => item.data);
+        return Object.values(this._entityCache.getAll());
     }
 
     getCurrentHierarchy() {
-        return this.#hierarchyCache;
+        return this._hierarchyCache;
     }
 
     getTotalPlanets() {
@@ -1391,28 +1318,28 @@ class GalaxyMetaParser {
     getStats() {
         return {
             ...this.stats,
-            cacheSize: this.#cache.size,
-            entityCacheSize: this.#entityCache.size,
-            hierarchyCache: !!this.#hierarchyCache,
+            cacheSize: this._cache.size,
+            entityCacheSize: this._entityCache.size,
+            hierarchyCache: !!this._hierarchyCache,
             predictiveCandidates: this.getPredictiveCandidates().length,
             domains: Array.from(this.stats.domainsProcessed)
         };
     }
 
     clearCache() {
-        this.#cache.clear();
-        this.#entityCache.clear();
-        this.#hierarchyCache = null;
+        this._cache.clear();
+        this._entityCache.clear();
+        this._hierarchyCache = null;
         this.stats.cacheHits = 0;
         
         console.log('🧹 Кэш мета-парсера полностью очищен');
         
-        this.#dispatchEvent('metaCacheCleared', {
+        this._dispatchEvent('metaCacheCleared', {
             timestamp: Date.now()
         });
     }
 
-    #dispatchEvent(eventName, detail) {
+    _dispatchEvent(eventName, detail) {
         try {
             const event = new CustomEvent(eventName, { detail });
             document.dispatchEvent(event);
@@ -1421,7 +1348,7 @@ class GalaxyMetaParser {
         }
     }
 
-    #delay(ms) {
+    _delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
@@ -1444,7 +1371,7 @@ class GalaxyMetaParser {
         const savedStats = { ...this.stats };
         this.clearCache();
         this.stats = savedStats;
-        this.#circuitBreaker.state = GalaxyMetaParser.#CIRCUIT_BREAKER_STATES.HALF_OPEN;
+        this._circuitBreaker.state = 'HALF_OPEN';
         
         console.log('✅ GalaxyMetaParser v3.0 восстановлен');
         return true;
@@ -1453,22 +1380,18 @@ class GalaxyMetaParser {
     destroy() {
         console.log('🧹 Очистка GalaxyMetaParser v3.0...');
         
-        // Удаляем все обработчики событий
-        for (const [eventName, handler] of this.#eventListeners) {
+        for (const [eventName, handler] of this._eventListeners) {
             document.removeEventListener(eventName, handler);
         }
-        this.#eventListeners.clear();
+        this._eventListeners.clear();
         
         this.clearCache();
-        this.#pageManifest = null;
-        this.#circuitBreaker.state = GalaxyMetaParser.#CIRCUIT_BREAKER_STATES.CLOSED;
+        this._pageManifest = null;
+        this._circuitBreaker.state = 'CLOSED';
         
         console.log('✅ GalaxyMetaParser v3.0 очищен');
     }
 }
-
-// Named exports для современных модульных систем
-export { GalaxyMetaParser };
 
 // Совместимость с legacy системой
 if (typeof window !== 'undefined') {
