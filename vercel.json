@@ -1,25 +1,31 @@
+// vercel.json
 {
   "version": 2,
   "builds": [
-    { "src": "api/**/*.js", "use": "@vercel/node" },
-    { "src": "public/**/*", "use": "@vercel/static" },
-    { "src": "pages/**/*.html", "use": "@vercel/static" }
-  ],
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-    { 
-      "src": "/(.*\\.html)", 
-      "dest": "/pages/$1",
-      "continue": true
-    },
-    { 
-      "src": "/(.*)", 
-      "dest": "/public/$1" 
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": ".",
+        "nodeVersion": "22.x"
+      }
     }
   ],
-  "functions": {
-    "api/meta-parser.js": { "maxDuration": 10 },
-    "api/project-structure.js": { "maxDuration": 10 },
-    "api/sitemap.js": { "maxDuration": 10 }
+  "routes": [
+    {
+        "src": "/sitemap.json",
+        "dest": "/api/sitemap.js"
+    },
+    {
+        "src": "/api/pages",
+        "dest": "/api/pages.js"
+    },
+    {
+        "src": "/(.*)",
+        "dest": "/$1"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
   }
 }
