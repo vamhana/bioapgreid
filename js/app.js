@@ -374,7 +374,10 @@ class GenofondApp {
             ]
         };
 
-        // Теперь debouncedSaveState может безопасно использовать this.config.saveStateDebounce
+        this.debouncedUpdateUI = this.debounce(() => {
+            this.updateUI();
+        }, 100);
+
         this.debouncedSaveState = this.debounce(() => {
             this.saveAppState();
         }, this.config.saveStateDebounce);
@@ -1388,13 +1391,7 @@ class GenofondApp {
         }, 100);
     }
 
-    debouncedUpdateUI = this.debounce(() => {
-        this.updateUI();
-    }, 100);
 
-    debouncedSaveState = this.debounce(() => {
-        this.saveAppState();
-    }, this.config.saveStateDebounce);
 
     debounce(func, wait) {
         let timeout;
