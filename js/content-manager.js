@@ -1,3 +1,7 @@
+if (typeof window.ContentCache !== 'undefined') {
+    console.warn('⚠️ ContentCache уже загружен, пропускаем повторную загрузку');
+} else {
+
 class ContentCache {
     constructor(maxSize = 100, timeout = 300000) { // 5 минут таймаут по умолчанию
         this.maxSize = maxSize;
@@ -461,7 +465,7 @@ class ContentManager {
             if (metaParser && metaParser.getAllEntities) {
                 const entities = metaParser.getAllEntities();
                 return entities.filter(entity => 
-                    entity.type === 'planet' || entity.type === 'star'
+                    entity.type === 'planet' || entity.type === 'galaxy'
                 ).length;
             }
         } catch (error) {
@@ -536,8 +540,19 @@ class ContentManager {
                     }
                 }
 
-                // ИСПРАВЛЕНО: Относительные пути для всех хостингов
-                const pageUrl = `${this.config.baseUrl}/${levelId}.html`;
+                // ИСПРАВЛЕНО: Правильные пути для уровней
+                let pageUrl;
+                if (this.config.useRelativePaths) {
+                    // Для уровней используем корневые файлы
+                    if (levelId.startsWith('level')) {
+                        pageUrl = `${levelId}.html`;
+                    } else {
+                        pageUrl = `pages/${levelId}.html`;
+                    }
+                } else {
+                    pageUrl = `${this.config.baseUrl}/${levelId}.html`;
+                }
+
                 console.log(`📡 Загрузка контента: ${pageUrl}`);
 
                 const response = await fetch(pageUrl);
@@ -550,13 +565,46 @@ class ContentManager {
                 return this.processHTMLContent(levelId, htmlContent);
 
             } catch (error) {
-                throw new Error(`Не удалось загрузить данные уровня ${levelId}: ${error.message}`);
+                console.warn(`⚠️ Ошибка загрузки ${levelId}:`, error.message);
+                
+                // Пробуем альтернативные пути
+                return this.tryAlternativePaths(levelId);
             }
         })();
 
         return Promise.race([fetchPromise, timeoutPromise]);
     }
+    /**
+     * Попытка загрузки через альтернативные пути
+     */
+    async tryAlternativePaths(levelId) {
+        const alternativePaths = [
+            `pages/${levelId}.html`,
+            `/${levelId}.html`,
+            `content/${levelId}.html`,
+            `levels/${levelId}.html`,
+            `${this.config.baseUrl}/pages/${levelId}.html`
+        ];
 
+        for (const path of alternativePaths) {
+            try {
+                console.log(`🔄 Попытка альтернативного пути: ${path}`);
+                const response = await fetch(path);
+                
+                if (response.ok) {
+                    const htmlContent = await response.text();
+                    console.log(`✅ Найден альтернативный путь: ${path}`);
+                    return this.processHTMLContent(levelId, htmlContent);
+                }
+            } catch (error) {
+                continue;
+            }
+        }
+
+        // Если все пути не сработали, возвращаем fallback
+        console.warn(`🚨 Все пути для ${levelId} недоступны, используем fallback`);
+        return this.getFallbackLevelData(levelId);
+    }
     /**
      * Обогащение данных уровня дополнительной информацией
      */
@@ -644,7 +692,7 @@ class ContentManager {
         // Извлечение title
         const titleElement = doc.querySelector('title');
         if (titleElement && !metaTags.title) {
-            metaTags.title = titleElement.textContent.replace(' | GENOФОНД', '').trim();
+            metaTags.title = titleElement.textContent.replace(' | BIOAPGREID', '').trim();
         }
 
         return metaTags;
@@ -795,18 +843,20 @@ class ContentManager {
 
     // 🎯 ПРЕДЗАГРУЗКА КРИТИЧЕСКОГО КОНТЕНТА
 
-    /**
-     * Предзагрузка критически важного контента
-     */
     async preloadCriticalContent() {
         if (!this.config.enablePreloading) return;
 
         try {
-            const criticalLevels = ['level0', 'level1', 'level2']; // Первые три уровня
+            // ИСПРАВЛЕНО: Используем существующие уровни
+            const criticalLevels = ['index', 'level0', 'level1', 'level2']; 
             const preloadPromises = criticalLevels.map(level => this.preloadLevel(level));
             
-            await Promise.allSettled(preloadPromises);
-            console.log('🔮 Критический контент предзагружен');
+            const results = await Promise.allSettled(preloadPromises);
+            
+            const successful = results.filter(r => r.status === 'fulfilled').length;
+            const failed = results.filter(r => r.status === 'rejected').length;
+            
+            console.log(`🔮 Критический контент предзагружен: ${successful} успешно, ${failed} ошибок`);
 
         } catch (error) {
             console.warn('⚠️ Ошибка предзагрузки критического контента:', error);
@@ -901,4 +951,7 @@ if (typeof module !== 'undefined' && module.exports) {
     window.ContentManager = ContentManager;
     window.ContentCache = ContentCache;
     window.ProgressManager = ProgressManager;
+}
+
+// ЗАКРЫВАЮЩАЯ СКОБКА ДЛЯ ПРОВЕРКИ СУЩЕСТВОВАНИЯ
 }
