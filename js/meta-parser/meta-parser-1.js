@@ -1,18 +1,13 @@
 // bioapgreid/js/meta-parser/meta-parser-1.js
-
 /**
  * LRU кэш с максимальным размером 200 элементов
  * @class MetaCache
  */
 class MetaCache {
-    #maxSize;
-    #cache;
-    #accessOrder;
-
     constructor(maxSize = 200) {
-        this.#maxSize = maxSize;
-        this.#cache = new Map();
-        this.#accessOrder = [];
+        this._maxSize = maxSize;
+        this._cache = new Map();
+        this._accessOrder = [];
     }
 
     /**
@@ -21,14 +16,13 @@ class MetaCache {
      * @returns {*} Значение или null если не найдено
      */
     get(key) {
-        if (this.#cache.has(key)) {
-            // Обновляем порядок доступа для LRU
-            const index = this.#accessOrder.indexOf(key);
+        if (this._cache.has(key)) {
+            const index = this._accessOrder.indexOf(key);
             if (index > -1) {
-                this.#accessOrder.splice(index, 1);
+                this._accessOrder.splice(index, 1);
             }
-            this.#accessOrder.push(key);
-            return this.#cache.get(key);
+            this._accessOrder.push(key);
+            return this._cache.get(key);
         }
         return null;
     }
@@ -39,14 +33,13 @@ class MetaCache {
      * @param {*} value - Значение
      */
     set(key, value) {
-        if (this.#cache.size >= this.#maxSize) {
-            // Удаляем наименее используемый элемент
-            const oldestKey = this.#accessOrder.shift();
-            this.#cache.delete(oldestKey);
+        if (this._cache.size >= this._maxSize) {
+            const oldestKey = this._accessOrder.shift();
+            this._cache.delete(oldestKey);
         }
         
-        this.#cache.set(key, value);
-        this.#accessOrder.push(key);
+        this._cache.set(key, value);
+        this._accessOrder.push(key);
     }
 
     /**
@@ -54,10 +47,10 @@ class MetaCache {
      * @param {string} key - Ключ для удаления
      */
     delete(key) {
-        this.#cache.delete(key);
-        const index = this.#accessOrder.indexOf(key);
+        this._cache.delete(key);
+        const index = this._accessOrder.indexOf(key);
         if (index > -1) {
-            this.#accessOrder.splice(index, 1);
+            this._accessOrder.splice(index, 1);
         }
     }
 
@@ -65,8 +58,8 @@ class MetaCache {
      * Полная очистка кэша
      */
     clear() {
-        this.#cache.clear();
-        this.#accessOrder = [];
+        this._cache.clear();
+        this._accessOrder = [];
     }
 
     /**
@@ -74,7 +67,7 @@ class MetaCache {
      * @returns {number} Количество элементов
      */
     get size() {
-        return this.#cache.size;
+        return this._cache.size;
     }
 
     /**
@@ -82,14 +75,14 @@ class MetaCache {
      * @returns {Object} Объект со всеми ключ-значение парами
      */
     getAll() {
-        return Object.fromEntries(this.#cache.entries());
+        return Object.fromEntries(this._cache.entries());
     }
 
     /**
      * Итератор для использования в for...of циклах
      */
     *[Symbol.iterator]() {
-        yield* this.#cache.entries();
+        yield* this._cache.entries();
     }
 
     /**
@@ -98,7 +91,7 @@ class MetaCache {
      * @returns {boolean} Существует ли ключ
      */
     has(key) {
-        return this.#cache.has(key);
+        return this._cache.has(key);
     }
 
     /**
@@ -106,7 +99,7 @@ class MetaCache {
      * @returns {string[]} Массив ключей
      */
     getKeys() {
-        return [...this.#accessOrder];
+        return [...this._accessOrder];
     }
 
     /**
@@ -114,7 +107,7 @@ class MetaCache {
      * @returns {*[]} Массив значений
      */
     getValues() {
-        return this.#accessOrder.map(key => this.#cache.get(key));
+        return this._accessOrder.map(key => this._cache.get(key));
     }
 
     /**
@@ -145,12 +138,9 @@ class MetaCache {
  * @class HierarchyBuilder
  */
 class HierarchyBuilder {
-    #maxDepth;
-    #chainCache;
-
     constructor(maxDepth = 15) {
-        this.#maxDepth = maxDepth;
-        this.#chainCache = new Map(); // Кэш для цепочек отношений
+        this._maxDepth = maxDepth;
+        this._chainCache = new Map();
     }
 
     /**
@@ -176,7 +166,7 @@ class HierarchyBuilder {
                     childCount: 0,
                     siblingIndex: 0,
                     totalDescendants: 0,
-                    relationshipChain: this.#calculateRelationshipChain(entity, entities),
+                    relationshipChain: this._calculateRelationshipChain(entity, entities),
                     analytics: {
                         accessCount: 0,
                         lastAccessed: null,
@@ -198,44 +188,39 @@ class HierarchyBuilder {
                     parentNode.children.push(entityNode);
                     parentNode.metadata.childCount++;
                     
-                    // Обновляем глубину дочернего элемента
                     entityNode.metadata.depth = parentNode.metadata.depth + 1;
                     
-                    // Проверяем максимальную глубину
-                    if (entityNode.metadata.depth > this.#maxDepth) {
+                    if (entityNode.metadata.depth > this._maxDepth) {
                         console.warn(`⚠️ Превышена максимальная глубина иерархии: ${entity.level} (глубина ${entityNode.metadata.depth})`);
                     }
                 } else {
-                    // Родитель не найден - помечаем как orphaned
                     orphanedNodes.push(entityNode);
                     console.warn(`⚠️ Сиротская сущность: ${entity.level} (родитель ${entity.parent} не найден)`);
                 }
             } else {
-                // Корневая сущность
                 rootNodes.push(entityNode);
             }
         });
 
         // Фаза 3: Обработка сиротских узлов
         orphanedNodes.forEach(orphan => {
-            const suggestedParent = this.#findSuggestedParent(orphan, entityMap);
+            const suggestedParent = this._findSuggestedParent(orphan, entityMap);
             if (suggestedParent) {
                 suggestedParent.children.push(orphan);
                 suggestedParent.metadata.childCount++;
                 orphan.metadata.depth = suggestedParent.metadata.depth + 1;
                 console.log(`🔗 Автоматически привязан сирота ${orphan.level} к ${suggestedParent.level}`);
             } else {
-                // Добавляем как корневую
                 rootNodes.push(orphan);
                 orphan.metadata.isRoot = true;
             }
         });
 
         // Фаза 4: Вычисление дополнительных мета-данных
-        this.#calculateHierarchyMetadata(rootNodes);
+        this._calculateHierarchyMetadata(rootNodes);
 
         // Фаза 5: Сортировка по важности и типу
-        this.#sortHierarchy(rootNodes);
+        this._sortHierarchy(rootNodes);
 
         const stats = {
             total: entityMap.size,
@@ -243,7 +228,7 @@ class HierarchyBuilder {
             orphans: orphanedNodes.length,
             maxDepth: Math.max(...Array.from(entityMap.values()).map(e => e.metadata.depth)),
             totalDescendants: rootNodes.reduce((sum, root) => sum + root.metadata.totalDescendants, 0),
-            byType: this.#calculateTypeDistribution(entityMap)
+            byType: this._calculateTypeDistribution(entityMap)
         };
 
         console.log('🌳 Иерархия сущностей построена:', stats);
@@ -252,7 +237,7 @@ class HierarchyBuilder {
             roots: rootNodes,
             entities: entityMap,
             stats,
-            relationshipChains: this.#buildAllChains(entityMap)
+            relationshipChains: this._buildAllChains(entityMap)
         };
     }
 
@@ -263,10 +248,10 @@ class HierarchyBuilder {
      * @param {Array} chain - Текущая цепочка
      * @returns {Array} Цепочка отношений
      */
-    #calculateRelationshipChain(entity, allEntities, chain = []) {
+    _calculateRelationshipChain(entity, allEntities, chain = []) {
         const cacheKey = `${entity.level}_chain`;
-        if (this.#chainCache.has(cacheKey)) {
-            return this.#chainCache.get(cacheKey);
+        if (this._chainCache.has(cacheKey)) {
+            return this._chainCache.get(cacheKey);
         }
 
         chain.unshift(entity.level);
@@ -274,12 +259,11 @@ class HierarchyBuilder {
         if (entity.parent) {
             const parentEntity = allEntities[entity.parent];
             if (parentEntity && !chain.includes(entity.parent)) {
-                return this.#calculateRelationshipChain(parentEntity, allEntities, chain);
+                return this._calculateRelationshipChain(parentEntity, allEntities, chain);
             }
         }
 
-        // Сохраняем в кэш
-        this.#chainCache.set(cacheKey, [...chain]);
+        this._chainCache.set(cacheKey, [...chain]);
         return chain;
     }
 
@@ -288,7 +272,7 @@ class HierarchyBuilder {
      * @param {Map} entityMap - Карта сущностей
      * @returns {Object} Все цепочки отношений
      */
-    #buildAllChains(entityMap) {
+    _buildAllChains(entityMap) {
         const chains = {};
         entityMap.forEach((entity, level) => {
             chains[level] = entity.metadata.relationshipChain || [level];
@@ -302,15 +286,13 @@ class HierarchyBuilder {
      * @param {Map} entityMap - Карта сущностей
      * @returns {Object|null} Подходящий родитель или null
      */
-    #findSuggestedParent(orphan, entityMap) {
-        // Стратегия 1: Ищем по цепочке отношений
+    _findSuggestedParent(orphan, entityMap) {
         if (orphan.metadata.relationshipChain?.length > 1) {
             const potentialParentLevel = orphan.metadata.relationshipChain[1];
             const parent = entityMap.get(potentialParentLevel);
             if (parent) return parent;
         }
 
-        // Стратегия 2: Ищем по типу
         const typeHierarchy = new Map([
             ['debris', 'asteroid'],
             ['asteroid', 'moon'],
@@ -321,7 +303,7 @@ class HierarchyBuilder {
         const targetType = typeHierarchy.get(orphan.type);
         if (targetType) {
             for (const [level, entity] of entityMap) {
-                if (entity.type === targetType && entity.metadata.depth < this.#maxDepth - 1) {
+                if (entity.type === targetType && entity.metadata.depth < this._maxDepth - 1) {
                     return entity;
                 }
             }
@@ -335,7 +317,7 @@ class HierarchyBuilder {
      * @param {Map} entityMap - Карта сущностей
      * @returns {Object} Распределение по типам
      */
-    #calculateTypeDistribution(entityMap) {
+    _calculateTypeDistribution(entityMap) {
         const distribution = {};
         entityMap.forEach(entity => {
             distribution[entity.type] = (distribution[entity.type] || 0) + 1;
@@ -348,13 +330,12 @@ class HierarchyBuilder {
      * @param {Array} nodes - Узлы для обработки
      * @returns {Array} Обработанные узлы
      */
-    #calculateHierarchyMetadata(nodes) {
+    _calculateHierarchyMetadata(nodes) {
         nodes.forEach((node, index) => {
             node.metadata.siblingIndex = index;
             
-            // Рекурсивно вычисляем общее количество потомков
             node.metadata.totalDescendants = node.children.reduce((total, child) => {
-                return total + 1 + this.#calculateHierarchyMetadata([child])[0];
+                return total + 1 + this._calculateHierarchyMetadata([child])[0];
             }, 0);
         });
 
@@ -365,8 +346,7 @@ class HierarchyBuilder {
      * Сортирует иерархию по важности и типу
      * @param {Array} nodes - Узлы для сортировки
      */
-    #sortHierarchy(nodes) {
-        // Сортируем по важности (high > medium > low), затем по типу, затем по уровню
+    _sortHierarchy(nodes) {
         const importanceOrder = new Map([['high', 3], ['medium', 2], ['low', 1]]);
         const typeOrder = new Map([
             ['galaxy', 5], ['planet', 4], ['moon', 3], 
@@ -393,10 +373,9 @@ class HierarchyBuilder {
             return a.level.localeCompare(b.level);
         });
 
-        // Рекурсивно сортируем детей
         nodes.forEach(node => {
             if (node.children.length > 0) {
-                this.#sortHierarchy(node.children);
+                this._sortHierarchy(node.children);
             }
         });
     }
@@ -405,7 +384,7 @@ class HierarchyBuilder {
      * Очистка кэша цепочек
      */
     clearChainCache() {
-        this.#chainCache.clear();
+        this._chainCache.clear();
     }
 
     /**
@@ -413,7 +392,7 @@ class HierarchyBuilder {
      * @returns {number} Максимальная глубина
      */
     get maxDepth() {
-        return this.#maxDepth;
+        return this._maxDepth;
     }
 
     /**
@@ -422,7 +401,7 @@ class HierarchyBuilder {
      */
     set maxDepth(value) {
         if (value > 0 && value <= 50) {
-            this.#maxDepth = value;
+            this._maxDepth = value;
         } else {
             throw new Error('Максимальная глубина должна быть между 1 и 50');
         }
@@ -434,46 +413,33 @@ class HierarchyBuilder {
      */
     getChainCacheStats() {
         return {
-            size: this.#chainCache.size,
-            hits: 0, // Можно добавить подсчет хитов при необходимости
-            maxDepth: this.#maxDepth
+            size: this._chainCache.size,
+            hits: 0,
+            maxDepth: this._maxDepth
         };
     }
 }
 
 /**
  * Универсальная конфигурация системы парсинга v3.0
- * Оптимизирована для работы с любой галактикой на любом домене
  */
 const PARSER_CONFIG = Object.freeze({
-    // Основные настройки
     maxRetries: 3,
-    cacheTTL: 5 * 60 * 1000, // 5 минут
+    cacheTTL: 5 * 60 * 1000,
     requestTimeout: 10000,
     maxHierarchyDepth: 15,
     
-    // Поддерживаемые типы сущностей (универсальные для любой галактики)
     supportedEntityTypes: Object.freeze([
-        'debris',      // Космический мусор (реклама, вспомогательные страницы)
-        'asteroid',    // Метеориты (второстепенные разделы)  
-        'moon',        // Спутники (подразделы)
-        'planet',      // Планеты (основные разделы)
-        'galaxy',      // Звезды (ключевые категории)
-        'blackhole',   // Специальные разделы
-        'nebula',      // Группы разделов
-        'station',     // Интерактивные элементы
-        'gateway',     // Навигационные шлюзы
-        'anomaly'      // Особые страницы
+        'debris', 'asteroid', 'moon', 'planet', 'galaxy',
+        'blackhole', 'nebula', 'station', 'gateway', 'anomaly'
     ]),
 
-    // Настройки устойчивости
     circuitBreaker: Object.freeze({
         failureThreshold: 5,
         resetTimeout: 30000,
         halfOpenTimeout: 15000
     }),
 
-    // Предиктивная загрузка для больших объемов
     predictiveLoading: Object.freeze({
         enabled: true,
         depth: 2,
@@ -481,9 +447,7 @@ const PARSER_CONFIG = Object.freeze({
         preloadDelay: 100
     }),
 
-    // Универсальные настройки обнаружения страниц
     pageDiscovery: Object.freeze({
-        // API endpoints для любого домена
         apiEndpoints: Object.freeze([
             '/api/pages',
             '/api/sitemap',
@@ -493,15 +457,12 @@ const PARSER_CONFIG = Object.freeze({
             '/api/galaxy/pages'
         ]),
         
-        // Базовые директории для сканирования
         scanDirectories: Object.freeze([
             'pages', 'content', 'docs', 'articles', 'galaxy'
         ]),
         
-        // Нет fallback страниц - полностью универсально
         fallbackPages: Object.freeze([]),
         
-        // Начальная структура для новых галактик
         initialStructure: Object.freeze({
             createIfEmpty: true,
             defaultPages: [
@@ -514,7 +475,6 @@ const PARSER_CONFIG = Object.freeze({
             ]
         }),
         
-        // Таймауты для проверки страниц (ms)
         checkTimeouts: Object.freeze({
             head: 2000,
             get: 3000,
@@ -522,7 +482,6 @@ const PARSER_CONFIG = Object.freeze({
         })
     }),
 
-    // Настройки для sitemap.json
     sitemap: Object.freeze({
         outputPath: '/data/sitemap.json',
         autoGenerate: true,
@@ -531,7 +490,6 @@ const PARSER_CONFIG = Object.freeze({
         versioning: true
     }),
 
-    // Универсальные настройки для любого домена
     universal: Object.freeze({
         autoDetectStructure: true,
         createIfMissing: true,
@@ -540,7 +498,6 @@ const PARSER_CONFIG = Object.freeze({
         domainAgnostic: true
     }),
 
-    // Настройки производительности
     performance: Object.freeze({
         cacheSizes: Object.freeze({
             metaCache: 100,
@@ -632,9 +589,6 @@ const ConfigUtils = {
         };
     }
 };
-
-// Named exports для современных модульных систем
-export { MetaCache, HierarchyBuilder, PARSER_CONFIG, ConfigUtils };
 
 // Совместимость с legacy системой
 if (typeof window !== 'undefined') {
