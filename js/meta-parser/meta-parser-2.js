@@ -1,3 +1,9 @@
+if (typeof window.GalaxyMetaParser !== 'undefined') {
+    console.warn('⚠️ GalaxyMetaParser уже загружен, пропускаем повторную загрузку');
+} else {
+
+class GalaxyMetaParser {
+    constructor(app) {
 class GalaxyMetaParser {
     constructor(app) {
         if (!window.MetaCache || !window.HierarchyBuilder) {
@@ -86,15 +92,29 @@ class GalaxyMetaParser {
         try {
             const response = await fetch('/sitemap.json');
             if (response.ok) {
-                this._pageManifest = await response.json();
-                console.log('📋 Загружен манифест с ' + (this._pageManifest.pages ? this._pageManifest.pages.length : 0) + ' страницами');
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    try {
+                        this._pageManifest = await response.json();
+                        console.log('📋 Загружен манифест с ' + (this._pageManifest.pages ? this._pageManifest.pages.length : 0) + ' страницами');
+                    } catch (parseError) {
+                        console.warn('⚠️ Не удалось распарсить JSON манифеста:', parseError.message);
+                        this._pageManifest = null;
+                    }
+                } else {
+                    console.warn('⚠️ Неверный content-type манифеста:', contentType);
+                    this._pageManifest = null;
+                }
+            } else {
+                console.warn('⚠️ Не удалось загрузить манифест страниц: HTTP ' + response.status);
+                this._pageManifest = null;
             }
         } catch (error) {
             console.warn('⚠️ Не удалось загрузить манифест страниц:', error.message);
+            this._pageManifest = null;
             this._handleCircuitBreakerError();
         }
     }
-
     /**
      * Настройка обработчиков событий
      * @private
@@ -1505,14 +1525,19 @@ if (typeof window !== 'undefined') {
 
 console.log('✅ Модуль 2: Основной класс GalaxyMetaParser ES6+ загружен');
 
-// Автоматическая инициализация при загрузке
+// ИСПРАВЛЕННАЯ АВТОМАТИЧЕСКАЯ ИНИЦИАЛИЗАЦИЯ
 document.addEventListener('DOMContentLoaded', async function() {
-    if (window.GalaxyMetaParser) {
+    if (window.GalaxyMetaParser && !window.metaParserInstance) {
         try {
             window.metaParserInstance = await GalaxyMetaParser.create(window.app);
             console.log('🚀 GalaxyMetaParser автоматически инициализирован');
         } catch (error) {
             console.error('❌ Ошибка автоматической инициализации GalaxyMetaParser:', error);
         }
+    } else if (window.metaParserInstance) {
+        console.log('ℹ️ GalaxyMetaParser уже инициализирован');
     }
 });
+
+// ЗАКРЫВАЮЩАЯ СКОБКА ДЛЯ ПРОВЕРКИ СУЩЕСТВОВАНИЯ
+}
