@@ -1,26 +1,11 @@
 {
-  "name": "bioapgreid",
-  "version": "2.1.0",
+  "name": "galaxy-scanner",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vercel dev",
-    "deploy": "vercel --prod",
-    "build": "node utils/generate-pages.js"
-  },
-  "dependencies": {
-    "jsdom": "^22.1.0"
-  },
-  "devDependencies": {
-    "@vercel/node": "^2.0.0"
-  }
-}
-{
-  "scripts": {
-    "prepare": "husky install",
-    "scan": "node galaxy-scanner/index.js . --latin",
-    "scan:precommit": "node galaxy-scanner/index.js . --latin && git add galaxy-scanner/results/scan-*.json"
-  },
-  "devDependencies": {
-    "husky": "^8.0.0"
+    "build": "node galaxy-scanner/build-vercel.js",
+    "dev": "node galaxy-scanner/index.js галактика --latin",
+    "scan": "node galaxy-scanner/index.js галактика --latin",
+    "scan:local": "node galaxy-scanner/index.js галактика"
   }
 }
