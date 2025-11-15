@@ -2,21 +2,13 @@
   "name": "galaxy-scanner",
   "version": "1.0.0",
   "type": "module",
-  "description": "Простой сканер структуры галактики с 4 уровнями вложенности",
-  "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "scan": "node index.js",
-    "dev": "node --watch index.js"
+    "build": "node galaxy-scanner/build-vercel.js",
+    "dev": "node galaxy-scanner/index.js галактика --latin",
+    "scan": "node galaxy-scanner/index.js галактика --latin",
+    "scan:local": "node galaxy-scanner/index.js галактика"
   },
-  "engines": {
-    "node": ">=14.6.0"
-  }
-}
-{
-  "scripts": {
-    "scan": "node index.js",
-    "scan:prod": "USE_LATIN_NAMES=true node index.js",
-    "scan:custom": "GALAXY_SOURCE_PATH=/path/to/galaxy GALAXY_RESULTS_PATH=/path/to/results node index.js"
+  "devDependencies": {
+    "@vercel/static-build": "^1.0.0"
   }
 }
