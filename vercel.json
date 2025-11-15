@@ -1,35 +1,27 @@
 {
   "version": 2,
+  "name": "galaxy-scanner",
   "builds": [
     {
       "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": ".",
-        "nodeVersion": "22.x"
-      }
+      "use": "@vercel/static-build"
     }
   ],
   "routes": [
     {
-        "src": "/sitemap.json",
-        "dest": "/api/sitemap.js"
+      "src": "/",
+      "dest": "/public/index.html"
     },
     {
-        "src": "/galaxy-scan-results/sitemap.json",
-        "dest": "/scanner/index.js"
-    },
-    {
-        "src": "/api/pages",
-        "dest": "/api/pages.js"
-    },
-    {
-        "src": "/(.*)",
-        "dest": "/$1"
+      "src": "/results/(.*)",
+      "dest": "/public/results/$1"
     }
   ],
+  "buildCommand": "npm run build",
+  "outputDirectory": "public",
   "env": {
-    "NODE_ENV": "production"
+    "USE_LATIN_NAMES": "true",
+    "GALAXY_SOURCE_PATH": "галактика",
+    "GALAXY_RESULTS_PATH": "public/results"
   }
 }
-
