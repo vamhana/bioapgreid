@@ -14,3 +14,13 @@
     "@vercel/node": "^2.0.0"
   }
 }
+{
+  "scripts": {
+    "prepare": "husky install",
+    "scan": "node galaxy-scanner/index.js . --latin",
+    "scan:precommit": "node galaxy-scanner/index.js . --latin && git add galaxy-scanner/results/scan-*.json"
+  },
+  "devDependencies": {
+    "husky": "^8.0.0"
+  }
+}
