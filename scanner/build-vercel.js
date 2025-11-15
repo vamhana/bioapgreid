@@ -17,54 +17,7 @@ async function buildForVercel() {
     if (!fs.existsSync(galaxyPath)) {
         console.log('⚠️ Папка "галактика" не найдена, создаем пустую...');
         fs.mkdirSync(galaxyPath, { recursive: true });
-        
-        // Создаем пример структуры для демонстрации
-        const exampleStructure = `
-галактика/
-├── земля/
-│   ├── луна/
-│   │   └── index.html
-│   └── index.html
-├── марс/
-│   └── фобос/
-│       └── index.html
-└── index.html
-        `;
-        
-        // Создаем демо файлы
-        fs.mkdirSync(path.join(galaxyPath, 'земля'), { recursive: true });
-        fs.mkdirSync(path.join(galaxyPath, 'земля', 'луна'), { recursive: true });
-        fs.mkdirSync(path.join(galaxyPath, 'марс'), { recursive: true });
-        fs.mkdirSync(path.join(galaxyPath, 'марс', 'фобос'), { recursive: true });
-        
-        // Создаем HTML файлы с конфигурацией
-        const galaxyHTML = `
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Галактика Млечный Путь</title>
-    <script type="application/galaxy+json">
-    {
-        "title": "Млечный Путь",
-        "description": "Наша домашняя галактика",
-        "stars": 100000000000,
-        "type": "спиральная"
-    }
-    </script>
-</head>
-<body>
-    <h1>Галактика Млечный Путь</h1>
-</body>
-</html>
-        `;
-        
-        fs.writeFileSync(path.join(galaxyPath, 'index.html'), galaxyHTML);
-        fs.writeFileSync(path.join(galaxyPath, 'земля', 'index.html'), '<html><title>Планета Земля</title></html>');
-        fs.writeFileSync(path.join(galaxyPath, 'земля', 'луна', 'index.html'), '<html><title>Луна</title></html>');
-        fs.writeFileSync(path.join(galaxyPath, 'марс', 'index.html'), '<html><title>Планета Марс</title></html>');
-        fs.writeFileSync(path.join(galaxyPath, 'марс', 'фобос', 'index.html'), '<html><title>Фобос</title></html>');
-        
-        console.log('✅ Создана демо-структура галактики');
+        createDemoStructure(galaxyPath);
     }
     
     try {
@@ -76,6 +29,11 @@ async function buildForVercel() {
         if (!fs.existsSync(publicDir)) {
             fs.mkdirSync(publicDir, { recursive: true });
         }
+        
+        // 🔥 КОПИРУЕМ ПАПКУ ГАЛАКТИКА В PUBLIC ДЛЯ ДОСТУПА ЧЕРЕЗ ИНТЕРНЕТ
+        const galaxyPublicPath = path.join(publicDir, 'галактика');
+        copyFolderRecursive(galaxyPath, galaxyPublicPath);
+        console.log('✅ Папка "галактика" скопирована в public для веб-доступа');
         
         // Создаем папку для результатов
         const resultsDir = path.join(publicDir, 'results');
@@ -106,6 +64,7 @@ async function buildForVercel() {
             }
         });
         console.log(`📁 Результаты: ${outputPath}`);
+        console.log(`🌐 HTML файлы доступны по адресу: https://www.bioapgreid.ru/галактика/`);
         
     } catch (error) {
         console.error('❌ Build failed:', error.message);
@@ -113,7 +72,196 @@ async function buildForVercel() {
     }
 }
 
-// Функция для рекурсивного рендеринга сущностей
+// 🔥 Функция для рекурсивного копирования папки
+function copyFolderRecursive(source, target) {
+    if (!fs.existsSync(target)) {
+        fs.mkdirSync(target, { recursive: true });
+    }
+    
+    const files = fs.readdirSync(source);
+    
+    files.forEach(file => {
+        const sourcePath = path.join(source, file);
+        const targetPath = path.join(target, file);
+        
+        const stat = fs.statSync(sourcePath);
+        
+        if (stat.isDirectory()) {
+            copyFolderRecursive(sourcePath, targetPath);
+        } else {
+            fs.copyFileSync(sourcePath, targetPath);
+        }
+    });
+}
+
+// 🔥 Функция для создания демо-структуры
+function createDemoStructure(galaxyPath) {
+    console.log('Создаем демо-структуру галактики...');
+    
+    // Создаем папки
+    const folders = [
+        'земля',
+        'земля/луна', 
+        'марс',
+        'марс/фобос',
+        'марс/деймос',
+        'юпитер'
+    ];
+    
+    folders.forEach(folder => {
+        const fullPath = path.join(galaxyPath, folder);
+        fs.mkdirSync(fullPath, { recursive: true });
+    });
+    
+    // Создаем HTML файлы
+    const galaxyHTML = `<!DOCTYPE html>
+<html>
+<head>
+    <title>Галактика Млечный Путь</title>
+    <script type="application/galaxy+json">
+    {
+        "title": "Млечный Путь",
+        "description": "Наша домашняя галактика",
+        "stars": 100000000000,
+        "type": "спиральная"
+    }
+    </script>
+</head>
+<body>
+    <h1>Галактика Млечный Путь</h1>
+    <p>Демонстрационная страница галактики</p>
+</body>
+</html>`;
+    
+    const earthHTML = `<!DOCTYPE html>
+<html>
+<head>
+    <title>Планета Земля</title>
+</head>
+<body>
+    <h1>Планета Земля</h1>
+    <p>Наш дом в космосе</p>
+</body>
+</html>`;
+    
+    // Записываем файлы
+    fs.writeFileSync(path.join(galaxyPath, 'index.html'), galaxyHTML);
+    fs.writeFileSync(path.join(galaxyPath, 'земля', 'index.html'), earthHTML);
+    fs.writeFileSync(path.join(galaxyPath, 'земля', 'луна', 'index.html'), '<html><title>Луна</title><body><h1>Луна</h1></body></html>');
+    fs.writeFileSync(path.join(galaxyPath, 'марс', 'index.html'), '<html><title>Марс</title><body><h1>Марс</h1></body></html>');
+    fs.writeFileSync(path.join(galaxyPath, 'марс', 'фобос', 'index.html'), '<html><title>Фобос</title><body><h1>Фобос</h1></body></html>');
+    fs.writeFileSync(path.join(galaxyPath, 'марс', 'деймос', 'index.html'), '<html><title>Деймос</title><body><h1>Деймос</h1></body></html>');
+    fs.writeFileSync(path.join(galaxyPath, 'юпитер', 'index.html'), '<html><title>Юпитер</title><body><h1>Юпитер</h1></body></html>');
+    
+    console.log('✅ Демо-структура создана');
+}
+
+// 🔥 Обновляем generateHTML чтобы добавить ссылки на реальные HTML файлы
+function generateHTML(scanResult) {
+    const treeHTML = renderEntity(scanResult);
+    
+    return `<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌌 Galaxy Scanner - ${scanResult.name}</title>
+    <style>
+        /* ... существующие стили ... */
+        
+        .web-links {
+            text-align: center;
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(78, 205, 196, 0.1);
+            border-radius: 15px;
+        }
+        
+        .web-link {
+            display: inline-block;
+            margin: 10px;
+            padding: 12px 25px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #4ECDC4;
+            text-decoration: none;
+            border-radius: 25px;
+            border: 1px solid #4ECDC4;
+            transition: all 0.3s ease;
+        }
+        
+        .web-link:hover {
+            background: #4ECDC4;
+            color: #0c0c2e;
+            transform: translateY(-2px);
+        }
+        
+        .entity-link {
+            color: #4ECDC4;
+            text-decoration: none;
+            margin-left: 10px;
+            font-size: 0.9em;
+            opacity: 0.7;
+            transition: opacity 0.3s ease;
+        }
+        
+        .entity-link:hover {
+            opacity: 1;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌌 Galaxy Scanner</h1>
+            <p>Автоматическое сканирование структуры папки "галактика"</p>
+            <div class="timestamp">
+                Обновлено: ${new Date(scanResult.scannedAt).toLocaleString('ru-RU')}
+            </div>
+        </div>
+        
+        <div class="web-links">
+            <h3>🌐 Прямые ссылки на HTML файлы:</h3>
+            <a href="/галактика/index.html" class="web-link" target="_blank">
+                📄 Главная страница галактики
+            </a>
+            <a href="/галактика" class="web-link" target="_blank">
+                📁 Просмотреть всю папку галактики
+            </a>
+        </div>
+        
+        <!-- ... остальная часть HTML ... -->
+        
+    </div>
+    
+    <script>
+        // Добавляем ссылки на реальные HTML файлы к каждой сущности
+        document.addEventListener('DOMContentLoaded', function() {
+            const entities = document.querySelectorAll('.entity');
+            entities.forEach(entity => {
+                const entityName = entity.querySelector('.entity-name').textContent;
+                const entityPath = entity.querySelector('.entity-meta').textContent.split('Путь: ')[1];
+                
+                if (entityPath) {
+                    const link = document.createElement('a');
+                    link.href = '/галактика/' + entityPath + '/index.html';
+                    link.className = 'entity-link';
+                    link.textContent = '🌐 открыть';
+                    link.target = '_blank';
+                    
+                    const header = entity.querySelector('.entity-header');
+                    header.appendChild(link);
+                }
+            });
+        });
+        
+        // ... существующий код сворачивания ...
+    </script>
+</body>
+</html>`;
+}
+
+// Функция renderEntity остается без изменений
 function renderEntity(entity, level = 0) {
     const classMap = {
         galaxy: 'galaxy',
@@ -143,7 +291,6 @@ function renderEntity(entity, level = 0) {
             </div>
     `;
     
-    // Рекурсивно рендерим детей
     if (entity.children && entity.children.length > 0) {
         entity.children.forEach(child => {
             html += renderEntity(child, level + 1);
@@ -152,284 +299,6 @@ function renderEntity(entity, level = 0) {
     
     html += `</div>`;
     return html;
-}
-
-function generateHTML(scanResult) {
-    // Рендерим основное дерево
-    const treeHTML = renderEntity(scanResult);
-    
-    return `
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🌌 Galaxy Scanner - ${scanResult.name}</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0c0c2e 0%, #1a1a4a 100%);
-            color: #e0e0ff;
-            line-height: 1.6;
-            min-height: 100vh;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-            padding: 40px 20px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 20px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .header h1 {
-            font-size: 3em;
-            margin-bottom: 10px;
-            background: linear-gradient(45deg, #FFD700, #4ECDC4);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 40px;
-        }
-        
-        .stat-card {
-            background: rgba(255, 255, 255, 0.08);
-            padding: 25px;
-            border-radius: 15px;
-            text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            transition: transform 0.3s ease, background 0.3s ease;
-        }
-        
-        .stat-card:hover {
-            transform: translateY(-5px);
-            background: rgba(255, 255, 255, 0.12);
-        }
-        
-        .stat-icon {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-        
-        .stat-number {
-            font-size: 2em;
-            font-weight: bold;
-            color: #4ECDC4;
-            margin: 10px 0;
-        }
-        
-        .galaxy-tree {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 15px;
-            padding: 30px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .entity {
-            margin: 15px 0;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            border-left: 4px solid;
-            transition: all 0.3s ease;
-        }
-        
-        .entity:hover {
-            background: rgba(255, 255, 255, 0.08);
-            transform: translateX(5px);
-        }
-        
-        .galaxy { border-left-color: #FFD700; }
-        .planet { border-left-color: #4ECDC4; margin-left: 20px; }
-        .moon { border-left-color: #C7F464; margin-left: 40px; }
-        .asteroid { border-left-color: #FF6B6B; margin-left: 60px; }
-        .debris { border-left-color: #A8E6CF; margin-left: 80px; }
-        
-        .entity-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 8px;
-        }
-        
-        .entity-icon {
-            font-size: 1.5em;
-        }
-        
-        .entity-name {
-            font-weight: bold;
-            font-size: 1.2em;
-        }
-        
-        .entity-meta {
-            font-size: 0.9em;
-            color: #a0a0cc;
-            margin-left: 35px;
-        }
-        
-        .download-section {
-            text-align: center;
-            margin: 40px 0;
-        }
-        
-        .download-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            background: linear-gradient(45deg, #4ECDC4, #44A08D);
-            color: white;
-            padding: 15px 30px;
-            border-radius: 50px;
-            text-decoration: none;
-            font-weight: bold;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            border: none;
-            cursor: pointer;
-            font-size: 1.1em;
-        }
-        
-        .download-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(78, 205, 196, 0.3);
-        }
-        
-        .timestamp {
-            text-align: center;
-            color: #a0a0cc;
-            margin-top: 20px;
-            font-size: 0.9em;
-        }
-        
-        .toggle-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
-            color: #4ECDC4;
-            padding: 5px 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-left: 10px;
-            font-size: 0.8em;
-        }
-        
-        .collapsed .entity-children {
-            display: none;
-        }
-        
-        @media (max-width: 768px) {
-            .header h1 { font-size: 2em; }
-            .stats-grid { grid-template-columns: 1fr; }
-            .entity { margin-left: 10px !important; }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🌌 Galaxy Scanner</h1>
-            <p>Автоматическое сканирование структуры папки "галактика"</p>
-            <div class="timestamp">
-                Обновлено: ${new Date(scanResult.scannedAt).toLocaleString('ru-RU')}
-            </div>
-        </div>
-        
-        <div class="stats-grid">
-            ${Object.entries(scanResult.stats.entities).map(([type, count]) => {
-                if (count === 0) return '';
-                const icons = { galaxy: '⭐', planet: '🪐', moon: '🌙', asteroid: '☄️', debris: '🛰️' };
-                const names = { galaxy: 'Галактики', planet: 'Планеты', moon: 'Спутники', asteroid: 'Астероиды', debris: 'Объекты' };
-                return `
-                <div class="stat-card">
-                    <div class="stat-icon">${icons[type]}</div>
-                    <div class="stat-number">${count}</div>
-                    <div class="stat-name">${names[type] || type}</div>
-                </div>
-                `;
-            }).join('')}
-            
-            <div class="stat-card">
-                <div class="stat-icon">⏱️</div>
-                <div class="stat-number">${scanResult.scanDuration}ms</div>
-                <div class="stat-name">Время сканирования</div>
-            </div>
-            
-            <div class="stat-card">
-                <div class="stat-icon">📄</div>
-                <div class="stat-number">${scanResult.stats.filesScanned}</div>
-                <div class="stat-name">Файлов просканировано</div>
-            </div>
-        </div>
-        
-        <div class="download-section">
-            <a href="/results/scan-${scanResult.name}-latest.json" class="download-btn" download>
-                📥 Скачать JSON с данными
-            </a>
-        </div>
-        
-        <div class="galaxy-tree">
-            <h2 style="margin-bottom: 20px; text-align: center;">🌌 Древовидная структура</h2>
-            <div id="tree-container">
-                ${treeHTML}
-            </div>
-        </div>
-    </div>
-    
-    <script>
-        // Добавляем возможность сворачивать/разворачивать элементы
-        document.addEventListener('DOMContentLoaded', function() {
-            const entities = document.querySelectorAll('.entity');
-            entities.forEach(entity => {
-                const children = entity.querySelectorAll('.entity').length;
-                if (children > 0) {
-                    // Добавляем кнопку toggle
-                    const header = entity.querySelector('.entity-header');
-                    const toggleBtn = document.createElement('button');
-                    toggleBtn.className = 'toggle-btn';
-                    toggleBtn.textContent = '−';
-                    toggleBtn.onclick = function(e) {
-                        e.stopPropagation();
-                        entity.classList.toggle('collapsed');
-                        toggleBtn.textContent = entity.classList.contains('collapsed') ? '+' : '−';
-                    };
-                    header.appendChild(toggleBtn);
-                    
-                    // Помечаем детей для группировки
-                    const childEntities = entity.querySelectorAll('.entity');
-                    const childrenContainer = document.createElement('div');
-                    childrenContainer.className = 'entity-children';
-                    
-                    childEntities.forEach(child => {
-                        childrenContainer.appendChild(child.cloneNode(true));
-                        child.remove();
-                    });
-                    
-                    entity.appendChild(childrenContainer);
-                }
-            });
-        });
-    </script>
-</body>
-</html>
-    `;
 }
 
 buildForVercel();
