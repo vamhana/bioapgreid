@@ -16,6 +16,10 @@
         "dest": "/api/sitemap.js"
     },
     {
+        "src": "/galaxy-scan-results/sitemap.json",
+        "dest": "/scanner/index.js"
+    },
+    {
         "src": "/api/pages",
         "dest": "/api/pages.js"
     },
