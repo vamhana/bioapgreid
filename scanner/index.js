@@ -397,4 +397,5 @@ if (import.meta.main) {
     main();
 }
 
+
 export default GalaxyScanner;
