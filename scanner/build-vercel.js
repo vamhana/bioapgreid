@@ -113,7 +113,51 @@ async function buildForVercel() {
     }
 }
 
+// Функция для рекурсивного рендеринга сущностей
+function renderEntity(entity, level = 0) {
+    const classMap = {
+        galaxy: 'galaxy',
+        planet: 'planet', 
+        moon: 'moon',
+        asteroid: 'asteroid',
+        debris: 'debris'
+    };
+    
+    const icons = {
+        galaxy: '⭐',
+        planet: '🪐',
+        moon: '🌙',
+        asteroid: '☄️',
+        debris: '🛰️'
+    };
+    
+    let html = `
+        <div class="entity ${classMap[entity.type]}" data-level="${level}">
+            <div class="entity-header">
+                <span class="entity-icon">${icons[entity.type] || '📁'}</span>
+                <span class="entity-name">${entity.config?.title || entity.name}</span>
+            </div>
+            <div class="entity-meta">
+                Тип: ${entity.type} | Путь: ${entity.path}
+                ${entity.config?.description ? `<br>Описание: ${entity.config.description}` : ''}
+            </div>
+    `;
+    
+    // Рекурсивно рендерим детей
+    if (entity.children && entity.children.length > 0) {
+        entity.children.forEach(child => {
+            html += renderEntity(child, level + 1);
+        });
+    }
+    
+    html += `</div>`;
+    return html;
+}
+
 function generateHTML(scanResult) {
+    // Рендерим основное дерево
+    const treeHTML = renderEntity(scanResult);
+    
     return `
 <!DOCTYPE html>
 <html lang="ru">
@@ -276,6 +320,21 @@ function generateHTML(scanResult) {
             font-size: 0.9em;
         }
         
+        .toggle-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: #4ECDC4;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 0.8em;
+        }
+        
+        .collapsed .entity-children {
+            display: none;
+        }
+        
         @media (max-width: 768px) {
             .header h1 { font-size: 2em; }
             .stats-grid { grid-template-columns: 1fr; }
@@ -329,59 +388,41 @@ function generateHTML(scanResult) {
         <div class="galaxy-tree">
             <h2 style="margin-bottom: 20px; text-align: center;">🌌 Древовидная структура</h2>
             <div id="tree-container">
-                ${renderEntity(scanResult)}
+                ${treeHTML}
             </div>
         </div>
     </div>
     
     <script>
-        function renderEntity(entity, level = 0) {
-            const classMap = {
-                galaxy: 'galaxy',
-                planet: 'planet', 
-                moon: 'moon',
-                asteroid: 'asteroid',
-                debris: 'debris'
-            };
-            
-            const icons = {
-                galaxy: '⭐',
-                planet: '🪐',
-                moon: '🌙',
-                asteroid: '☄️',
-                debris: '🛰️'
-            };
-            
-            return \`
-                <div class="entity \${classMap[entity.type]}" data-level="\${level}">
-                    <div class="entity-header">
-                        <span class="entity-icon">\${icons[entity.type] || '📁'}</span>
-                        <span class="entity-name">\${entity.config?.title || entity.name}</span>
-                    </div>
-                    <div class="entity-meta">
-                        Тип: \${entity.type} | Путь: \${entity.path}
-                        \${entity.config?.description ? \`<br>Описание: \${entity.config.description}\` : ''}
-                    </div>
-                    \${entity.children ? entity.children.map(child => renderEntity(child, level + 1)).join('') : ''}
-                </div>
-            \`;
-        }
-        
         // Добавляем возможность сворачивать/разворачивать элементы
         document.addEventListener('DOMContentLoaded', function() {
             const entities = document.querySelectorAll('.entity');
             entities.forEach(entity => {
                 const children = entity.querySelectorAll('.entity').length;
                 if (children > 0) {
-                    entity.style.cursor = 'pointer';
-                    entity.addEventListener('click', function(e) {
-                        if (e.target.closest('.entity') === this) {
-                            const childEntities = this.querySelectorAll('.entity');
-                            childEntities.forEach(child => {
-                                child.style.display = child.style.display === 'none' ? 'block' : 'none';
-                            });
-                        }
+                    // Добавляем кнопку toggle
+                    const header = entity.querySelector('.entity-header');
+                    const toggleBtn = document.createElement('button');
+                    toggleBtn.className = 'toggle-btn';
+                    toggleBtn.textContent = '−';
+                    toggleBtn.onclick = function(e) {
+                        e.stopPropagation();
+                        entity.classList.toggle('collapsed');
+                        toggleBtn.textContent = entity.classList.contains('collapsed') ? '+' : '−';
+                    };
+                    header.appendChild(toggleBtn);
+                    
+                    // Помечаем детей для группировки
+                    const childEntities = entity.querySelectorAll('.entity');
+                    const childrenContainer = document.createElement('div');
+                    childrenContainer.className = 'entity-children';
+                    
+                    childEntities.forEach(child => {
+                        childrenContainer.appendChild(child.cloneNode(true));
+                        child.remove();
                     });
+                    
+                    entity.appendChild(childrenContainer);
                 }
             });
         });
