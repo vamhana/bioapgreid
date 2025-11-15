@@ -42,9 +42,10 @@ export const MAX_DEPTH = 4;
 export const SERVER_CONFIG = {
     // Пути можно переопределять через переменные окружения
     SOURCE_PATH: process.env.GALAXY_SOURCE_PATH || '../галактика',
-    RESULTS_PATH: process.env.GALAXY_RESULTS_PATH || '/backups/galaxy-scan-results',
+    RESULTS_PATH: process.env.GALAXY_RESULTS_PATH || '../galaxy-scan-results',
     // Использовать латиницу для кроссплатформенности
     USE_LATIN_NAMES: process.env.USE_LATIN_NAMES === 'true'
 
 };
+
 
