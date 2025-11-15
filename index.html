@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Галактика Млечный Путь</title>
+    <script type="application/galaxy+json">
+    {
+        "title": "Млечный Путь",
+        "description": "Наша домашняя галактика, содержащая более 100 миллиардов звезд",
+        "type": "спиральная",
+        "diameter": "100000 световых лет",
+        "stars": 100000000000,
+        "age": "13.6 миллиардов лет",
+        "constellation": "Стрелец",
+        "features": [
+            "Центральная сверхмассивная черная дыра",
+            "Четыре основных рукава",
+            "Галактический бар",
+            "Гало темной материи"
+        ],
+        "icon": "⭐",
+        "color": "#FFD700",
+        "discovered": "древние времена",
+        "status": "активная"
+    }
+    </script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0c0c2e 0%, #1a1a4a 100%);
+            color: #ffffff;
+            margin: 0;
+            padding: 40px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        h1 {
+            text-align: center;
+            font-size: 3em;
+            margin-bottom: 30px;
+            background: linear-gradient(45deg, #FFD700, #4ECDC4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .galaxy-icon {
+            font-size: 4em;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .info-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #4ECDC4;
+        }
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .feature-list li:before {
+            content: "✨ ";
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="galaxy-icon">⭐</div>
+        <h1>Галактика Млечный Путь</h1>
+        
+        <div class="info-grid">
+            <div class="info-card">
+                <h3>📊 Основные характеристики</h3>
+                <p><strong>Тип:</strong> Спиральная галактика</p>
+                <p><strong>Диаметр:</strong> 100,000 световых лет</p>
+                <p><strong>Звезд:</strong> ~100 миллиардов</p>
+                <p><strong>Возраст:</strong> 13.6 миллиардов лет</p>
+            </div>
+            
+            <div class="info-card">
+                <h3>📍 Расположение</h3>
+                <p><strong>Созвездие:</strong> Стрелец</p>
+                <p><strong>Местная группа:</strong> Да</p>
+                <p><strong>Сверхскопление:</strong> Дева</p>
+                <p><strong>Статус:</strong> Активная</p>
+            </div>
+        </div>
+        
+        <div style="margin-top: 30px;">
+            <h3>🎯 Особенности структуры</h3>
+            <ul class="feature-list">
+                <li>Центральная сверхмассивная черная дыра</li>
+                <li>Четыре основных рукава</li>
+                <li>Галактический бар</li>
+                <li>Гало темной материи</li>
+                <li>Звездные скопления</li>
+                <li>Туманности и звездообразование</li>
+            </ul>
+        </div>
+        
+        <div style="text-align: center; margin-top: 40px; padding: 20px; background: rgba(255, 215, 0, 0.1); border-radius: 10px;">
+            <p>🌌 <em>Это тестовая страница для Galaxy Scanner. Данные конфигурации находятся в теге script выше.</em></p>
+        </div>
+    </div>
+</body>
+</html>
