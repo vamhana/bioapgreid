@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "node modules/build-script/index.js",
-    "dev": "node modules/build-script/index.js --watch", 
+    "dev": "node modules/build-script/index.js --watch",
     "scan": "node scanner/index.js",
     "start": "npx serve public"
   },
