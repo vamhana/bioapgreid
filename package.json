@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "build": "node scanner/build-vercel.js",
+    "build": "node modules/build-script/build-vercel.js",
     "dev": "node scanner/index.js галактика --latin",
     "scan": "node scanner/index.js галактика --latin",
     "scan:local": "node scanner/index.js галактика"
