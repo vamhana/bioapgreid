@@ -1,7 +1,6 @@
-.git
-.gitignore
-README.md
-node_modules
-backups/*.json
+node_modules/
+galaxy/
+scanner/
+modules/build-script/
 *.log
 .DS_Store
