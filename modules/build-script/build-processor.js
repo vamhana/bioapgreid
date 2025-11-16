@@ -14,7 +14,7 @@ const __dirname = dirname(__filename);
 export async function buildForVercel() {
     console.log('🚀 Building Galaxy Scanner for Vercel...');
     
-    const galaxyPath = path.join(__dirname, '../../галактика');
+    const galaxyPath = path.join(__dirname, '../../galaxy');
     const publicDir = path.join(__dirname, '../../public');
     
     if (!checkGalaxyExists(galaxyPath)) {
@@ -31,9 +31,9 @@ export async function buildForVercel() {
         createDirectoryIfNotExists(publicDir);
         
         // Копируем галактику в public
-        const galaxyPublicPath = path.join(publicDir, 'галактика');
+        const galaxyPublicPath = path.join(publicDir, 'galaxy');
         copyFolderRecursive(galaxyPath, galaxyPublicPath);
-        console.log('✅ Папка "галактика" скопирована в public для веб-доступа');
+        console.log('✅ Папка "galaxy" скопирована в public для веб-доступа');
         
         // Создаем HTML файлы
         createGalaxyRedirect(galaxyPublicPath);
@@ -76,6 +76,5 @@ function logBuildStats(result, sitemapPath) {
     console.log(`🎯 Основной файл для модулей: ${sitemapPath}`);
     console.log(`🌐 Доступные URL:`);
     console.log(`   ${BUILD_CONFIG.BASE_URL}/`);
-    console.log(`   ${BUILD_CONFIG.BASE_URL}/галактика.html`);
     console.log(`   ${BUILD_CONFIG.BASE_URL}/results/sitemap.json`);
 }
