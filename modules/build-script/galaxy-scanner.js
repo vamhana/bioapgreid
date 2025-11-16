@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import path from 'path';
 import GalaxyScanner from '../../scanner/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -14,11 +15,4 @@ export async function scanGalaxy(galaxyPath) {
         console.error('❌ Ошибка сканирования галактики:', error.message);
         throw error;
     }
-}
-
-export function getScannerPaths() {
-    return {
-        galaxyPath: path.join(__dirname, '../../галактика'),
-        publicDir: path.join(__dirname, '../../public')
-    };
 }
