@@ -1,3 +1,4 @@
+// modules/build-script/config.js (уже существует, проверяем)
 export const BUILD_CONFIG = {
     BASE_URL: 'https://www.bioapgreid.ru',
     RESULTS_DIR: 'results',
