@@ -1,13 +1,14 @@
 {
   "name": "galaxy-scanner",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "build": "node modules/build-script/index.js",
-    "scan": "node scanner/index.js",
-    "dev": "node scanner/index.js --help"
+    "dev": "node scanner/index.js галактика --latin",
+    "scan": "node scanner/index.js галактика --latin",
+    "scan:local": "node scanner/index.js галактика"
   },
-  "dependencies": {},
-  "engines": {
-    "node": ">=18.0.0"
+  "devDependencies": {
+    "@vercel/static-build": "^1.0.0"
   }
 }
