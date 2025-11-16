@@ -1,14 +1,31 @@
 {
-  "name": "galaxy-scanner",
+  "name": "bioapgreid-galaxy-explorer",
   "version": "1.0.0",
+  "description": "3D Galaxy Explorer for BioApGreid",
   "type": "module",
+  "main": "modules/build-script/index.js",
   "scripts": {
     "build": "node modules/build-script/index.js",
-    "dev": "node scanner/index.js galaxy --latin",
-    "scan": "node scanner/index.js galaxy --latin",
-    "scan:local": "node scanner/index.js galaxy"
+    "dev": "node modules/build-script/index.js --watch",
+    "scan": "node scanner/index.js",
+    "start": "npm run build && npx serve public"
+  },
+  "keywords": [
+    "galaxy",
+    "3d",
+    "explorer",
+    "cosmos",
+    "bioapgreid"
+  ],
+  "author": "BioApGreid Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
   },
   "devDependencies": {
-    "@vercel/static-build": "^1.0.0"
+    "serve": "^14.2.1"
+  },
+  "dependencies": {
+    "three": "^0.158.0"
   }
 }
