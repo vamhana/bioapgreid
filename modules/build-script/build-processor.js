@@ -7,14 +7,20 @@ import { BUILD_CONFIG } from './config.js';
 import { copyFolderRecursive, createDirectoryIfNotExists, checkGalaxyExists } from './file-utils.js';
 import { addFullUrls } from './url-processor.js';
 import { scanGalaxy } from './galaxy-scanner.js';
+import { createMainApp } from './app-generator.js'; // Добавляем импорт
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 export async function buildForVercel() {
     console.log('🚀 Building Galaxy Scanner for Vercel...');
-    const galaxyPath = path.join(__dirname, '../../galaxy');
-    const publicDir = path.join(__dirname, '../../public');
+    
+    // Используем относительные пути от корня проекта
+    const galaxyPath = path.join(process.cwd(), 'galaxy');
+    const publicDir = path.join(process.cwd(), 'public');
+    
+    console.log('📁 Galaxy path:', galaxyPath);
+    console.log('📁 Public path:', publicDir);
     
     if (!checkGalaxyExists(galaxyPath)) {
         process.exit(1);
