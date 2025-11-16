@@ -1,15 +1,21 @@
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 import { BUILD_CONFIG } from './config.js';
 import { copyFolderRecursive, createDirectoryIfNotExists, checkGalaxyExists } from './file-utils.js';
 import { generateHTML, createGalaxyHtml, createGalaxyRedirect } from './html-generator.js';
 import { addFullUrls } from './url-processor.js';
-import { scanGalaxy, getScannerPaths } from './galaxy-scanner.js';
+import { scanGalaxy } from './galaxy-scanner.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export async function buildForVercel() {
     console.log('🚀 Building Galaxy Scanner for Vercel...');
     
-    const { galaxyPath, publicDir } = getScannerPaths();
+    const galaxyPath = path.join(__dirname, '../../галактика');
+    const publicDir = path.join(__dirname, '../../public');
     
     if (!checkGalaxyExists(galaxyPath)) {
         process.exit(1);
