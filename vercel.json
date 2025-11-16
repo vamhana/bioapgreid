@@ -1,21 +1,18 @@
 {
   "version": 2,
-  "name": "galaxy-scanner",
-  "buildCommand": "npm run build",
-  "outputDirectory": "public",
-  "routes": [
+  "builds": [
     {
-      "src": "/results/(.*)",
-      "dest": "/public/results/$1"
-    },
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "public"
+      }
+    }
+  ],
+  "routes": [
     {
       "src": "/(.*)",
       "dest": "/public/$1"
     }
-  ],
-  "env": {
-    "USE_LATIN_NAMES": "true",
-    "GALAXY_SOURCE_PATH": "galaxy",
-    "GALAXY_RESULTS_PATH": "public/results"
-  }
+  ]
 }
