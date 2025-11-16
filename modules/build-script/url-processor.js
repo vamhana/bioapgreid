@@ -2,9 +2,9 @@ import { BUILD_CONFIG, ENTITY_CONFIG } from './config.js';
 
 export function addFullUrls(entity, baseUrl = BUILD_CONFIG.BASE_URL) {
     if (entity.path) {
-        entity.fullUrl = `${baseUrl}/галактика/${entity.path}/index.html`;
+        entity.fullUrl = `${baseUrl}/galaxy/${entity.path}/index.html`;
     } else {
-        entity.fullUrl = `${baseUrl}/галактика/index.html`;
+        entity.fullUrl = `${baseUrl}/galaxy/index.html`;
     }
     
     entity.cleanPath = entity.path || '';
