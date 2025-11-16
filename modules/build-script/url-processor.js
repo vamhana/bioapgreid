@@ -1,4 +1,4 @@
-import { BUILD_CONFIG } from './config.js';
+import { BUILD_CONFIG, ENTITY_CONFIG } from './config.js';
 
 export function addFullUrls(entity, baseUrl = BUILD_CONFIG.BASE_URL) {
     if (entity.path) {
@@ -16,7 +16,7 @@ export function addFullUrls(entity, baseUrl = BUILD_CONFIG.BASE_URL) {
     return entity;
 }
 
-export function generateEntityLinks(entity) {
+export function generateEntityLinks(entity, level = 0) {
     const { classMap, icons } = ENTITY_CONFIG;
     
     let html = `
