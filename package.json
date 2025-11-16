@@ -4,9 +4,9 @@
   "type": "module",
   "scripts": {
     "build": "node modules/build-script/index.js",
-    "dev": "node scanner/index.js галактика --latin",
-    "scan": "node scanner/index.js галактика --latin",
-    "scan:local": "node scanner/index.js галактика"
+    "dev": "node scanner/index.js galaxy --latin",
+    "scan": "node scanner/index.js galaxy --latin",
+    "scan:local": "node scanner/index.js galaxy"
   },
   "devDependencies": {
     "@vercel/static-build": "^1.0.0"
