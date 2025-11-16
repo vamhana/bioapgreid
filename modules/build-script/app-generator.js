@@ -1,11 +1,6 @@
 // modules/build-script/app-generator.js
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 export async function createMainApp(publicDir, sitemap) {
     const appHtml = `<!DOCTYPE html>
@@ -112,7 +107,7 @@ export async function createMainApp(publicDir, sitemap) {
     </div>
 
     <script type="module">
-        // Минимальная версия для теста - загружаем Three.js из CDN
+        // Простая тестовая версия 3D сцены
         import * as THREE from 'https://cdn.skypack.dev/three@0.132.2';
         
         class SimpleGalaxyViewer {
@@ -127,6 +122,8 @@ export async function createMainApp(publicDir, sitemap) {
             }
             
             init() {
+                console.log('🚀 Initializing 3D Galaxy Viewer...');
+                
                 // Настройка рендерера
                 this.renderer.setSize(window.innerWidth, window.innerHeight);
                 this.renderer.setClearColor(0x0c0c2e);
@@ -152,9 +149,13 @@ export async function createMainApp(publicDir, sitemap) {
                 
                 // Скрываем загрузочный экран
                 document.getElementById('loading-screen').style.display = 'none';
+                
+                console.log('✅ 3D Galaxy Viewer initialized successfully!');
             }
             
             createEntities() {
+                console.log('🌌 Creating entities from sitemap...');
+                
                 // Создаем центральную галактику
                 this.createEntity(this.sitemap, null);
                 
@@ -171,6 +172,8 @@ export async function createMainApp(publicDir, sitemap) {
                         }
                     });
                 }
+                
+                console.log(`✅ Created ${this.entities.size} entities`);
             }
             
             createEntity(entityData, parent) {
@@ -294,14 +297,16 @@ export async function createMainApp(publicDir, sitemap) {
         // Загружаем sitemap и запускаем приложение
         async function initApp() {
             try {
+                console.log('📡 Loading sitemap...');
                 const response = await fetch('/results/sitemap.json');
                 const sitemap = await response.json();
                 
+                console.log('✅ Sitemap loaded, starting viewer...');
                 // Запускаем просмотрщик
                 new SimpleGalaxyViewer(sitemap);
                 
             } catch (error) {
-                console.error('Ошибка загрузки приложения:', error);
+                console.error('❌ Ошибка загрузки приложения:', error);
                 document.getElementById('loading-screen').innerHTML = 
                     '<h2>❌ Ошибка загрузки</h2><p>Обновите страницу</p>';
             }
