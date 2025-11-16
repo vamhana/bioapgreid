@@ -19,7 +19,7 @@
   "author": "BioApGreid Team",
   "license": "MIT",
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=18.0.0"
   },
   "devDependencies": {
     "serve": "^14.2.1"
