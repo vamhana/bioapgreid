@@ -1,7 +1,5 @@
 export const BUILD_CONFIG = {
     BASE_URL: 'https://www.bioapgreid.ru',
-    SOURCE_GALAXY_PATH: '../../галактика',
-    PUBLIC_DIR: '../../public',
     RESULTS_DIR: 'results',
     SITEMAP_FILE: 'sitemap.json'
 };
