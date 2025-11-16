@@ -1,19 +1,11 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "bioapgreid/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "public"
-      }
-    }
-  ],
+  "buildCommand": "npm run build",
+  "outputDirectory": "public",
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/bioapgreid/public/$1"
+      "dest": "/public/$1"
     }
-  ],
-  "buildCommand": "cd bioapgreid && npm run build"
+  ]
 }
