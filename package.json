@@ -1,13 +1,12 @@
 {
   "name": "bioapgreid-galaxy-explorer",
   "version": "1.0.0",
-  "description": "3D Galaxy Explorer for BioApGreid",
   "type": "module",
   "scripts": {
-    "build": "node bioapgreid/modules/build-script/index.js",
-    "dev": "node bioapgreid/modules/build-script/index.js --watch",
-    "scan": "node bioapgreid/scanner/index.js",
-    "start": "npm run build && npx serve bioapgreid/public"
+    "build": "node modules/build-script/index.js",
+    "dev": "node modules/build-script/index.js --watch", 
+    "scan": "node scanner/index.js",
+    "start": "npx serve public"
   },
   "keywords": [
     "galaxy",
@@ -20,11 +19,5 @@
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
-  },
-  "devDependencies": {
-    "serve": "^14.2.1"
-  },
-  "dependencies": {
-    "three": "^0.158.0"
   }
 }
