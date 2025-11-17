@@ -1,23 +1,17 @@
 {
-  "name": "bioapgreid-galaxy-explorer",
+  "name": "bioapgreid-galaxy-explorer", 
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "build": "node modules/build-script/index.js",
+    "build": "node scripts/vercel-debug.js && node modules/build-script/index.js",
     "scan": "node scanner/index.js",
     "start": "npx serve public",
-    "debug": "node scripts/debug-structure.js",
-    "debug:deep": "node scripts/debug-structure.js --max-depth 6",
-    "debug:galaxy": "node modules/galaxy-debug/index.js",
-    "dev": "npm run debug && npm run build && npm start"
+    "debug": "node scripts/vercel-debug.js"
   },
   "engines": {
     "node": ">=18.0.0"
   },
   "dependencies": {
     "three": "^0.158.0"
-  },
-  "devDependencies": {
-    "serve": "^14.2.1"
   }
 }
