@@ -1,4 +1,3 @@
-
 // modules/app/core/camera-controller.js
 export class CameraController {
     constructor() {
