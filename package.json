@@ -5,7 +5,8 @@
   "scripts": {
     "build": "node modules/build-script/index.js",
     "scan": "node scanner/index.js",
-    "start": "npx serve public"
+    "start": "npx serve public",
+    "debug:structure": "debug-structure.js"
   },
   "engines": {
     "node": ">=18.0.0"
