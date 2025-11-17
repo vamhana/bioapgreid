@@ -1,7 +1,0 @@
-.git
-.gitignore
-README.md
-node_modules
-backups/*.json
-*.log
-.DS_Store
