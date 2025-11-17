@@ -2,25 +2,61 @@
 import { buildForVercel } from './build-processor.js';
 import { DirectoryScanner } from '../galaxy-debug/index.js';
 
-export async function buildWithDebug() {
-  console.log('🔨 Building BioApGreid Galaxy Explorer...');
+export async function buildWithDebug(options = {}) {
+  const startTime = Date.now();
+  console.log('🚀 BioApGreid Galaxy Explorer - Build Process');
+  console.log('=============================================\n');
   
   try {
-    // Быстрая проверка структуры перед сборкой
-    const scanner = new DirectoryScanner({ maxDepth: 2 });
-    await scanner.scanDirectory(process.cwd());
+    // 1. Проверка структуры проекта
+    if (options.scanStructure !== false) {
+      console.log('📁 Step 1: Project Structure Scan...');
+      const scanner = new DirectoryScanner({ 
+        maxDepth: 2,
+        showFileSizes: true 
+      });
+      await scanner.scanDirectory(process.cwd());
+      scanner.printStats();
+      console.log('✅ Structure scan completed\n');
+    }
     
-    // Основная логика сборки
+    // 2. Основная сборка
+    console.log('🔨 Step 2: Building project...');
     await buildForVercel();
     
-    console.log('✅ Build completed with structure verification');
+    // 3. Проверка результатов сборки
+    if (options.verifyBuild !== false) {
+      console.log('🔍 Step 3: Verifying build output...');
+      const outputScanner = new DirectoryScanner({ 
+        maxDepth: 3,
+        showFileSizes: true 
+      });
+      await outputScanner.scanDirectory('./public');
+      console.log('✅ Build verification completed\n');
+    }
+    
+    const buildTime = ((Date.now() - startTime) / 1000).toFixed(2);
+    console.log(`🎉 Build completed successfully in ${buildTime}s`);
+    
   } catch (error) {
-    console.error('❌ Build process failed:', error);
-    process.exit(1);
+    const buildTime = ((Date.now() - startTime) / 1000).toFixed(2);
+    console.error(`💥 Build failed after ${buildTime}s:`, error);
+    throw error;
   }
 }
 
-// Запуск если файл вызван напрямую
+// CLI поддержка
 if (import.meta.url === `file://${process.argv[1]}`) {
-  buildWithDebug();
+  const args = process.argv.slice(2);
+  const options = {
+    scanStructure: !args.includes('--no-scan'),
+    verifyBuild: !args.includes('--no-verify')
+  };
+  
+  buildWithDebug(options).catch(error => {
+    console.error('❌ Build process failed');
+    process.exit(1);
+  });
 }
+
+export default buildWithDebug;
