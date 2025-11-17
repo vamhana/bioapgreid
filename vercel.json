@@ -1,5 +1,21 @@
 {
   "version": 2,
+  "name": "galaxy-scanner",
   "buildCommand": "npm run build",
-  "outputDirectory": "public"
+  "outputDirectory": "public",
+  "routes": [
+    {
+      "src": "/results/(.*)",
+      "dest": "/public/results/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/public/$1"
+    }
+  ],
+  "env": {
+    "USE_LATIN_NAMES": "true",
+    "GALAXY_SOURCE_PATH": "galaxy",
+    "GALAXY_RESULTS_PATH": "public/results"
+  }
 }
