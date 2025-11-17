@@ -1,50 +1,75 @@
 {
   "name": "galaxy-explorer",
   "version": "1.0.0",
-  "description": "Интерактивный исследователь галактики - веб-приложение для исследования структуры галактики",
+  "description": "🌌 Интерактивный исследователь галактики - изучайте космос в реальном времени",
   "type": "module",
-  "main": "modules/build-script/index.js",
   "scripts": {
     "build": "node modules/build-script/index.js",
-    "dev": "node modules/build-script/index.js --watch",
+    "dev": "npm run build && vercel dev",
+    "start": "npm run build && vercel start",
     "scan": "node scanner/index.js",
-    "scan:latin": "node scanner/index.js --latin",
-    "scan:history": "node scanner/index.js --history",
-    "serve": "npx serve public -p 3000",
-    "dev:full": "npm run build && npm run serve",
-    "test": "node modules/build-script/test-modules.js",
-    "clean": "rm -rf public results",
-    "clean:all": "rm -rf public results scanner/results"
+    "deploy": "npm run build && vercel --prod",
+    "test:modules": "node modules/build-script/test-modules.js"
   },
   "keywords": [
     "galaxy",
-    "explorer",
     "space",
+    "explorer",
     "interactive",
-    "visualization",
+    "astronomy",
     "cosmos",
-    "astronomy"
+    "visualization",
+    "3d",
+    "webgl"
   ],
-  "author": "BioApGreid Team",
+  "author": {
+    "name": "BioApGreid",
+    "email": "contact@bioapgreid.ru",
+    "url": "https://www.bioapgreid.ru"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/galaxy-explorer"
+    "url": "https://github.com/bioapgreid/galaxy-explorer.git"
+  },
+  "homepage": "https://www.bioapgreid.ru",
+  "bugs": {
+    "url": "https://github.com/bioapgreid/galaxy-explorer/issues"
   },
   "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=8.0.0"
+    "node": ">=18.0.0"
   },
-  "dependencies": {
-    "fs-extra": "^11.1.1",
-    "chalk": "^4.1.2"
-  },
-  "devDependencies": {
-    "serve": "^14.2.0",
-    "nodemon": "^3.0.1"
-  },
-  "volta": {
-    "node": "18.17.0",
-    "npm": "9.6.7"
+  "dependencies": {},
+  "devDependencies": {},
+  "vercel": {
+    "buildCommand": "npm run build",
+    "outputDirectory": "public",
+    "devCommand": "npm run dev",
+    "cleanUrls": true,
+    "trailingSlash": false,
+    "headers": [
+      {
+        "source": "/results/sitemap.json",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=300, s-maxage=600"
+          },
+          {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+          }
+        ]
+      },
+      {
+        "source": "/app/(.*)",
+        "headers": [
+          {
+            "key": "Cache-Control", 
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      }
+    ]
   }
 }
