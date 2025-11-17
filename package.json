@@ -1,17 +1,23 @@
 {
-  "name": "bioapgreid-galaxy-explorer", 
+  "name": "bioapgreid-galaxy-explorer",
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "build": "node scripts/vercel-debug.js && node modules/build-script/index.js",
+    "build": "node modules/build-script/index.js",
+    "dev": "node modules/build-script/index.js --watch", 
     "scan": "node scanner/index.js",
-    "start": "npx serve public",
-    "debug": "node scripts/vercel-debug.js"
+    "start": "npx serve public"
   },
+  "keywords": [
+    "galaxy",
+    "3d",
+    "explorer",
+    "cosmos",
+    "bioapgreid"
+  ],
+  "author": "BioApGreid Team",
+  "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
-  },
-  "dependencies": {
-    "three": "^0.158.0"
   }
 }
