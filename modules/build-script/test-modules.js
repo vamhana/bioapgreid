@@ -7,6 +7,11 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Расширения файлов, которые можно безопасно показывать
+const READABLE_EXTENSIONS = ['.js', '.json', '.html', '.css', '.md', '.txt', '.yml', '.yaml', '.xml', '.env'];
+// Файлы, которые НЕ нужно показывать (секреты)
+const EXCLUDED_FILES = ['.env.local', '.env.production', 'package-lock.json'];
+
 export function scanProjectStructure() {
     console.log('🔍 Сканирование структуры проекта...\n');
     
@@ -34,11 +39,31 @@ export function scanProjectStructure() {
                 if (!fileStructure[relativePath]) {
                     fileStructure[relativePath] = { type: 'directory', files: [] };
                 }
-                fileStructure[relativePath].files.push({
+                
+                const fileInfo = {
                     name: item,
                     size: stat.size,
-                    modified: stat.mtime
-                });
+                    modified: stat.mtime,
+                    path: relPath
+                };
+                
+                // Читаем содержимое файла если это текстовый файл и не исключен
+                const ext = path.extname(item).toLowerCase();
+                if (READABLE_EXTENSIONS.includes(ext) && !EXCLUDED_FILES.includes(item)) {
+                    try {
+                        const content = fs.readFileSync(fullPath, 'utf8');
+                        fileInfo.content = content;
+                        fileInfo.lines = content.split('\n').length;
+                    } catch (error) {
+                        fileInfo.content = `❌ Ошибка чтения файла: ${error.message}`;
+                    }
+                } else if (EXCLUDED_FILES.includes(item)) {
+                    fileInfo.content = '🔒 Содержимое скрыто для безопасности';
+                } else {
+                    fileInfo.content = `📁 Бинарный файл (${ext || 'без расширения'})`;
+                }
+                
+                fileStructure[relativePath].files.push(fileInfo);
             }
         });
         
@@ -70,14 +95,28 @@ export function testCriticalModules() {
         const fullPath = path.join(__dirname, '../..', modulePath);
         const exists = fs.existsSync(fullPath);
         
+        let content = null;
+        let lines = 0;
+        
+        if (exists) {
+            try {
+                content = fs.readFileSync(fullPath, 'utf8');
+                lines = content.split('\n').length;
+            } catch (error) {
+                content = `Ошибка чтения: ${error.message}`;
+            }
+        }
+        
         results.push({
             module: modulePath,
             exists: exists,
-            path: fullPath
+            path: fullPath,
+            content: content,
+            lines: lines
         });
         
         if (exists) {
-            console.log(`✅ ${modulePath}`);
+            console.log(`✅ ${modulePath} (${lines} строк)`);
         } else {
             console.log(`❌ ${modulePath}`);
             allPassed = false;
@@ -89,7 +128,7 @@ export function testCriticalModules() {
     return {
         allPassed,
         results,
-        projectStructure: allPassed ? scanProjectStructure() : null
+        projectStructure: scanProjectStructure()
     };
 }
 
