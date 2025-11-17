@@ -8,7 +8,7 @@ export async function createMainApp(publicDir, sitemap) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🌌 Galaxy Explorer - BioApGreid</title>
+    <title>Galaxy Explorer - BioApGreid</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
@@ -93,14 +93,14 @@ export async function createMainApp(publicDir, sitemap) {
         <canvas id="cosmos-scene"></canvas>
         <div id="hud-panel">
             <div class="hud-item">
-                <span>🌌 Исследовано:</span>
+                <span>Исследовано:</span>
                 <div class="progress-bar">
                     <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
                 </div>
                 <span id="progress-text">0%</span>
             </div>
             <div class="hud-item" id="entity-count">
-                <span>🪐 Объектов:</span>
+                <span>Объектов:</span>
                 <span id="total-entities">0</span>
             </div>
         </div>
@@ -122,7 +122,7 @@ export async function createMainApp(publicDir, sitemap) {
             }
             
             init() {
-                console.log('🚀 Initializing 3D Galaxy Viewer...');
+                console.log('Initializing 3D Galaxy Viewer...');
                 
                 // Настройка рендерера
                 this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -150,11 +150,11 @@ export async function createMainApp(publicDir, sitemap) {
                 // Скрываем загрузочный экран
                 document.getElementById('loading-screen').style.display = 'none';
                 
-                console.log('✅ 3D Galaxy Viewer initialized successfully!');
+                console.log('3D Galaxy Viewer initialized successfully!');
             }
             
             createEntities() {
-                console.log('🌌 Creating entities from sitemap...');
+                console.log('Creating entities from sitemap...');
                 
                 // Создаем центральную галактику
                 this.createEntity(this.sitemap, null);
@@ -173,7 +173,7 @@ export async function createMainApp(publicDir, sitemap) {
                     });
                 }
                 
-                console.log(`✅ Created ${this.entities.size} entities`);
+                console.log('Created ' + this.entities.size + ' entities');
             }
             
             createEntity(entityData, parent) {
@@ -297,18 +297,18 @@ export async function createMainApp(publicDir, sitemap) {
         // Загружаем sitemap и запускаем приложение
         async function initApp() {
             try {
-                console.log('📡 Loading sitemap...');
+                console.log('Loading sitemap...');
                 const response = await fetch('/results/sitemap.json');
                 const sitemap = await response.json();
                 
-                console.log('✅ Sitemap loaded, starting viewer...');
+                console.log('Sitemap loaded, starting viewer...');
                 // Запускаем просмотрщик
                 new SimpleGalaxyViewer(sitemap);
                 
             } catch (error) {
-                console.error('❌ Ошибка загрузки приложения:', error);
+                console.error('Ошибка загрузки приложения:', error);
                 document.getElementById('loading-screen').innerHTML = 
-                    '<h2>❌ Ошибка загрузки</h2><p>Обновите страницу</p>';
+                    '<h2>Ошибка загрузки</h2><p>Обновите страницу</p>';
             }
         }
         
@@ -319,5 +319,5 @@ export async function createMainApp(publicDir, sitemap) {
     
     const indexPath = path.join(publicDir, 'index.html');
     fs.writeFileSync(indexPath, appHtml);
-    console.log('✅ Создано главное приложение с 3D сценой');
+    console.log('Создано главное приложение с 3D сценой');
 }
