@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "debug": "node debug-structure.js",
     "build": "node modules/build-script/index.js",
     "dev": "node modules/build-script/index.js --watch", 
     "scan": "node scanner/index.js",
