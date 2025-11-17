@@ -1,5 +1,7 @@
-// modules/build-script/html-generator-app.js
+// bioapgreid/modules/build-script/html-generator-app.js
 export function generateAppHTML(scanResult) {
+    const totalEntities = Object.values(scanResult.stats.entities).reduce((a, b) => a + b, 0);
+    
     return `<!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -79,6 +81,10 @@ export function generateAppHTML(scanResult) {
             transform: translate(-50%, -50%);
             text-align: center;
             z-index: 2000;
+            background: rgba(12, 12, 46, 0.9);
+            padding: 30px;
+            border-radius: 15px;
+            border: 1px solid rgba(78, 205, 196, 0.3);
         }
         
         .loading-spinner {
@@ -95,12 +101,31 @@ export function generateAppHTML(scanResult) {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        .error-message {
+            color: #ff6b6b;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .retry-btn {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
     </style>
 </head>
 <body>
     <div id="loading" class="loading">
         <div class="loading-spinner"></div>
-        <div>Загрузка галактики...</div>
+        <div>Загрузка галактики ${scanResult.name}...</div>
+        <div style="font-size: 12px; margin-top: 10px; opacity: 0.7;">
+            Сущностей: ${totalEntities} | Время сканирования: ${scanResult.scanDuration}ms
+        </div>
     </div>
     
     <canvas id="galaxy-canvas"></canvas>
@@ -108,13 +133,16 @@ export function generateAppHTML(scanResult) {
     <div id="user-panel">
         <div id="progress">
             🌌 Исследовано: <span id="progress-count">0</span>/
-            <span id="total-entities">${Object.values(scanResult.stats.entities).reduce((a, b) => a + b, 0)}</span>
+            <span id="total-entities">${totalEntities}</span>
         </div>
         <div id="controls">
             <button class="control-btn" onclick="app.resetZoom()">🗺️ Обзор</button>
             <button class="control-btn" onclick="app.toggleOrbits()">🔄 Орбиты</button>
             <button class="control-btn" onclick="window.open('/galaxy-structure.html', '_blank')">
                 📊 Структура
+            </button>
+            <button class="control-btn" onclick="window.open('/module-test.html', '_blank')">
+                🧪 Тест
             </button>
         </div>
     </div>
@@ -126,14 +154,32 @@ export function generateAppHTML(scanResult) {
         window.app = new GalaxyApp();
         
         document.addEventListener('DOMContentLoaded', async () => {
+            const loadingElement = document.getElementById('loading');
+            
             try {
+                console.log('🚀 Запуск Galaxy Explorer...');
                 await window.app.init();
-                document.getElementById('loading').style.display = 'none';
+                loadingElement.style.display = 'none';
+                console.log('✅ Galaxy Explorer успешно запущен');
             } catch (error) {
-                console.error('Ошибка инициализации приложения:', error);
-                document.getElementById('loading').innerHTML = 
-                    '<div style="color: #ff6b6b;">❌ Ошибка загрузки приложения</div>';
+                console.error('❌ Ошибка инициализации приложения:', error);
+                loadingElement.innerHTML = 
+                    '<div style="color: #ff6b6b;">❌ Ошибка загрузки приложения</div>' +
+                    '<div class="error-message">' + error.message + '</div>' +
+                    '<button class="retry-btn" onclick="window.location.reload()">🔄 Перезагрузить</button>' +
+                    '<div style="margin-top: 15px; font-size: 12px; opacity: 0.7;">' +
+                    'Попробуйте открыть <a href="/module-test.html" style="color: #4ECDC4;">тестовую страницу</a> для диагностики' +
+                    '</div>';
             }
+        });
+
+        // Обработчики ошибок для лучшей отладки
+        window.addEventListener('error', (event) => {
+            console.error('Global error:', event.error);
+        });
+
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('Unhandled promise rejection:', event.reason);
         });
     </script>
 </body>
