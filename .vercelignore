@@ -1,5 +1,3 @@
-node_modules/
-galaxy/
-scanner/
+/node_modules/
+/.git/
 *.log
-.DS_Store
