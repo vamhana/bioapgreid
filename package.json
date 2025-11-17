@@ -1,12 +1,50 @@
 {
-  "name": "galaxy-scanner",
+  "name": "galaxy-explorer",
   "version": "1.0.0",
+  "description": "Интерактивный исследователь галактики - веб-приложение для исследования структуры галактики",
   "type": "module",
+  "main": "modules/build-script/index.js",
   "scripts": {
     "build": "node modules/build-script/index.js",
-    "scan:local": "node scanner/index.js galaxy"
+    "dev": "node modules/build-script/index.js --watch",
+    "scan": "node scanner/index.js",
+    "scan:latin": "node scanner/index.js --latin",
+    "scan:history": "node scanner/index.js --history",
+    "serve": "npx serve public -p 3000",
+    "dev:full": "npm run build && npm run serve",
+    "test": "node modules/build-script/test-modules.js",
+    "clean": "rm -rf public results",
+    "clean:all": "rm -rf public results scanner/results"
+  },
+  "keywords": [
+    "galaxy",
+    "explorer",
+    "space",
+    "interactive",
+    "visualization",
+    "cosmos",
+    "astronomy"
+  ],
+  "author": "BioApGreid Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/galaxy-explorer"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "dependencies": {
+    "fs-extra": "^11.1.1",
+    "chalk": "^4.1.2"
   },
   "devDependencies": {
-    "@vercel/static-build": "^1.0.0"
+    "serve": "^14.2.0",
+    "nodemon": "^3.0.1"
+  },
+  "volta": {
+    "node": "18.17.0",
+    "npm": "9.6.7"
   }
 }
