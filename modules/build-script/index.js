@@ -1,147 +1,178 @@
 // modules/build-script/index.js
-import { buildForVercel } from './build-processor.js';
-import { DirectoryScanner } from '../galaxy-debug/index.js';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
-export async function buildWithDebug() {
-  const startTime = Date.now();
-  console.log('🚀 BioApGreid Galaxy Explorer - Build Process');
-  console.log('=============================================\n');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+console.log('🚀 BUILD SCRIPT STARTED');
+console.log('======================\n');
+
+// Сначала показываем структуру проекта ДО любой сборки
+async function showProjectStructure() {
+  console.log('🔍 PROJECT STRUCTURE BEFORE BUILD:');
+  console.log('==================================\n');
+  
+  const fs = await import('fs/promises');
+  
+  // Показываем текущую директорию
+  console.log('📂 Current directory:', process.cwd());
+  console.log('📜 Build script location:', __dirname);
+  console.log('');
+  
+  // Проверяем критические пути
+  const criticalPaths = [
+    { path: './scanner', desc: 'Scanner directory' },
+    { path: './scanner/index.js', desc: 'Main scanner file' },
+    { path: './modules', desc: 'Modules directory' },
+    { path: './modules/build-script', desc: 'Build script directory' },
+    { path: './modules/build-script/build-processor.js', desc: 'Build processor' },
+    { path: './modules/galaxy-debug', desc: 'Galaxy debug module' },
+    { path: './package.json', desc: 'Package.json' }
+  ];
+
+  console.log('✅ CRITICAL PATH CHECK:');
+  for (const { path, desc } of criticalPaths) {
+    try {
+      const fullPath = join(process.cwd(), path);
+      const stats = await fs.stat(fullPath);
+      const type = stats.isDirectory() ? 'DIR' : 'FILE';
+      console.log(`  ✅ ${type}: ${path} - ${desc}`);
+    } catch (error) {
+      console.log(`  ❌ MISSING: ${path} - ${desc}`);
+    }
+  }
+
+  // Показываем содержимое ключевых директорий
+  console.log('\n📁 DIRECTORY CONTENTS:');
+  await showDirectoryContents('./', 1);
+  await showDirectoryContents('./scanner', 2);
+  await showDirectoryContents('./modules', 2);
+}
+
+async function showDirectoryContents(dirPath, maxDepth = 1, currentDepth = 0) {
+  if (currentDepth > maxDepth) return;
+  
+  const fs = await import('fs/promises');
+  const path = await import('path');
+  
+  const prefix = '  '.repeat(currentDepth);
   
   try {
-    // 1. Проверка критичных файлов перед сборкой
-    console.log('🔍 Step 1: Verifying critical files...');
+    const items = await fs.readdir(dirPath);
+    console.log(`${prefix}📁 ${dirPath}/`);
     
-    const criticalFiles = [
-      { path: './modules/build-script/build-processor.js', name: 'Build Processor' },
-      { path: './scanner/index.js', name: 'Main Scanner' },
-      { path: './modules/galaxy-debug/index.js', name: 'Debug Module' }
-    ];
-
-    for (const { path, name } of criticalFiles) {
+    for (const item of items) {
+      const itemPath = path.join(dirPath, item);
       try {
-        // Проверяем существование файла
-        const fileUrl = new URL(path, import.meta.url);
-        const fs = await import('fs/promises');
-        await fs.access(fileUrl.pathname);
-        console.log(`✅ ${name}: ${path} - EXISTS`);
+        const stats = await fs.stat(itemPath);
+        if (stats.isDirectory()) {
+          console.log(`${prefix}  📁 ${item}/`);
+          if (currentDepth < maxDepth) {
+            await showDirectoryContents(itemPath, maxDepth, currentDepth + 1);
+          }
+        } else {
+          const size = stats.size > 1024 ? 
+            ` (${(stats.size / 1024).toFixed(1)} KB)` : 
+            ` (${stats.size} bytes)`;
+          console.log(`${prefix}  📄 ${item}${size}`);
+        }
       } catch (error) {
-        console.log(`❌ ${name}: ${path} - MISSING: ${error.message}`);
-        // Создаем базовую версию если файл отсутствует
-        await createMissingFile(path, name);
+        console.log(`${prefix}  ❌ ${item} - ERROR: ${error.message}`);
       }
     }
-
-    // 2. Быстрая проверка структуры
-    console.log('\n📁 Step 2: Project structure scan...');
-    const scanner = new DirectoryScanner({ 
-      maxDepth: 2,
-      exclude: ['node_modules', '.git', '.vercel']
-    });
-    await scanner.scanDirectory(process.cwd());
-
-    // 3. Основная сборка
-    console.log('\n🔨 Step 3: Building project...');
-    await buildForVercel();
-
-    const buildTime = ((Date.now() - startTime) / 1000).toFixed(2);
-    console.log(`\n🎉 Build completed successfully in ${buildTime}s`);
-    
   } catch (error) {
-    const buildTime = ((Date.now() - startTime) / 1000).toFixed(2);
-    console.error(`\n💥 Build failed after ${buildTime}s:`, error.message);
-    
-    // Детальная диагностика
-    await runEmergencyDiagnostics();
-    throw error;
+    console.log(`${prefix}❌ ${dirPath} - SCAN ERROR: ${error.message}`);
   }
 }
 
-// Функция для создания отсутствующих файлов
-async function createMissingFile(filePath, fileName) {
-  try {
-    const fs = await import('fs/promises');
-    const path = await import('path');
-    
-    const fullPath = new URL(filePath, import.meta.url).pathname;
-    const dir = path.dirname(fullPath);
-    
-    // Создаем директорию если нужно
-    await fs.mkdir(dir, { recursive: true });
-    
-    // Создаем базовый файл
-    let content = '';
-    if (filePath.includes('scanner/index.js')) {
-      content = `// Auto-generated ${fileName}
-export function scan() {
-    console.log('🔭 ${fileName} - placeholder');
-    return { status: 'placeholder' };
-}
-
-export default scan;
-`;
-    } else if (filePath.includes('build-processor.js')) {
-      content = `// Auto-generated ${fileName}
-export async function buildForVercel() {
-    console.log('🏗️ ${fileName} - placeholder build');
-    // Базовая логика сборки
-    return { success: true };
-}
-
-export default buildForVercel;
-`;
-    }
-    
-    await fs.writeFile(fullPath, content);
-    console.log(`📝 Created placeholder: ${filePath}`);
-    
-  } catch (error) {
-    console.log(`⚠️ Could not create ${filePath}: ${error.message}`);
-  }
-}
-
-// Экстренная диагностика
-async function runEmergencyDiagnostics() {
-  console.log('\n🚨 EMERGENCY DIAGNOSTICS:');
-  console.log('========================');
+// Пытаемся импортировать scanner чтобы понять проблему
+async function testScannerImport() {
+  console.log('\n🔧 TESTING SCANNER IMPORT:');
+  console.log('=========================');
   
   try {
-    const fs = await import('fs/promises');
-    const currentDir = process.cwd();
+    console.log('1. Trying to import scanner...');
+    const scanner = await import('../../scanner/index.js');
+    console.log('   ✅ Scanner import SUCCESS');
+    console.log('   📦 Scanner exports:', Object.keys(scanner));
+    return true;
+  } catch (error) {
+    console.log('   ❌ Scanner import FAILED:', error.message);
+    console.log('   💡 Error details:', {
+      code: error.code,
+      path: error.url || 'unknown'
+    });
     
-    console.log(`📂 Current directory: ${currentDir}`);
+    // Показываем что на самом деле в scanner директории
+    console.log('\n2. Scanner directory actual contents:');
+    await showDirectoryContents('./scanner', 1);
     
-    // Показываем что есть в текущей директории
-    const items = await fs.readdir(currentDir);
-    console.log('📁 Root contents:', items.slice(0, 10)); // первые 10 файлов
+    return false;
+  }
+}
+
+// Основная функция сборки
+async function buildWithDebug() {
+  try {
+    // 1. Показываем структуру проекта
+    await showProjectStructure();
     
-    // Проверяем существование ключевых путей
-    const checkPaths = [
-      './modules',
-      './scanner', 
-      './public',
-      './package.json'
-    ];
+    // 2. Тестируем импорт scanner
+    const scannerOk = await testScannerImport();
     
-    for (const checkPath of checkPaths) {
-      try {
-        const stats = await fs.stat(checkPath);
-        console.log(`✅ ${checkPath} - ${stats.isDirectory() ? 'DIR' : 'FILE'}`);
-      } catch {
-        console.log(`❌ ${checkPath} - MISSING`);
-      }
+    if (!scannerOk) {
+      console.log('\n⚠️ WARNING: Scanner import failed but continuing build...');
     }
     
+    // 3. Пытаемся импортировать и запустить build processor
+    console.log('\n🔨 ATTEMPTING TO IMPORT BUILD PROCESSOR:');
+    console.log('======================================');
+    
+    try {
+      const buildProcessor = await import('./build-processor.js');
+      console.log('✅ Build processor import SUCCESS');
+      
+      if (buildProcessor.buildForVercel) {
+        console.log('🚀 Starting buildForVercel()...');
+        await buildProcessor.buildForVercel();
+        console.log('✅ buildForVercel() completed');
+      } else {
+        console.log('❌ buildForVercel function not found in build-processor');
+        console.log('📦 Available exports:', Object.keys(buildProcessor));
+      }
+    } catch (error) {
+      console.log('❌ Build processor import FAILED:', error.message);
+      throw error;
+    }
+    
+    console.log('\n🎉 BUILD COMPLETED SUCCESSFULLY');
+    
   } catch (error) {
-    console.log('❌ Diagnostics failed:', error.message);
+    console.log('\n💥 BUILD FAILED:', error.message);
+    
+    // Детальная диагностика при ошибке
+    console.log('\n🚨 POST-FAILURE DIAGNOSTICS:');
+    console.log('===========================');
+    
+    const fs = await import('fs/promises');
+    try {
+      const items = await fs.readdir(process.cwd());
+      console.log('Root directory contents:', items);
+    } catch (readError) {
+      console.log('Cannot read root directory:', readError.message);
+    }
+    
+    throw error;
   }
 }
 
 // Запуск если файл вызван напрямую
 if (import.meta.url === `file://${process.argv[1]}`) {
   buildWithDebug().catch(error => {
-    console.error('❌ Build process failed');
+    console.error('❌ Build process terminated');
     process.exit(1);
   });
 }
 
-export default buildWithDebug;
+export { buildWithDebug };
