@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "build": "node modules/build-script/index.js",
     "debug": "node debug-structure.js",
-    "build": "npm run debug && node modules/build-script/index.js",
     "start": "npx serve public"
   },
   "engines": {
