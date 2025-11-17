@@ -1,6 +1,5 @@
 node_modules/
 galaxy/
 scanner/
-modules/build-script/
 *.log
 .DS_Store
