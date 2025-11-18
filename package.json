@@ -9,13 +9,21 @@
     "scan": "node scanner/index.js",
     "scan:latin": "node scanner/index.js --latin",
     "scan:history": "node scanner/index.js --history",
-    "dev": "npm run build && python3 -m http.server 3000 --directory public",
+    "dev": "vite",
+    "preview": "vite preview",
+    "build:vite": "vite build",
     "test": "echo 'Откройте http://localhost:3000/module-test.html для тестирования'",
-    "clean": "rm -rf public"
+    "clean": "rm -rf public dist"
   },
   "keywords": ["galaxy", "explorer", "space", "interactive"],
   "author": "BioApGreid Team",
   "license": "MIT",
+  "dependencies": {
+    "three": "^0.158.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  },
   "engines": {
     "node": ">=16.0.0"
   }
