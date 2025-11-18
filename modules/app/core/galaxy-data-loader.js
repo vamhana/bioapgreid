@@ -86,7 +86,14 @@ export class GalaxyDataLoader {
             console.error('❌ Ошибка загрузки sitemap:', error);
             
             // Fallback для разработки
-            return this.getFallbackData();
+            try {
+                const fallbackData = this.getFallbackData();
+                console.log('✅ Использованы fallback данные');
+                return fallbackData;
+            } catch (fallbackError) {
+                console.error('❌ Ошибка в fallback данных:', fallbackError);
+                throw new Error(`Не удалось загрузить данные: ${error.message}`);
+            }
         } finally {
             this.loadingState.isLoading = false;
         }
@@ -141,13 +148,19 @@ export class GalaxyDataLoader {
         return processedEntity;
     }
 
-    generate3DPositions(galaxyData) {
+    generate3DPositions(galaxyData, depth = 0) {
+        // Защита от бесконечной рекурсии
+        if (depth > 10) {
+            console.warn('⚠️ Превышена глубина рекурсии в generate3DPositions');
+            return { center: { x: 0, y: 0, z: 0 }, orbitalLayers: [] };
+        }
+
         const positions = {
             center: { x: 0, y: 0, z: 0 },
             orbitalLayers: []
         };
 
-        if (galaxyData.children) {
+        if (galaxyData && galaxyData.children) {
             galaxyData.children.forEach((planet, planetIndex) => {
                 const planetOrbit = {
                     radius: 200 + planetIndex * 150,
@@ -157,7 +170,7 @@ export class GalaxyDataLoader {
                 // Позиция планеты
                 const planetAngle = (planetIndex / galaxyData.children.length) * Math.PI * 2;
                 planetOrbit.planets.push({
-                    entityId: planet.cleanPath,
+                    entityId: planet.cleanPath || planet.name,
                     position: {
                         x: Math.cos(planetAngle) * planetOrbit.radius,
                         y: Math.sin(planetAngle) * planetOrbit.radius,
@@ -170,7 +183,7 @@ export class GalaxyDataLoader {
                     planet.children.forEach((moon, moonIndex) => {
                         const moonAngle = (moonIndex / planet.children.length) * Math.PI * 2;
                         planetOrbit.planets.push({
-                            entityId: moon.cleanPath,
+                            entityId: moon.cleanPath || moon.name,
                             position: {
                                 x: Math.cos(planetAngle) * planetOrbit.radius + Math.cos(moonAngle) * 60,
                                 y: Math.sin(planetAngle) * planetOrbit.radius + Math.sin(moonAngle) * 60,
@@ -277,6 +290,7 @@ export class GalaxyDataLoader {
     getFallbackData() {
         console.warn('⚠️ Используются тестовые данные');
         
+        // Создаем базовый объект без рекурсивных вызовов
         const fallbackData = {
             name: "Test Galaxy",
             type: "galaxy",
@@ -299,6 +313,7 @@ export class GalaxyDataLoader {
                 {
                     name: "earth",
                     type: "planet",
+                    cleanPath: "earth",
                     config: { 
                         color: "#4ECDC4", 
                         title: "Земля",
@@ -307,7 +322,8 @@ export class GalaxyDataLoader {
                     children: [
                         {
                             name: "moon",
-                            type: "moon", 
+                            type: "moon",
+                            cleanPath: "moon",
                             config: { 
                                 color: "#CCCCCC", 
                                 title: "Луна",
@@ -319,6 +335,7 @@ export class GalaxyDataLoader {
                 {
                     name: "mars", 
                     type: "planet",
+                    cleanPath: "mars",
                     config: { 
                         color: "#FF6B6B", 
                         title: "Марс",
@@ -328,6 +345,7 @@ export class GalaxyDataLoader {
                         {
                             name: "phobos",
                             type: "moon",
+                            cleanPath: "phobos",
                             config: { 
                                 color: "#888888", 
                                 title: "Фобос",
@@ -337,6 +355,7 @@ export class GalaxyDataLoader {
                         {
                             name: "deimos", 
                             type: "moon",
+                            cleanPath: "deimos",
                             config: { 
                                 color: "#666666", 
                                 title: "Деймос",
@@ -347,7 +366,8 @@ export class GalaxyDataLoader {
                 },
                 {
                     name: "jupiter",
-                    type: "planet", 
+                    type: "planet",
+                    cleanPath: "jupiter", 
                     config: { 
                         color: "#FFA500", 
                         title: "Юпитер",
@@ -355,8 +375,25 @@ export class GalaxyDataLoader {
                     }
                 }
             ],
-            threeData: this.generate3DPositions(this.getFallbackData()),
-            renderConfig: this.generateRenderConfig(this.getFallbackData()),
+            // ИСПРАВЛЕНО: убраны рекурсивные вызовы
+            threeData: this.generate3DPositions({
+                children: [
+                    { cleanPath: "earth", name: "earth" },
+                    { 
+                        cleanPath: "mars", 
+                        name: "mars",
+                        children: [
+                            { cleanPath: "phobos", name: "phobos" }, 
+                            { cleanPath: "deimos", name: "deimos" }
+                        ] 
+                    },
+                    { cleanPath: "jupiter", name: "jupiter" }
+                ]
+            }),
+            renderConfig: this.generateRenderConfig({
+                name: "Test Galaxy",
+                stats: { total: 7 }
+            }),
             loadedAt: new Date().toISOString(),
             version: '1.0.0-fallback'
         };
