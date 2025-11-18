@@ -1,4 +1,3 @@
-// modules/app/utils/asset-manager.js
 export class AssetManager {
     constructor() {
         this.assets = new Map();
@@ -14,6 +13,49 @@ export class AssetManager {
         };
         
         console.log('📦 AssetManager создан');
+    }
+
+    // Предзагрузка ресурсов
+    async preloadAssets(assetList = []) {
+        console.log('📦 Начинаем предзагрузку ресурсов:', assetList);
+        
+        if (!assetList || assetList.length === 0) {
+            console.log('📦 Нет ресурсов для предзагрузки');
+            return;
+        }
+
+        const total = assetList.length;
+        let loaded = 0;
+        
+        console.log(`📥 Загрузка ${total} ресурсов...`);
+        
+        // Создаем промисы для всех ресурсов
+        const loadPromises = assetList.map(asset => {
+            const url = typeof asset === 'string' ? asset : asset.url;
+            const type = asset.type || 'auto';
+            const key = asset.key || url;
+            
+            return this.loadAsset(url, type, key)
+                .then(() => {
+                    loaded++;
+                    const progress = Math.round((loaded / total) * 100);
+                    console.log(`📦 Прогресс загрузки: ${progress}% (${loaded}/${total})`);
+                })
+                .catch(error => {
+                    console.warn(`⚠️ Не удалось загрузить ресурс: ${url}`, error);
+                    // Продолжаем загрузку остальных ресурсов
+                });
+        });
+        
+        await Promise.allSettled(loadPromises);
+        
+        const stats = this.getStats();
+        console.log('✅ Предзагрузка завершена:', {
+            всего: stats.total,
+            загружено: stats.loaded,
+            ошибок: stats.failed,
+            прогресс: stats.progress + '%'
+        });
     }
 
     // Загрузка одного ассета
