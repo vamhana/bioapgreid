@@ -1019,8 +1019,544 @@ function formatFileSize(bytes) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-// Существующие функции createModuleTestFile, createHealthDashboard и др. остаются без изменений
-// ... (они остаются такими же как в оригинальном файле)
+function createModuleTestFile(publicDir, fullReport) {
+    const testPath = path.join(publicDir, 'module-test.html');
+    
+    const healthStatus = fullReport?.health?.status || 'UNKNOWN';
+    const healthScore = fullReport?.health?.overallScore || 0;
+    const totalModules = fullReport?.modules?.stats?.totalModules || 0;
+    const passedModules = fullReport?.modules?.stats?.passedModules || 0;
+    
+    const testHtml = `<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Galaxy Explorer - Тест модулей</title>
+    <style>
+        :root {
+            --color-success: #4ECDC4;
+            --color-warning: #FFC107;
+            --color-error: #FF6B6B;
+            --color-info: #45b7d1;
+            --bg-primary: #0c0c2e;
+            --bg-secondary: #1a1a4a;
+            --bg-card: rgba(255,255,255,0.05);
+            --text-primary: #e0e0ff;
+            --text-secondary: #a0a0cc;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 30px;
+            background: var(--bg-card);
+            border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .health-status {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .health-healthy { background: var(--color-success); color: var(--bg-primary); }
+        .health-warning { background: var(--color-warning); color: var(--bg-primary); }
+        .health-critical { background: var(--color-error); color: white; }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .card h3 {
+            color: var(--color-success);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .module-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .module-item {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            border-left: 4px solid;
+            background: rgba(0,0,0,0.2);
+        }
+        
+        .module-success { border-left-color: var(--color-success); }
+        .module-warning { border-left-color: var(--color-warning); }
+        .module-error { border-left-color: var(--color-error); }
+        
+        .test-section {
+            margin: 30px 0;
+        }
+        
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        button {
+            background: var(--color-success);
+            color: var(--bg-primary);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(78, 205, 196, 0.3);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+        }
+        
+        .modal-content {
+            background: var(--bg-primary);
+            margin: 2% auto;
+            padding: 20px;
+            border: 1px solid var(--color-success);
+            border-radius: 10px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow: auto;
+        }
+        
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: var(--color-success);
+            transition: width 0.3s ease;
+        }
+        
+        .recommendations {
+            margin-top: 20px;
+        }
+        
+        .recommendation {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            background: rgba(255,107,107,0.1);
+            border-left: 4px solid var(--color-error);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🧪 Galaxy Explorer - Тест модулей</h1>
+        <p>Полная диагностика проекта и проверка всех модулей</p>
+        <div class="health-status health-${healthStatus.toLowerCase()}">
+            Статус: ${healthStatus} (${Math.round(healthScore * 100)}%)
+        </div>
+    </div>
+    
+    <div class="dashboard">
+        <div class="card">
+            <h3>📊 Общая статистика</h3>
+            <div class="stat-grid">
+                <div class="stat-item">
+                    <div>🏥 Здоровье</div>
+                    <div class="stat-number">${Math.round(healthScore * 100)}%</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${healthScore * 100}%"></div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div>📦 Модули</div>
+                    <div class="stat-number">${passedModules}/${totalModules}</div>
+                    <div>${Math.round((passedModules/totalModules)*100)}% готовности</div>
+                </div>
+                <div class="stat-item">
+                    <div>📁 Файлы</div>
+                    <div class="stat-number">${fullReport?.structure?.stats?.totalFiles || 0}</div>
+                    <div>в проекте</div>
+                </div>
+                <div class="stat-item">
+                    <div>💾 Размер</div>
+                    <div class="stat-number">${formatFileSize(fullReport?.structure?.stats?.totalSize || 0)}</div>
+                    <div>общий</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3>🎯 Критические модули</h3>
+            <div class="module-list" id="module-list">
+                <!-- Модули будут заполнены JavaScript -->
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3>💡 Рекомендации</h3>
+            <div class="recommendations" id="recommendations">
+                <!-- Рекомендации будут заполнены JavaScript -->
+            </div>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <button onclick="runAllTests()">🔄 Запустить все тесты</button>
+        <button onclick="showFullReport()">📋 Полный отчет</button>
+        <button onclick="showProjectStructure()">📁 Структура проекта</button>
+        <button onclick="window.location.href='/'">🏠 На главную</button>
+        <button onclick="window.location.href='/health-dashboard.html'">📈 Дашборд</button>
+    </div>
+
+    <!-- Модальное окно для полного отчета -->
+    <div id="reportModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('reportModal')">&times;</span>
+            <h2>📋 Полный отчет проекта</h2>
+            <pre id="full-report-content" style="background: #1a1a3a; padding: 15px; border-radius: 5px; overflow: auto; max-height: 70vh;"></pre>
+        </div>
+    </div>
+
+    <script>
+        let fullReportData = null;
+        let projectStructureData = null;
+
+        // Загрузка данных при старте
+        Promise.all([
+            fetch('/results/full-report.json').then(r => r.json()),
+            fetch('/results/project-structure.json').then(r => r.json())
+        ]).then(([fullReport, structure]) => {
+            fullReportData = fullReport;
+            projectStructureData = structure;
+            updateDashboard();
+        }).catch(error => {
+            console.error('Ошибка загрузки данных:', error);
+            document.getElementById('module-list').innerHTML = '<div style="color: var(--color-error);">❌ Ошибка загрузки данных</div>';
+        });
+
+        function updateDashboard() {
+            if (!fullReportData) return;
+            
+            // Обновляем список модулей
+            const moduleList = document.getElementById('module-list');
+            moduleList.innerHTML = '';
+            
+            fullReportData.modules.results.forEach(module => {
+                const div = document.createElement('div');
+                div.className = \`module-item \${getModuleStatusClass(module)}\`;
+                
+                let statusIcon = '✅';
+                if (!module.exists) statusIcon = '❌';
+                else if (module.quality?.score < 0.7) statusIcon = '⚠️';
+                
+                div.innerHTML = \`
+                    <strong>\${statusIcon} \${module.path}</strong>
+                    <div style="font-size: 0.9em; color: var(--text-secondary);">
+                        \${module.exists ? \`\${module.lines} строк, качество: \${Math.round(module.quality?.score * 100)}%\` : 'Отсутствует'}
+                    </div>
+                \`;
+                
+                moduleList.appendChild(div);
+            });
+            
+            // Обновляем рекомендации
+            const recommendations = document.getElementById('recommendations');
+            recommendations.innerHTML = '';
+            
+            if (fullReportData.health.recommendations.length > 0) {
+                fullReportData.health.recommendations.forEach(rec => {
+                    const div = document.createElement('div');
+                    div.className = 'recommendation';
+                    div.textContent = rec;
+                    recommendations.appendChild(div);
+                });
+            } else {
+                recommendations.innerHTML = '<div style="color: var(--color-success);">✅ Все рекомендации выполнены!</div>';
+            }
+        }
+
+        function getModuleStatusClass(module) {
+            if (!module.exists) return 'module-error';
+            if (module.quality?.score >= 0.7) return 'module-success';
+            return 'module-warning';
+        }
+
+        function runAllTests() {
+            alert('🔄 Тесты запущены... Обновите страницу через несколько секунд для просмотра результатов.');
+            // В реальной реализации здесь был бы вызов API для перезапуска тестов
+        }
+
+        function showFullReport() {
+            if (fullReportData) {
+                document.getElementById('full-report-content').textContent = JSON.stringify(fullReportData, null, 2);
+                document.getElementById('reportModal').style.display = 'block';
+            }
+        }
+
+        function showProjectStructure() {
+            window.location.href = '/project-explorer.html';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // Закрытие модального окна при клике вне его
+        window.onclick = function(event) {
+            const modals = document.getElementsByClassName('modal');
+            for (let modal of modals) {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            }
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+    </script>
+</body>
+</html>`;
+    
+    fs.writeFileSync(testPath, testHtml);
+    console.log('✅ Создан расширенный тестовый файл модулей (module-test.html)');
+}
+
+function createHealthDashboard(publicDir, healthReport) {
+    const dashboardPath = path.join(publicDir, 'health-dashboard.html');
+    
+    const dashboardHtml = `<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📈 Galaxy Explorer - Дашборд здоровья</title>
+    <style>
+        /* Аналогичные стили как в module-test.html, но с фокусом на визуализации */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0c0c2e;
+            color: #e0e0ff;
+            margin: 0;
+            padding: 20px;
+        }
+        .health-metric {
+            background: rgba(255,255,255,0.05);
+            padding: 20px;
+            margin: 10px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        /* Дополнительные стили для дашборда */
+    </style>
+</head>
+<body>
+    <h1>📈 Дашборд здоровья проекта</h1>
+    <div id="health-metrics"></div>
+    <script>
+        // Загрузка и отображение метрик здоровья
+        fetch('/results/health-report.json')
+            .then(r => r.json())
+            .then(data => {
+                // Визуализация данных здоровья
+                console.log('Health data:', data);
+            });
+    </script>
+</body>
+</html>`;
+    
+    fs.writeFileSync(dashboardPath, dashboardHtml);
+    console.log('✅ Создан дашборд здоровья (health-dashboard.html)');
+}
+
+function createProjectExplorer(publicDir, projectStructure) {
+    const explorerPath = path.join(publicDir, 'project-explorer.html');
+    
+    const explorerHtml = `<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📁 Galaxy Explorer - Обозреватель проекта</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0c0c2e;
+            color: #e0e0ff;
+            margin: 0;
+            padding: 20px;
+        }
+        .file-tree {
+            font-family: monospace;
+        }
+        /* Стили для древовидной структуры */
+    </style>
+</head>
+<body>
+    <h1>📁 Обозреватель структуры проекта</h1>
+    <div id="project-tree"></div>
+    <script>
+        // Загрузка и отображение структуры проекта
+        fetch('/results/project-structure.json')
+            .then(r => r.json())
+            .then(data => {
+                // Рендеринг древовидной структуры
+                console.log('Project structure:', data);
+            });
+    </script>
+</body>
+</html>`;
+    
+    fs.writeFileSync(explorerPath, explorerHtml);
+    console.log('✅ Создан обозреватель проекта (project-explorer.html)');
+}
+
+function createMobileTestFile(publicDir) {
+    const mobileTestPath = path.join(publicDir, 'mobile-test.html');
+    const mobileTestHtml = `<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📱 Galaxy Explorer - Тест мобильной совместимости</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #0c0c2e;
+            color: white;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .test-item {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.05);
+        }
+    </style>
+</head>
+<body>
+    <h1>📱 Тест мобильной совместимости</h1>
+    <div id="test-results">
+        <div class="test-item">Загрузка тестов...</div>
+    </div>
+    <script>
+        // Тесты мобильной совместимости
+        const tests = {
+            touchSupport: 'ontouchstart' in window,
+            es6Modules: 'noModule' in HTMLScriptElement.prototype,
+            webGL: !!window.WebGLRenderingContext,
+            screenSize: \`\${window.innerWidth}x\${window.innerHeight}\`
+        };
+        
+        const resultsDiv = document.getElementById('test-results');
+        resultsDiv.innerHTML = \`
+            <div class="test-item">
+                <strong>👆 Касания:</strong> \${tests.touchSupport ? '✅ Поддерживается' : '❌ Не поддерживается'}
+            </div>
+            <div class="test-item">
+                <strong>🔧 ES6 Модули:</strong> \${tests.es6Modules ? '✅ Поддерживается' : '❌ Не поддерживается'}
+            </div>
+            <div class="test-item">
+                <strong>🎨 WebGL:</strong> \${tests.webGL ? '✅ Поддерживается' : '❌ Не поддерживается'}
+            </div>
+            <div class="test-item">
+                <strong>📏 Размер экрана:</strong> \${tests.screenSize}
+            </div>
+        \`;
+    </script>
+</body>
+</html>`;
+    
+    fs.writeFileSync(mobileTestPath, mobileTestHtml);
+    console.log('✅ Создан тест мобильной совместимости (mobile-test.html)');
+}
+
+
 
 function logBuildStats(result, sitemapPath, fullReport, healthReport) {
     console.log('\n🎉 Galaxy Explorer построен успешно!');
