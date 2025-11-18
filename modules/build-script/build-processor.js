@@ -183,6 +183,10 @@ export async function buildForVercel() {
         // Создаем улучшенный дашборд сборки
         createBuildDashboard(publicDir);
         
+        // СОЗДАЕМ ТЕСТ THREE.JS
+        console.log('   🎨 Создание теста Three.js...');
+        createThreeJSTestFile(publicDir);
+        
         // Выводим статистику
         buildStats.performance.totalTime = performance.now() - buildStats.startTime;
         logBuildStats(result, sitemapPath, fullReport, healthReport);
@@ -945,6 +949,422 @@ function createBuildErrorPage(publicDir, error) {
     console.log('✅ Создана страница ошибки сборки (build-error.html)');
 }
 
+// НОВАЯ ФУНКЦИЯ: Создание тестовой страницы Three.js
+function createThreeJSTestFile(publicDir) {
+    const testPath = path.join(publicDir, 'threejs-test.html');
+    
+    const testHtml = `<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎨 Galaxy Explorer - Three.js Test</title>
+    
+    <!-- Import Map для Three.js -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js",
+            "three/": "https://cdn.jsdelivr.net/npm/three@0.158.0/"
+        }
+    }
+    </script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0c0c2e;
+            color: #e0e0ff;
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        #testContainer {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #threeCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #infoPanel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(12, 12, 46, 0.8);
+            border: 1px solid rgba(78, 205, 196, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            max-width: 400px;
+        }
+        
+        .status-item {
+            margin: 8px 0;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .status-success { color: #4ECDC4; }
+        .status-warning { color: #FFC107; }
+        .status-error { color: #FF6B6B; }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 1000;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(78, 205, 196, 0.3);
+            border-top: 5px solid #4ECDC4;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            background: rgba(78, 205, 196, 0.2);
+            border: 1px solid #4ECDC4;
+            color: #e0e0ff;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            background: rgba(78, 205, 196, 0.4);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div id="testContainer">
+        <canvas id="threeCanvas"></canvas>
+        
+        <div id="infoPanel">
+            <h3>🎨 Three.js Тест</h3>
+            <div class="status-item" id="threeStatus">
+                🔄 Проверка Three.js...
+            </div>
+            <div class="status-item" id="webglStatus">
+                🔄 Проверка WebGL...
+            </div>
+            <div class="status-item" id="importStatus">
+                🔄 Проверка импортов...
+            </div>
+            <div class="status-item" id="renderStatus">
+                🔄 Инициализация рендера...
+            </div>
+            <div class="status-item" id="memoryStatus">
+                🔄 Мониторинг памяти...
+            </div>
+        </div>
+        
+        <div id="loading">
+            <div class="spinner"></div>
+            <h3>Загрузка Three.js теста...</h3>
+        </div>
+        
+        <div class="controls">
+            <button onclick="addTestObject()">➕ Добавить объект</button>
+            <button onclick="clearScene()">🧹 Очистить сцену</button>
+            <button onclick="runPerformanceTest()">⚡ Тест производительности</button>
+            <button onclick="window.location.href='/'">🏠 На главную</button>
+        </div>
+    </div>
+
+    <script type="module">
+        let scene, camera, renderer, testObjects = [];
+        let stats = {
+            threeLoaded: false,
+            webglSupported: false,
+            importWorking: false,
+            objectsCount: 0,
+            fps: 0,
+            memory: {}
+        };
+
+        // Проверка поддержки WebGL
+        function checkWebGLSupport() {
+            try {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                stats.webglSupported = !!gl;
+                updateStatus('webglStatus', 
+                    stats.webglSupported ? 
+                    '✅ WebGL поддерживается' : 
+                    '❌ WebGL не поддерживается',
+                    stats.webglSupported ? 'status-success' : 'status-error'
+                );
+                return stats.webglSupported;
+            } catch (e) {
+                updateStatus('webglStatus', '❌ Ошибка WebGL: ' + e.message, 'status-error');
+                return false;
+            }
+        }
+
+        // Проверка импорта Three.js
+        async function checkThreeJSImport() {
+            try {
+                const THREE = await import('three');
+                stats.threeLoaded = true;
+                stats.threeVersion = THREE.REVISION;
+                updateStatus('importStatus', 
+                    \`✅ Three.js v\${THREE.REVISION} загружен\`, 
+                    'status-success'
+                );
+                return THREE;
+            } catch (error) {
+                updateStatus('importStatus', 
+                    '❌ Ошибка загрузки Three.js: ' + error.message, 
+                    'status-error'
+                );
+                throw error;
+            }
+        }
+
+        // Инициализация Three.js сцены
+        async function initThreeJS() {
+            try {
+                const THREE = await checkThreeJSImport();
+                
+                // Создаем сцену
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0x0c0c2e);
+                
+                // Создаем камеру
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                camera.position.z = 50;
+                
+                // Создаем рендерер
+                renderer = new THREE.WebGLRenderer({ 
+                    canvas: document.getElementById('threeCanvas'),
+                    antialias: true 
+                });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                
+                // Добавляем освещение
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+                scene.add(ambientLight);
+                
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(50, 50, 50);
+                scene.add(directionalLight);
+                
+                updateStatus('renderStatus', '✅ Three.js сцена инициализирована', 'status-success');
+                
+                // Скрываем загрузку
+                document.getElementById('loading').style.display = 'none';
+                
+                // Запускаем анимацию
+                animate();
+                
+            } catch (error) {
+                updateStatus('renderStatus', '❌ Ошибка инициализации: ' + error.message, 'status-error');
+            }
+        }
+
+        // Анимация
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Вращаем тестовые объекты
+            testObjects.forEach((obj, index) => {
+                if (obj.mesh) {
+                    obj.mesh.rotation.x += 0.01;
+                    obj.mesh.rotation.y += 0.005 * (index + 1);
+                }
+            });
+            
+            renderer.render(scene, camera);
+            
+            // Обновляем FPS
+            updateFPS();
+            updateMemoryStats();
+        }
+
+        // Добавление тестового объекта
+        function addTestObject() {
+            if (!scene) return;
+            
+            const geometry = new THREE.SphereGeometry(2, 16, 16);
+            const material = new THREE.MeshPhongMaterial({ 
+                color: new THREE.Color().setHSL(Math.random(), 0.7, 0.5),
+                shininess: 100
+            });
+            
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set(
+                (Math.random() - 0.5) * 50,
+                (Math.random() - 0.5) * 50,
+                (Math.random() - 0.5) * 50
+            );
+            
+            scene.add(mesh);
+            testObjects.push({ mesh, geometry, material });
+            stats.objectsCount = testObjects.length;
+            
+            updateObjectCount();
+        }
+
+        // Очистка сцены
+        function clearScene() {
+            testObjects.forEach(obj => {
+                scene.remove(obj.mesh);
+                obj.geometry.dispose();
+                obj.material.dispose();
+            });
+            testObjects = [];
+            stats.objectsCount = 0;
+            updateObjectCount();
+        }
+
+        // Тест производительности
+        function runPerformanceTest() {
+            const startTime = performance.now();
+            const initialCount = testObjects.length;
+            
+            // Добавляем 100 объектов для теста
+            for (let i = 0; i < 100; i++) {
+                addTestObject();
+            }
+            
+            const endTime = performance.now();
+            const duration = endTime - startTime;
+            
+            updateStatus('memoryStatus', 
+                \`⚡ Добавлено 100 объектов за \${duration.toFixed(2)}ms (\${(duration/100).toFixed(2)}ms/объект)\`, 
+                'status-success'
+            );
+            
+            // Через 5 секунд удаляем тестовые объекты
+            setTimeout(() => {
+                for (let i = 0; i < 100; i++) {
+                    if (testObjects.length > initialCount) {
+                        const obj = testObjects.pop();
+                        scene.remove(obj.mesh);
+                        obj.geometry.dispose();
+                        obj.material.dispose();
+                    }
+                }
+                stats.objectsCount = testObjects.length;
+                updateObjectCount();
+            }, 5000);
+        }
+
+        // Обновление статистики
+        function updateStatus(elementId, text, className) {
+            const element = document.getElementById(elementId);
+            element.textContent = text;
+            element.className = 'status-item ' + className;
+        }
+
+        function updateObjectCount() {
+            const element = document.getElementById('threeStatus');
+            element.textContent = \`📊 Объектов: \${stats.objectsCount}, FPS: \${stats.fps}\`;
+        }
+
+        function updateFPS() {
+            if (!stats.lastFrameTime) {
+                stats.lastFrameTime = performance.now();
+                stats.frameCount = 0;
+                return;
+            }
+            
+            stats.frameCount++;
+            const currentTime = performance.now();
+            if (currentTime >= stats.lastFrameTime + 1000) {
+                stats.fps = Math.round((stats.frameCount * 1000) / (currentTime - stats.lastFrameTime));
+                stats.lastFrameTime = currentTime;
+                stats.frameCount = 0;
+                updateObjectCount();
+            }
+        }
+
+        function updateMemoryStats() {
+            if (performance.memory) {
+                stats.memory = {
+                    used: Math.round(performance.memory.usedJSHeapSize / 1048576),
+                    total: Math.round(performance.memory.totalJSHeapSize / 1048576),
+                    limit: Math.round(performance.memory.jsHeapSizeLimit / 1048576)
+                };
+                
+                const element = document.getElementById('memoryStatus');
+                element.textContent = \`💾 Память: \${stats.memory.used}MB / \${stats.memory.total}MB\`;
+            }
+        }
+
+        // Обработчики событий
+        window.addEventListener('resize', () => {
+            if (camera && renderer) {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+        });
+
+        // Экспорт функций для кнопок
+        window.addTestObject = addTestObject;
+        window.clearScene = clearScene;
+        window.runPerformanceTest = runPerformanceTest;
+
+        // Запуск тестов
+        async function initializeTests() {
+            checkWebGLSupport();
+            await initThreeJS();
+            
+            // Добавляем несколько начальных объектов
+            for (let i = 0; i < 5; i++) {
+                addTestObject();
+            }
+        }
+
+        // Запускаем когда DOM загружен
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeTests);
+        } else {
+            initializeTests();
+        }
+    </script>
+</body>
+</html>`;
+    
+    fs.writeFileSync(testPath, testHtml);
+    console.log('✅ Создан тестовый файл Three.js (threejs-test.html)');
+}
+
 // Существующие вспомогательные функции остаются без изменений
 function ensureDefaultExport(content, filePath) {
     const className = getClassNameFromPath(filePath);
@@ -1555,8 +1975,6 @@ function createMobileTestFile(publicDir) {
     fs.writeFileSync(mobileTestPath, mobileTestHtml);
     console.log('✅ Создан тест мобильной совместимости (mobile-test.html)');
 }
-
-
 
 function logBuildStats(result, sitemapPath, fullReport, healthReport) {
     console.log('\n🎉 Galaxy Explorer построен успешно!');
