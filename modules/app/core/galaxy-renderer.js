@@ -1,409 +1,290 @@
-// modules/app/core/camera-controller.js
-export class CameraController {
-    constructor() {
-        // Состояние камеры
-        this.x = 0;
-        this.y = 0;
-        this.zoom = 1;
-        this.minZoom = 0.1;
-        this.maxZoom = 5;
+// modules/app/core/galaxy-renderer.js
+export class GalaxyRenderer {
+    constructor(canvasId) {
+        this.canvas = document.getElementById(canvasId);
+        if (!this.canvas) {
+            throw new Error(`Canvas element with id '${canvasId}' not found`);
+        }
         
-        // Параметры инерции и плавности
-        this.velocityX = 0;
-        this.velocityY = 0;
-        this.friction = 0.88;
-        this.isDragging = false;
-        this.lastX = 0;
-        this.lastY = 0;
-        
-        // Ограничения движения
-        this.bounds = {
-            minX: -1000,
-            maxX: 1000,
-            minY: -1000, 
-            maxY: 1000
+        this.ctx = this.canvas.getContext('2d');
+        this.showOrbits = true;
+        this.animationState = {
+            entranceComplete: false,
+            currentOpacity: 0
         };
         
-        // Референсы
-        this.canvas = null;
-        this.animationFrameId = null;
-        
-        // Для pinch-to-zoom
-        this.pinchStartDistance = 0;
-        this.pinchStartZoom = 1;
-        this.isPinching = false;
-        
-        // Привязка методов для корректного удаления обработчиков
-        this._boundHandlers = {};
-        this.bindEventHandlers();
-        
-        console.log('🎥 CameraController создан');
-    }
-
-    bindEventHandlers() {
-        // Привязываем методы к экземпляру для корректного удаления обработчиков
-        this._boundHandlers = {
-            mouseDown: this.handleMouseDown.bind(this),
-            mouseMove: this.handleMouseMove.bind(this),
-            mouseUp: this.handleMouseUp.bind(this),
-            mouseLeave: this.handleMouseUp.bind(this),
-            touchStart: this.handleTouchStart.bind(this),
-            touchMove: this.handleTouchMove.bind(this),
-            touchEnd: this.handleTouchEnd.bind(this),
-            wheel: this.handleWheel.bind(this)
-        };
-    }
-
-    init(canvas) {
-        this.canvas = canvas;
-        this.setInitialView();
-        
-        // Настраиваем обработчики событий для canvas
-        this.setupEventListeners();
-        
-        // Запускаем цикл обновления для инерции
-        this.startAnimationLoop();
-        
-        console.log('✅ CameraController инициализирован с canvas:', {
-            width: canvas.width,
-            height: canvas.height
+        console.log('🎨 GalaxyRenderer создан:', {
+            canvasSize: `${this.canvas.width}x${this.canvas.height}`,
+            contextType: '2d',
+            mobile: 'ontouchstart' in window
         });
     }
 
-    setupEventListeners() {
-        if (!this.canvas) return;
-
-        // Mouse events
-        this.canvas.addEventListener('mousedown', this._boundHandlers.mouseDown);
-        this.canvas.addEventListener('mousemove', this._boundHandlers.mouseMove);
-        this.canvas.addEventListener('mouseup', this._boundHandlers.mouseUp);
-        this.canvas.addEventListener('mouseleave', this._boundHandlers.mouseLeave);
-        
-        // Touch events
-        this.canvas.addEventListener('touchstart', this._boundHandlers.touchStart);
-        this.canvas.addEventListener('touchmove', this._boundHandlers.touchMove);
-        this.canvas.addEventListener('touchend', this._boundHandlers.touchEnd);
-        
-        // Wheel event for zoom
-        this.canvas.addEventListener('wheel', this._boundHandlers.wheel, { passive: false });
-
-        console.log('🎮 Обработчики событий камеры установлены');
+    async init() {
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+        console.log('✅ Renderer инициализирован и обработчик resize установлен');
+        return Promise.resolve();
     }
 
-    // ===== MOUSE HANDLERS =====
-    handleMouseDown(event) {
-        event.preventDefault();
-        this.isDragging = true;
-        this.lastX = event.clientX;
-        this.lastY = event.clientY;
-        this.velocityX = 0;
-        this.velocityY = 0;
-        
-        // Изменяем курсор
-        if (this.canvas) {
-            this.canvas.style.cursor = 'grabbing';
+    resize() {
+        const oldSize = `${this.canvas.width}x${this.canvas.height}`;
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        console.log('🔄 Canvas изменен:', oldSize, '→', `${this.canvas.width}x${this.canvas.height}`);
+    }
+
+    render(galaxyData, camera = { x: 0, y: 0, zoom: 1 }) {
+        if (!galaxyData) {
+            console.warn('⚠️ Нет данных для рендеринга');
+            return;
         }
-    }
 
-    handleMouseMove(event) {
-        if (!this.isDragging) return;
+        // Сохраняем контекст
+        this.ctx.save();
         
-        const deltaX = event.clientX - this.lastX;
-        const deltaY = event.clientY - this.lastY;
+        // Очистка canvas
+        this.ctx.fillStyle = '#0c0c2e';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
-        this.pan(deltaX, deltaY);
-        
-        // Сохраняем скорость для инерции
-        this.velocityX = deltaX * 0.5;
-        this.velocityY = deltaY * 0.5;
-        
-        this.lastX = event.clientX;
-        this.lastY = event.clientY;
-    }
-
-    handleMouseUp() {
-        this.isDragging = false;
-        if (this.canvas) {
-            this.canvas.style.cursor = 'grab';
+        // Применяем прозрачность для анимации входа
+        if (!this.animationState.entranceComplete) {
+            this.ctx.globalAlpha = this.animationState.currentOpacity;
         }
-    }
 
-    // ===== TOUCH HANDLERS =====
-    handleTouchStart(event) {
-        event.preventDefault();
+        const centerX = this.canvas.width / 2 + (camera.x || 0);
+        const centerY = this.canvas.height / 2 + (camera.y || 0);
+        const scale = camera.zoom || 1;
+
+        // Рендерим центральную звезду (галактику)
+        this.renderSun(centerX, centerY, scale);
         
-        if (event.touches.length === 1) {
-            // Одиночное касание - начало панорамирования
-            this.isDragging = true;
-            this.lastX = event.touches[0].clientX;
-            this.lastY = event.touches[0].clientY;
-            this.velocityX = 0;
-            this.velocityY = 0;
-        } else if (event.touches.length === 2) {
-            // Мультитач - начало зума
-            this.handlePinchStart(event);
+        // Рендерим планеты и их спутники
+        if (galaxyData.children) {
+            this.renderPlanets(galaxyData.children, centerX, centerY, scale);
         }
+        
+        // Восстанавливаем контекст
+        this.ctx.restore();
+        
+        // console.log('🖼️ Кадр отрендерен'); // Закомментировано для производительности
     }
 
-    handleTouchMove(event) {
-        event.preventDefault();
+    renderSun(x, y, scale) {
+        const sunRadius = 40 * scale;
         
-        if (event.touches.length === 1 && this.isDragging && !this.isPinching) {
-            // Панорамирование одним пальцем
-            const deltaX = event.touches[0].clientX - this.lastX;
-            const deltaY = event.touches[0].clientY - this.lastY;
+        // Внешнее свечение
+        const outerGradient = this.ctx.createRadialGradient(x, y, 0, x, y, sunRadius * 2.5);
+        outerGradient.addColorStop(0, 'rgba(255, 215, 0, 0.6)');
+        outerGradient.addColorStop(0.7, 'rgba(255, 165, 0, 0.3)');
+        outerGradient.addColorStop(1, 'rgba(255, 69, 0, 0)');
+        
+        this.ctx.fillStyle = outerGradient;
+        this.ctx.fillRect(x - sunRadius * 2.5, y - sunRadius * 2.5, sunRadius * 5, sunRadius * 5);
+        
+        // Внутреннее свечение
+        const innerGradient = this.ctx.createRadialGradient(x, y, 0, x, y, sunRadius * 1.5);
+        innerGradient.addColorStop(0, 'rgba(255, 255, 200, 0.9)');
+        innerGradient.addColorStop(0.8, 'rgba(255, 215, 0, 0.7)');
+        innerGradient.addColorStop(1, 'rgba(255, 165, 0, 0)');
+        
+        this.ctx.fillStyle = innerGradient;
+        this.ctx.fillRect(x - sunRadius * 1.5, y - sunRadius * 1.5, sunRadius * 3, sunRadius * 3);
+        
+        // Ядро
+        this.ctx.fillStyle = '#FFD700';
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, sunRadius * 0.6, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // Эффект грануляции
+        this.ctx.fillStyle = 'rgba(255, 100, 0, 0.3)';
+        for (let i = 0; i < 5; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const distance = Math.random() * sunRadius * 0.4;
+            const spotX = x + Math.cos(angle) * distance;
+            const spotY = y + Math.sin(angle) * distance;
+            const spotSize = Math.random() * sunRadius * 0.2 + 2;
             
-            this.pan(deltaX, deltaY);
+            this.ctx.beginPath();
+            this.ctx.arc(spotX, spotY, spotSize, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+    }
+
+    renderPlanets(planets, centerX, centerY, scale) {
+        planets.forEach((planet, index) => {
+            const angle = (index / planets.length) * Math.PI * 2;
+            const distance = 200 * scale;
+            const planetX = centerX + Math.cos(angle) * distance;
+            const planetY = centerY + Math.sin(angle) * distance;
+            const planetRadius = 25 * scale;
             
-            this.velocityX = deltaX * 0.3;
-            this.velocityY = deltaY * 0.3;
+            // Орбита
+            if (this.showOrbits) {
+                this.ctx.strokeStyle = 'rgba(78, 205, 196, 0.3)';
+                this.ctx.lineWidth = 1;
+                this.ctx.setLineDash([5, 5]);
+                this.ctx.beginPath();
+                this.ctx.arc(centerX, centerY, distance, 0, Math.PI * 2);
+                this.ctx.stroke();
+                this.ctx.setLineDash([]);
+            }
             
-            this.lastX = event.touches[0].clientX;
-            this.lastY = event.touches[0].clientY;
-        } else if (event.touches.length === 2) {
-            // Зум двумя пальцами
-            this.handlePinchMove(event);
-        }
-    }
-
-    handleTouchEnd() {
-        this.isDragging = false;
-        this.isPinching = false;
-        this.pinchStartDistance = 0;
-    }
-
-    // ===== PINCH-TO-ZOOM =====
-    handlePinchStart(event) {
-        const touch1 = event.touches[0];
-        const touch2 = event.touches[1];
-        
-        this.pinchStartDistance = Math.hypot(
-            touch2.clientX - touch1.clientX,
-            touch2.clientY - touch1.clientY
-        );
-        this.pinchStartZoom = this.zoom;
-        this.isPinching = true;
-        this.isDragging = false; // Отключаем панорамирование при зуме
-    }
-
-    handlePinchMove(event) {
-        if (!this.isPinching) return;
-        
-        const touch1 = event.touches[0];
-        const touch2 = event.touches[1];
-        
-        const currentDistance = Math.hypot(
-            touch2.clientX - touch1.clientX,
-            touch2.clientY - touch1.clientY
-        );
-        
-        if (this.pinchStartDistance > 0) {
-            const zoomFactor = currentDistance / this.pinchStartDistance;
-            const newZoom = this.pinchStartZoom * zoomFactor;
+            // Планета
+            const planetColor = planet.config?.color || '#4ECDC4';
             
-            // Плавный зум с ограничениями
-            this.setZoom(newZoom);
-        }
+            // Свечение планеты
+            const planetGradient = this.ctx.createRadialGradient(
+                planetX, planetY, 0, planetX, planetY, planetRadius * 1.5
+            );
+            planetGradient.addColorStop(0, planetColor);
+            planetGradient.addColorStop(0.8, planetColor + '80'); // 50% прозрачности
+            planetGradient.addColorStop(1, 'transparent');
+            
+            this.ctx.fillStyle = planetGradient;
+            this.ctx.fillRect(
+                planetX - planetRadius * 1.5, 
+                planetY - planetRadius * 1.5, 
+                planetRadius * 3, 
+                planetRadius * 3
+            );
+            
+            // Ядро планеты
+            this.ctx.fillStyle = planetColor;
+            this.ctx.beginPath();
+            this.ctx.arc(planetX, planetY, planetRadius, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            // Обводка планеты
+            this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            this.ctx.lineWidth = 1;
+            this.ctx.beginPath();
+            this.ctx.arc(planetX, planetY, planetRadius, 0, Math.PI * 2);
+            this.ctx.stroke();
+            
+            // Название планеты
+            this.ctx.fillStyle = 'white';
+            this.ctx.font = `${Math.max(10, 12 * scale)}px Arial`;
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'top';
+            this.ctx.fillText(
+                planet.config?.title || planet.name, 
+                planetX, 
+                planetY + planetRadius + 10
+            );
+            
+            // Рендерим спутники
+            if (planet.children && planet.children.length > 0) {
+                this.renderMoons(planet.children, planetX, planetY, scale);
+            }
+        });
     }
 
-    // ===== WHEEL ZOOM =====
-    handleWheel(event) {
-        event.preventDefault();
-        
-        const zoomSpeed = 0.001;
-        const zoomDelta = -event.deltaY * zoomSpeed;
-        
-        // Получаем позицию мыши для зума к точке
-        const rect = this.canvas.getBoundingClientRect();
-        const mouseX = event.clientX - rect.left;
-        const mouseY = event.clientY - rect.top;
-        
-        this.zoomAtPoint(zoomDelta, mouseX, mouseY);
+    renderMoons(moons, planetX, planetY, scale) {
+        moons.forEach((moon, index) => {
+            const angle = (index / moons.length) * Math.PI * 2;
+            const distance = 60 * scale;
+            const moonX = planetX + Math.cos(angle) * distance;
+            const moonY = planetY + Math.sin(angle) * distance;
+            const moonRadius = 8 * scale;
+            
+            // Орбита луны
+            if (this.showOrbits) {
+                this.ctx.strokeStyle = 'rgba(200, 200, 200, 0.2)';
+                this.ctx.lineWidth = 0.5;
+                this.ctx.setLineDash([2, 2]);
+                this.ctx.beginPath();
+                this.ctx.arc(planetX, planetY, distance, 0, Math.PI * 2);
+                this.ctx.stroke();
+                this.ctx.setLineDash([]);
+            }
+            
+            // Луна
+            const moonColor = moon.config?.color || '#CCCCCC';
+            
+            this.ctx.fillStyle = moonColor;
+            this.ctx.beginPath();
+            this.ctx.arc(moonX, moonY, moonRadius, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            // Обводка луны
+            this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            this.ctx.lineWidth = 0.5;
+            this.ctx.beginPath();
+            this.ctx.arc(moonX, moonY, moonRadius, 0, Math.PI * 2);
+            this.ctx.stroke();
+        });
     }
 
-    // ===== CORE CAMERA METHODS =====
-    pan(deltaX, deltaY) {
-        // Инвертируем движение для естественного панорамирования
-        this.x -= deltaX / this.zoom;
-        this.y -= deltaY / this.zoom;
-        
-        this.applyBounds();
+    toggleOrbitDisplay() {
+        this.showOrbits = !this.showOrbits;
+        console.log('🔄 Орбиты:', this.showOrbits ? 'ВКЛ' : 'ВЫКЛ');
+        return this.showOrbits;
     }
 
-    zoom(delta, focusX = null, focusY = null) {
-        const newZoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.zoom + delta));
-        
-        if (focusX !== null && focusY !== null) {
-            this.zoomAtPoint(newZoom - this.zoom, focusX, focusY);
-        } else {
-            this.setZoom(newZoom);
-        }
+    setOrbitDisplay(visible) {
+        this.showOrbits = visible;
+        console.log('🔄 Орбиты установлены:', visible ? 'ВКЛ' : 'ВЫКЛ');
     }
 
-    zoomAtPoint(delta, pointX, pointY) {
-        if (!this.canvas) return;
+    animateEntrance() {
+        console.log('🎬 Запуск анимации входа');
+        this.animationState.entranceComplete = false;
+        this.animationState.currentOpacity = 0;
         
-        const worldX = (pointX - this.canvas.width / 2) / this.zoom - this.x;
-        const worldY = (pointY - this.canvas.height / 2) / this.zoom - this.y;
-        
-        const newZoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.zoom + delta));
-        const zoomFactor = newZoom / this.zoom;
-        
-        this.x = (pointX - this.canvas.width / 2) / newZoom - worldX;
-        this.y = (pointY - this.canvas.height / 2) / newZoom - worldY;
-        this.zoom = newZoom;
-        
-        this.applyBounds();
-    }
-
-    setZoom(newZoom) {
-        this.zoom = Math.max(this.minZoom, Math.min(this.maxZoom, newZoom));
-        this.applyBounds();
-    }
-
-    applyBounds() {
-        // Применяем ограничения к позиции камеры
-        this.x = Math.max(this.bounds.minX, Math.min(this.bounds.maxX, this.x));
-        this.y = Math.max(this.bounds.minY, Math.min(this.bounds.maxY, this.y));
-    }
-
-    reset() {
-        this.x = 0;
-        this.y = 0;
-        this.zoom = 1;
-        this.velocityX = 0;
-        this.velocityY = 0;
-        this.isDragging = false;
-        this.isPinching = false;
-        
-        console.log('🗺️ Камера сброшена к начальному виду');
-    }
-
-    setInitialView() {
-        this.reset();
-        
-        // Дополнительная настройка начального вида если нужно
-        if (this.canvas) {
-            // Можно добавить логику для центрирования на основе содержимого
-        }
-    }
-
-    handleResize() {
-        // При изменении размера окна можем подкорректировать камеру
-        // Например, чтобы сохранить видимость важных элементов
-        console.log('🔄 Камера адаптирована к новому размеру окна');
-    }
-
-    // ===== ANIMATION AND INERTIA =====
-    startAnimationLoop() {
-        const update = () => {
-            this.applyInertia();
-            this.animationFrameId = requestAnimationFrame(update);
+        const animate = () => {
+            this.animationState.currentOpacity += 0.02;
+            
+            if (this.animationState.currentOpacity < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                this.animationState.currentOpacity = 1;
+                this.animationState.entranceComplete = true;
+                console.log('✅ Анимация входа завершена');
+            }
         };
-        update();
-    }
-
-    applyInertia() {
-        if (this.isDragging || this.isPinching) return;
         
-        // Применяем инерцию только если есть значительная скорость
-        if (Math.abs(this.velocityX) > 0.01 || Math.abs(this.velocityY) > 0.01) {
-            this.pan(this.velocityX, this.velocityY);
-            
-            // Затухание скорости
-            this.velocityX *= this.friction;
-            this.velocityY *= this.friction;
-        } else {
-            // Останавливаем когда скорость становится очень маленькой
-            this.velocityX = 0;
-            this.velocityY = 0;
-        }
+        animate();
     }
 
-    stopAnimationLoop() {
-        if (this.animationFrameId) {
-            cancelAnimationFrame(this.animationFrameId);
-            this.animationFrameId = null;
-        }
-    }
-
-    // ===== UTILITY METHODS =====
-    screenToWorld(screenX, screenY) {
-        if (!this.canvas) return { x: 0, y: 0 };
-        
+    // Методы для отладки и информации
+    getCanvasInfo() {
         return {
-            x: (screenX - this.canvas.width / 2) / this.zoom - this.x,
-            y: (screenY - this.canvas.height / 2) / this.zoom - this.y
+            width: this.canvas.width,
+            height: this.canvas.height,
+            pixelRatio: window.devicePixelRatio,
+            context: this.ctx ? 'доступен' : 'недоступен',
+            orbitsVisible: this.showOrbits,
+            animationState: this.animationState
         };
     }
 
-    worldToScreen(worldX, worldY) {
-        if (!this.canvas) return { x: 0, y: 0 };
-        
+    getPerformanceInfo() {
         return {
-            x: (worldX + this.x) * this.zoom + this.canvas.width / 2,
-            y: (worldY + this.y) * this.zoom + this.canvas.height / 2
+            canvasSize: `${this.canvas.width}x${this.canvas.height}`,
+            memory: (this.canvas.width * this.canvas.height * 4) / (1024 * 1024) + ' MB',
+            features: {
+                filters: !!this.ctx.filter,
+                globalAlpha: !!this.ctx.globalAlpha,
+                gradients: !!this.ctx.createLinearGradient
+            }
         };
     }
 
-    getViewportBounds() {
-        if (!this.canvas) {
-            return { left: 0, right: 0, top: 0, bottom: 0 };
-        }
-        
-        const halfWidth = (this.canvas.width / 2) / this.zoom;
-        const halfHeight = (this.canvas.height / 2) / this.zoom;
-        
-        return {
-            left: -this.x - halfWidth,
-            right: -this.x + halfWidth,
-            top: -this.y - halfHeight,
-            bottom: -this.y + halfHeight
-        };
+    // Очистка ресурсов
+    clear() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        console.log('🧹 Canvas очищен');
     }
 
-    isPointInView(x, y, radius = 0) {
-        const viewport = this.getViewportBounds();
-        return x + radius >= viewport.left && 
-               x - radius <= viewport.right && 
-               y + radius >= viewport.top && 
-               y - radius <= viewport.bottom;
-    }
-
-    // ===== DEBUG AND INFO =====
-    getCameraInfo() {
-        return {
-            position: { x: this.x, y: this.y },
-            zoom: this.zoom,
-            isDragging: this.isDragging,
-            isPinching: this.isPinching,
-            velocity: { x: this.velocityX, y: this.velocityY },
-            viewport: this.getViewportBounds()
-        };
-    }
-
-    logCameraState() {
-        console.log('🎥 Состояние камеры:', this.getCameraInfo());
-    }
-
-    // ===== DESTRUCTOR =====
+    // Деструктор
     destroy() {
-        this.stopAnimationLoop();
-        
+        this.clear();
         // Удаляем обработчики событий
-        if (this.canvas) {
-            this.canvas.removeEventListener('mousedown', this._boundHandlers.mouseDown);
-            this.canvas.removeEventListener('mousemove', this._boundHandlers.mouseMove);
-            this.canvas.removeEventListener('mouseup', this._boundHandlers.mouseUp);
-            this.canvas.removeEventListener('mouseleave', this._boundHandlers.mouseLeave);
-            this.canvas.removeEventListener('touchstart', this._boundHandlers.touchStart);
-            this.canvas.removeEventListener('touchmove', this._boundHandlers.touchMove);
-            this.canvas.removeEventListener('touchend', this._boundHandlers.touchEnd);
-            this.canvas.removeEventListener('wheel', this._boundHandlers.wheel);
-        }
-        
-        console.log('🧹 CameraController уничтожен');
+        window.removeEventListener('resize', () => this.resize());
+        console.log('🧹 GalaxyRenderer уничтожен');
     }
 }
 
-export default CameraController;
+export default GalaxyRenderer;
