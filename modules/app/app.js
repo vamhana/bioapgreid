@@ -1,28 +1,25 @@
-// modules/app/app.js
-// Главный файл приложения - реэкспорт всех модулей
-
-// Core Modules
-export { GalaxyApp } from './core/app.js';
-export { GalaxyDataLoader } from './core/galaxy-data-loader.js';
-export { GalaxyRenderer } from './core/galaxy-renderer.js';
-export { CameraController } from './core/camera-controller.js';
+// Core Modules - используем default exports
+export { default as GalaxyApp } from './core/app.js';
+export { default as GalaxyDataLoader } from './core/galaxy-data-loader.js';
+export { default as GalaxyRenderer } from './core/galaxy-renderer.js';
+export { default as CameraController } from './core/camera-controller.js';
 
 // Interaction Modules
-export { ProgressionTracker } from './interaction/progression-tracker.js';
-export { EntityInteraction } from './interaction/entity-interaction.js';
+export { default as ProgressionTracker } from './interaction/progression-tracker.js';
+export { default as EntityInteraction } from './interaction/entity-interaction.js';
 
 // UI Modules
-export { UserPanel } from './ui/user-panel.js';
+export { default as UserPanel } from './ui/user-panel.js';
 export { default as MinimapNavigation } from './ui/minimap-navigation.js';
 
 // Utils Modules
-export { AssetManager } from './utils/asset-manager.js';
-export { PerformanceOptimizer } from './utils/performance-optimizer.js';
+export { default as AssetManager } from './utils/asset-manager.js';
+export { default as PerformanceOptimizer } from './utils/performance-optimizer.js';
 
-// Constants
+// Constants (остаются как есть, так как это именованные экспорты)
 export { APP_CONFIG, ENTITY_COLORS, ENTITY_SIZES } from './constants/config.js';
 
-// Version and metadata
+// Version and metadata (остаются как есть)
 export const VERSION = '1.0.0';
 export const BUILD_DATE = '2024-01-01';
 export const APP_NAME = 'Galaxy Explorer';
