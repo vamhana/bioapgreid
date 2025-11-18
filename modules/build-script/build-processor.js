@@ -8,7 +8,7 @@ import { copyFolderRecursive, createDirectoryIfNotExists, checkGalaxyExists } fr
 import { generateHTML, createGalaxyHtml, createGalaxyRedirect } from './html-generator.js';
 import { generateAppHTML } from './html-generator-app.js';
 import { addFullUrls } from './url-processor.js';
-import GalaxyScanner from './galaxy-scanner.js'; // ИСПРАВЛЕНО: default import
+import { scanGalaxy } from './galaxy-scanner.js';
 import { generateFullReport, getProjectHealth, testCriticalModules, scanProjectStructure } from './test-modules.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -442,3 +442,4 @@ function formatFileSize(bytes) {
 export default {
     buildForVercel
 };
+
