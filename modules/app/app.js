@@ -13,7 +13,7 @@ export { EntityInteraction } from './interaction/entity-interaction.js';
 
 // UI Modules
 export { UserPanel } from './ui/user-panel.js';
-export { MinimapNavigation } from './ui/minimap-navigation.js';
+export { default as MinimapNavigation } from './ui/minimap-navigation.js';
 
 // Utils Modules
 export { AssetManager } from './utils/asset-manager.js';
