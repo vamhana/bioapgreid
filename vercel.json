@@ -4,24 +4,10 @@
       "source": "/(.*).js",
       "headers": [
         {
-          "key": "Content-Type",
+          "key": "Content-Type", 
           "value": "application/javascript"
         }
       ]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/ui/(.*)",
-      "destination": "/modules/app/ui/$1"
-    },
-    {
-      "source": "/constants/(.*)",
-      "destination": "/modules/app/constants/$1"
-    },
-    {
-      "source": "/utils/(.*)", 
-      "destination": "/modules/app/utils/$1"
     }
   ]
 }
