@@ -1,14 +1,14 @@
-// modules/app/core/app.js(все проходит но ... тяжелый)
+// bioapgreid/modules/app/core/app.js
 import { GalaxyDataLoader } from './galaxy-data-loader.js';
 import { GalaxyRenderer } from './galaxy-renderer.js';
 import { CameraController } from './camera-controller.js';
 import { ProgressionTracker } from '../interaction/progression-tracker.js';
 import { EntityInteraction } from '../interaction/entity-interaction.js';
-import { UserPanel } from '../ui/user-panel.js';
-import { MinimapNavigation } from '../ui/minimap-navigation.js';
-import { AssetManager } from '../utils/asset-manager.js';
-import { PerformanceOptimizer } from '../utils/performance-optimizer.js';
-import { APP_CONFIG } from '../constants/config.js';
+import { UserPanel } from '../../ui/user-panel.js';
+import { MinimapNavigation } from '../../ui/minimap-navigation.js';
+import { AssetManager } from '../../utils/asset-manager.js';
+import { PerformanceOptimizer } from '../../utils/performance-optimizer.js';
+import { APP_CONFIG } from '../../constants/config.js';
 
 export class GalaxyApp {
     constructor() {
@@ -24,8 +24,15 @@ export class GalaxyApp {
         this.performanceOptimizer = new PerformanceOptimizer();
         
         this.isInitialized = false;
+        this.isDestroyed = false;
         this.galaxyData = null;
         this.animationFrameId = null;
+        
+        // Переменные для обработки касаний
+        this.touchStartX = 0;
+        this.touchStartY = 0;
+        this.lastTouchDistance = 0;
+        this.isPinching = false;
         
         // Диагностические данные
         this.diagnostics = {
@@ -42,10 +49,18 @@ export class GalaxyApp {
             cookieEnabled: navigator.cookieEnabled
         };
         
+        // Глобальные ссылки для отладки
+        window.galaxyApp = this;
+        window.app = this;
+        
         console.log('📱 GalaxyApp создан с диагностикой:', this.diagnostics);
     }
 
     async init() {
+        if (this.isDestroyed) {
+            throw new Error('App has been destroyed and cannot be reinitialized');
+        }
+
         console.log('🚀 Инициализация Galaxy Explorer...');
         console.log('📱 Платформа:', this.diagnostics.platform);
         console.log('🖥️  Размер экрана:', this.diagnostics.screenSize);
@@ -54,7 +69,8 @@ export class GalaxyApp {
         console.log('🎨 WebGL поддержка:', this.diagnostics.webGL);
         
         const loadingElement = document.getElementById('loading');
-        
+        let initializedComponents = [];
+
         try {
             // Обновляем статус загрузки
             if (loadingElement) {
@@ -82,6 +98,7 @@ export class GalaxyApp {
             // Загружаем данные галактики
             this.updateLoadingStatus('Загрузка данных галактики...');
             this.galaxyData = await this.dataLoader.load();
+            initializedComponents.push('dataLoader');
             
             if (!this.galaxyData) {
                 throw new Error('Не удалось загрузить данные галактики. Проверьте подключение к интернету.');
@@ -92,29 +109,45 @@ export class GalaxyApp {
             // Инициализируем рендерер
             this.updateLoadingStatus('Инициализация графики...');
             await this.renderer.init();
+            initializedComponents.push('renderer');
             
             // Инициализируем камеру
             this.camera.init(this.renderer.canvas);
+            initializedComponents.push('camera');
             
             // Загружаем прогресс пользователя
             this.updateLoadingStatus('Загрузка прогресса...');
             await this.progression.init(this.galaxyData);
+            initializedComponents.push('progression');
             
             // Инициализируем взаимодействия
             this.updateLoadingStatus('Настройка взаимодействий...');
             this.entityInteraction.init(this.renderer, this.progression, this.camera);
+            this.entityInteraction.setGalaxyData(this.galaxyData);
+            initializedComponents.push('entityInteraction');
             
             // Инициализируем UI компоненты
             this.updateLoadingStatus('Инициализация интерфейса...');
             this.userPanel.init(this.progression);
+            // Устанавливаем общее количество сущностей для прогресса
+            if (this.userPanel.setTotalEntities) {
+                const totalEntities = this.calculateTotalEntities();
+                this.userPanel.setTotalEntities(totalEntities);
+            }
+            initializedComponents.push('userPanel');
+            
             this.minimap.init(this.galaxyData, this.camera);
+            initializedComponents.push('minimap');
             
             // Предзагружаем ассеты
             this.updateLoadingStatus('Предзагрузка ресурсов...');
             await this.assetManager.preloadAssets(this.getRequiredAssets());
+            initializedComponents.push('assetManager');
             
             // Настраиваем обработчики событий
+            this.updateLoadingStatus('Запуск системы событий...');
             this.setupEventListeners();
+            initializedComponents.push('eventListeners');
             
             // Запускаем рендеринг
             this.updateLoadingStatus('Запуск визуализации...');
@@ -134,7 +167,65 @@ export class GalaxyApp {
 
         } catch (error) {
             console.error('❌ Ошибка инициализации приложения:', error);
+            
+            // Очищаем частично инициализированные компоненты
+            await this.cleanupFailedInit(initializedComponents);
             this.showError(error);
+            throw error;
+        }
+    }
+
+    // Метод для расчета общего количества сущностей
+    calculateTotalEntities() {
+        if (!this.galaxyData?.stats?.entities) return 0;
+        
+        return Object.values(this.galaxyData.stats.entities).reduce((sum, count) => sum + count, 0);
+    }
+
+    // Очистка при неудачной инициализации
+    async cleanupFailedInit(initializedComponents) {
+        console.log('🧹 Очистка частично инициализированных компонентов:', initializedComponents);
+        
+        // Останавливаем рендеринг если был запущен
+        this.stopRendering();
+        
+        // Уничтожаем компоненты в обратном порядке инициализации
+        const cleanupOrder = [
+            'eventListeners', 'assetManager', 'minimap', 'userPanel', 
+            'entityInteraction', 'progression', 'camera', 'renderer', 'dataLoader'
+        ];
+        
+        for (const component of cleanupOrder) {
+            if (initializedComponents.includes(component)) {
+                try {
+                    switch (component) {
+                        case 'renderer':
+                            // renderer не имеет метода destroy, пропускаем
+                            break;
+                        case 'camera':
+                            if (this.camera.destroy) this.camera.destroy();
+                            break;
+                        case 'entityInteraction':
+                            if (this.entityInteraction.destroy) this.entityInteraction.destroy();
+                            break;
+                        case 'minimap':
+                            if (this.minimap.destroy) this.minimap.destroy();
+                            break;
+                        case 'userPanel':
+                            if (this.userPanel.destroy) this.userPanel.destroy();
+                            break;
+                        case 'assetManager':
+                            if (this.assetManager.destroy) this.assetManager.destroy();
+                            break;
+                        case 'eventListeners':
+                            this.removeEventListeners();
+                            break;
+                    }
+                    console.log(`✅ Очищен компонент: ${component}`);
+                } catch (error) {
+                    console.error(`❌ Ошибка очистки компонента ${component}:`, error);
+                }
+            }
         }
     }
 
@@ -178,25 +269,31 @@ export class GalaxyApp {
         console.log('🎮 Обработчики событий установлены');
     }
 
+    removeEventListeners() {
+        window.removeEventListener('resize', this.handleResize);
+        document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+        document.removeEventListener('keydown', this.handleKeyDown);
+        
+        if (this.renderer?.canvas) {
+            this.renderer.canvas.removeEventListener('wheel', this.handleWheel);
+        }
+    }
+
     setupTouchEvents() {
         const canvas = this.renderer.canvas;
-        let touchStartX = 0;
-        let touchStartY = 0;
-        let lastTouchDistance = 0;
-        let isPinching = false;
 
         canvas.addEventListener('touchstart', (event) => {
             event.preventDefault();
             const touch = event.touches[0];
-            touchStartX = touch.clientX;
-            touchStartY = touch.clientY;
+            this.touchStartX = touch.clientX;
+            this.touchStartY = touch.clientY;
             
             // Обработка мультитач для зума
             if (event.touches.length === 2) {
-                isPinching = true;
+                this.isPinching = true;
                 const touch1 = event.touches[0];
                 const touch2 = event.touches[1];
-                lastTouchDistance = Math.hypot(
+                this.lastTouchDistance = Math.hypot(
                     touch2.clientX - touch1.clientX,
                     touch2.clientY - touch1.clientY
                 );
@@ -206,18 +303,18 @@ export class GalaxyApp {
         canvas.addEventListener('touchmove', (event) => {
             event.preventDefault();
             
-            if (event.touches.length === 1 && !isPinching) {
+            if (event.touches.length === 1 && !this.isPinching) {
                 // Панорамирование
                 const touch = event.touches[0];
-                const deltaX = touch.clientX - touchStartX;
-                const deltaY = touch.clientY - touchStartY;
+                const deltaX = touch.clientX - this.touchStartX;
+                const deltaY = touch.clientY - this.touchStartY;
                 
                 // Применяем чувствительность в зависимости от платформы
                 const sensitivity = this.diagnostics.platform === 'iOS' ? 0.3 : 0.5;
                 this.camera.pan(deltaX * sensitivity, deltaY * sensitivity);
                 
-                touchStartX = touch.clientX;
-                touchStartY = touch.clientY;
+                this.touchStartX = touch.clientX;
+                this.touchStartY = touch.clientY;
             } else if (event.touches.length === 2) {
                 // Зум
                 const touch1 = event.touches[0];
@@ -227,25 +324,24 @@ export class GalaxyApp {
                     touch2.clientY - touch1.clientY
                 );
                 
-                if (lastTouchDistance > 0) {
-                    const zoomDelta = (currentDistance - lastTouchDistance) * 0.01;
+                if (this.lastTouchDistance > 0) {
+                    const zoomDelta = (currentDistance - this.lastTouchDistance) * 0.01;
                     this.camera.zoom(zoomDelta);
                 }
                 
-                lastTouchDistance = currentDistance;
+                this.lastTouchDistance = currentDistance;
             }
         });
 
         canvas.addEventListener('touchend', (event) => {
             if (event.touches.length < 2) {
-                isPinching = false;
-                lastTouchDistance = 0;
+                this.isPinching = false;
+                this.lastTouchDistance = 0;
             }
             
             // Обработка тапа
-            if (event.touches.length === 0) {
-                // Можно добавить обработку клика по объектам
-                this.entityInteraction.handleTap(touchStartX, touchStartY);
+            if (event.touches.length === 0 && !this.isPinching) {
+                this.entityInteraction.handleTap(this.touchStartX, this.touchStartY);
             }
         });
 
@@ -298,6 +394,11 @@ export class GalaxyApp {
         this.renderer.resize();
         this.camera.handleResize();
         
+        // Обновляем миникарту при изменении размера
+        if (this.minimap.handleResize) {
+            this.minimap.handleResize();
+        }
+        
         // Перерисовываем сцену
         if (this.isInitialized) {
             this.renderer.render(this.galaxyData, this.camera);
@@ -320,7 +421,12 @@ export class GalaxyApp {
         }
 
         const renderLoop = (timestamp) => {
-            if (this.isInitialized) {
+            // Проверяем, не уничтожено ли приложение
+            if (this.isDestroyed || !this.isInitialized) {
+                return;
+            }
+
+            try {
                 // Обновляем оптимизатор производительности
                 this.performanceOptimizer.update();
                 
@@ -328,7 +434,7 @@ export class GalaxyApp {
                 this.renderer.render(this.galaxyData, this.camera);
                 
                 // Обновляем миникарту если нужно
-                if (this.minimap.isVisible) {
+                if (this.minimap.isVisible && this.minimap.render) {
                     this.minimap.render();
                 }
                 
@@ -338,9 +444,14 @@ export class GalaxyApp {
                 } else {
                     console.warn('⚠️ Снижение FPS, активирован троттлинг');
                     setTimeout(() => {
-                        this.animationFrameId = requestAnimationFrame(renderLoop);
+                        if (!this.isDestroyed) {
+                            this.animationFrameId = requestAnimationFrame(renderLoop);
+                        }
                     }, 1000 / 30); // Ограничиваем до 30 FPS
                 }
+            } catch (error) {
+                console.error('❌ Ошибка в цикле рендеринга:', error);
+                this.stopRendering();
             }
         };
         
@@ -364,7 +475,9 @@ export class GalaxyApp {
         this.showWelcomeMessage();
         
         // Запускаем начальную анимацию
-        this.renderer.animateEntrance();
+        if (this.renderer.animateEntrance) {
+            this.renderer.animateEntrance();
+        }
     }
 
     showWelcomeMessage() {
@@ -525,7 +638,7 @@ export class GalaxyApp {
     }
 
     toggleMinimap() {
-        if (this.isInitialized) {
+        if (this.isInitialized && this.minimap.toggleVisibility) {
             this.minimap.toggleVisibility();
             const minimapVisible = this.minimap.isVisible;
             console.log('🗺️ Миникарта:', minimapVisible ? 'вкл' : 'выкл');
@@ -585,6 +698,11 @@ export class GalaxyApp {
         if (progressCount) {
             progressCount.textContent = this.progression.getDiscoveredCount();
         }
+        
+        // Обновляем прогресс в UserPanel
+        if (this.userPanel.updateProgress) {
+            this.userPanel.updateProgress();
+        }
     }
 
     updateUI() {
@@ -635,15 +753,41 @@ export class GalaxyApp {
 
     // Метод для очистки ресурсов
     destroy() {
-        this.stopRendering();
+        console.log('🧹 Начинаем уничтожение GalaxyApp...');
+        
+        this.isDestroyed = true;
         this.isInitialized = false;
         
-        // Очищаем обработчики событий
-        window.removeEventListener('resize', this.handleResize);
-        document.removeEventListener('visibilitychange', this.handleVisibilityChange);
-        document.removeEventListener('keydown', this.handleKeyDown);
+        // Останавливаем рендеринг
+        this.stopRendering();
         
-        console.log('🧹 GalaxyApp уничтожен, ресурсы освобождены');
+        // Уничтожаем компоненты в правильном порядке
+        try {
+            // Сначала UI компоненты
+            if (this.minimap.destroy) this.minimap.destroy();
+            if (this.userPanel.destroy) this.userPanel.destroy();
+            if (this.entityInteraction.destroy) this.entityInteraction.destroy();
+            
+            // Затем системные компоненты
+            if (this.camera.destroy) this.camera.destroy();
+            if (this.assetManager.destroy) this.assetManager.destroy();
+            if (this.performanceOptimizer.destroy) this.performanceOptimizer.destroy();
+            
+            // Очищаем обработчики событий
+            this.removeEventListeners();
+            
+            // Очищаем глобальные ссылки
+            if (window.galaxyApp === this) {
+                window.galaxyApp = null;
+            }
+            if (window.app === this) {
+                window.app = null;
+            }
+            
+            console.log('✅ GalaxyApp полностью уничтожен');
+        } catch (error) {
+            console.error('❌ Ошибка при уничтожении GalaxyApp:', error);
+        }
     }
 }
 
@@ -662,5 +806,4 @@ window.addEventListener('unhandledrejection', (event) => {
     console.error('🚨 Unhandled Promise Rejection:', event.reason);
 });
 
-// Экспортируем класс для использования в других модулях
 export default GalaxyApp;
