@@ -22,6 +22,7 @@ export async function buildForVercel() {
     const appModulesPath = path.join(__dirname, '../../modules/app');
     
     if (!checkGalaxyExists(galaxyPath)) {
+        console.error('❌ Галактика не найдена. Сборка прервана.');
         process.exit(1);
     }
     
@@ -44,15 +45,17 @@ export async function buildForVercel() {
         copyFolderRecursive(galaxyPath, galaxyPublicPath);
         console.log('✅ Папка "galaxy" скопирована в public для веб-доступа');
         
-        // Шаг 3: Копируем модули приложения
-        console.log('⚙️  Шаг 3: Копирование модулей приложения...');
+        // Шаг 3: Копируем модули приложения с проверкой экспортов
+        console.log('⚙️  Шаг 3: Копирование и проверка модулей приложения...');
         if (fs.existsSync(appModulesPath)) {
             const appPublicPath = path.join(publicDir, 'app');
             copyFolderRecursive(appModulesPath, appPublicPath);
             
-            // Проверяем структуру скопированных модулей
+            // Проверяем и исправляем экспорты в модулях
+            await fixModuleExports(appPublicPath);
+            
             const appFiles = getAllFiles(appPublicPath);
-            console.log(`✅ Модули приложения скопированы: ${appFiles.length} файлов`);
+            console.log(`✅ Модули приложения скопированы и проверены: ${appFiles.length} файлов`);
             
             // Логируем основные модули
             const coreModules = appFiles.filter(file => 
@@ -145,6 +148,104 @@ export async function buildForVercel() {
     }
 }
 
+// НОВАЯ ФУНКЦИЯ: Исправление экспортов в модулях
+async function fixModuleExports(appPublicPath) {
+    console.log('   🔧 Проверка и исправление экспортов модулей...');
+    
+    const filesToCheck = [
+        'core/app.js',
+        'core/galaxy-data-loader.js', 
+        'core/galaxy-renderer.js',
+        'core/camera-controller.js',
+        'interaction/progression-tracker.js',
+        'interaction/entity-interaction.js',
+        'ui/user-panel.js',
+        'ui/minimap-navigation.js',
+        'utils/asset-manager.js',
+        'utils/performance-optimizer.js'
+    ];
+    
+    let fixedCount = 0;
+    
+    for (const filePath of filesToCheck) {
+        const fullPath = path.join(appPublicPath, filePath);
+        if (fs.existsSync(fullPath)) {
+            try {
+                const content = fs.readFileSync(fullPath, 'utf8');
+                const fixedContent = ensureDefaultExport(content, filePath);
+                
+                if (fixedContent !== content) {
+                    fs.writeFileSync(fullPath, fixedContent);
+                    fixedCount++;
+                    console.log(`     ✅ Исправлен: ${filePath}`);
+                }
+            } catch (error) {
+                console.warn(`     ⚠️ Ошибка при проверке ${filePath}:`, error.message);
+            }
+        } else {
+            console.warn(`     ⚠️ Файл не найден: ${filePath}`);
+        }
+    }
+    
+    if (fixedCount > 0) {
+        console.log(`   🔧 Исправлено экспортов: ${fixedCount} файлов`);
+    } else {
+        console.log('   ✅ Все экспорты в порядке');
+    }
+}
+
+// НОВАЯ ФУНКЦИЯ: Обеспечение default export в модулях
+function ensureDefaultExport(content, filePath) {
+    const className = getClassNameFromPath(filePath);
+    
+    // Проверяем, есть ли уже export default
+    if (content.includes('export default') || content.includes('export default class')) {
+        return content; // Уже есть default export
+    }
+    
+    // Ищем именованный экспорт класса
+    const classExportRegex = new RegExp(`export\\s+class\\s+${className}`);
+    if (classExportRegex.test(content)) {
+        // Добавляем export default после именованного экспорта
+        return content.replace(
+            classExportRegex, 
+            `export class ${className}`
+        ) + `\n\nexport default ${className};\n`;
+    }
+    
+    // Ищем класс без экспорта (маловероятно, но на всякий случай)
+    const classRegex = new RegExp(`class\\s+${className}`);
+    if (classRegex.test(content) && !content.includes('export')) {
+        return content.replace(
+            classRegex,
+            `export class ${className}`
+        ) + `\n\nexport default ${className};\n`;
+    }
+    
+    return content;
+}
+
+// НОВАЯ ФУНКЦИЯ: Получение имени класса из пути файла
+function getClassNameFromPath(filePath) {
+    const filename = path.basename(filePath, '.js');
+    
+    // Специальные случаи
+    const specialCases = {
+        'app.js': 'GalaxyApp',
+        'galaxy-data-loader.js': 'GalaxyDataLoader',
+        'galaxy-renderer.js': 'GalaxyRenderer', 
+        'camera-controller.js': 'CameraController',
+        'progression-tracker.js': 'ProgressionTracker',
+        'entity-interaction.js': 'EntityInteraction',
+        'user-panel.js': 'UserPanel',
+        'minimap-navigation.js': 'MinimapNavigation',
+        'asset-manager.js': 'AssetManager',
+        'performance-optimizer.js': 'PerformanceOptimizer'
+    };
+    
+    return specialCases[filename] || filename.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
+}
+
 // Вспомогательная функция для получения всех файлов
 function getAllFiles(dirPath, arrayOfFiles = []) {
     const files = fs.readdirSync(dirPath);
@@ -169,7 +270,7 @@ function createFallbackAppModules(publicDir) {
     const corePath = path.join(appPublicPath, 'core');
     createDirectoryIfNotExists(corePath);
     
-    // Создаем минимальный app.js для отладки
+    // Создаем минимальный app.js для отладки с правильными экспортами
     const appJsContent = `// Fallback app.js for debugging
 export class GalaxyApp {
     constructor() {
@@ -207,12 +308,14 @@ export class GalaxyApp {
         if (/Mac/.test(ua)) return 'Mac';
         return 'Unknown';
     }
-}`;
+}
+
+// Default export для совместимости
+export default GalaxyApp;`;
 
     fs.writeFileSync(path.join(corePath, 'app.js'), appJsContent);
     console.log('⚠️ Созданы fallback модули приложения для отладки');
 }
-
 function createModuleTestFile(publicDir, fullReport) {
     const testPath = path.join(publicDir, 'module-test.html');
     
@@ -805,3 +908,4 @@ function formatFileSize(bytes) {
 export default {
     buildForVercel
 };
+
