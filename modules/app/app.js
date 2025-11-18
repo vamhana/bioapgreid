@@ -1,23 +1,22 @@
-// Core Modules - ИСПРАВЛЕННЫЕ ПУТИ
-export { GalaxyApp } from '/modules/app/core/app.js';
-export { GalaxyDataLoader } from '/modules/app/core/galaxy-data-loader.js';
-export { GalaxyRenderer } from '/modules/app/core/galaxy-renderer.js';
-export { CameraController } from '/modules/app/core/camera-controller.js';
+export { GalaxyApp } from './core/app.js';
+export { GalaxyDataLoader } from './core/galaxy-data-loader.js';
+export { GalaxyRenderer } from './core/galaxy-renderer.js';
+export { CameraController } from './core/camera-controller.js';
 
-// Interaction Modules - ИСПРАВЛЕННЫЕ ПУТИ
-export { ProgressionTracker } from '/modules/app/interaction/progression-tracker.js';
-export { EntityInteraction } from '/modules/app/interaction/entity-interaction.js';
+// Interaction Modules
+export { ProgressionTracker } from './interaction/progression-tracker.js';
+export { EntityInteraction } from './interaction/entity-interaction.js';
 
-// UI Modules - ИСПРАВЛЕННЫЕ ПУТИ
-export { UserPanel } from '/modules/app/ui/user-panel.js';
-export { MinimapNavigation } from '/modules/app/ui/minimap-navigation.js';
+// UI Modules
+export { UserPanel } from './ui/user-panel.js';
+export { MinimapNavigation } from './ui/minimap-navigation.js';
 
-// Utils Modules - ИСПРАВЛЕННЫЕ ПУТИ
-export { AssetManager } from '/modules/app/utils/asset-manager.js';
-export { PerformanceOptimizer } from '/modules/app/utils/performance-optimizer.js';
+// Utils Modules
+export { AssetManager } from './utils/asset-manager.js';
+export { PerformanceOptimizer } from './utils/performance-optimizer.js';
 
-// Constants - ИСПРАВЛЕННЫЕ ПУТИ
-export { APP_CONFIG, ENTITY_COLORS, ENTITY_SIZES } from '/modules/app/constants/config.js';
+// Constants
+export { APP_CONFIG, ENTITY_COLORS, ENTITY_SIZES } from './constants/config.js';
 
 // Version and metadata
 export const VERSION = '1.0.0';
@@ -82,32 +81,34 @@ export async function validateModules() {
 }
 
 // Global initialization helper
-export async function initGalaxyExplorer(canvasId = 'galaxy-canvas') {
+export function initGalaxyExplorer(canvasId = 'galaxy-canvas') {
     console.log('🚀 Инициализация Galaxy Explorer...');
     
-    try {
-        // Проверяем доступность всех модулей
-        const validation = await validateModules();
-        if (!validation.allLoaded) {
-            throw new Error(`Не все модули загружены: ${validation.loadedCount}/${validation.totalCount}`);
-        }
+    return new Promise(async (resolve, reject) => {
+        try {
+            // Проверяем доступность всех модулей
+            const validation = await validateModules();
+            if (!validation.allLoaded) {
+                throw new Error(`Не все модули загружены: ${validation.loadedCount}/${validation.totalCount}`);
+            }
 
-        // Создаем главное приложение
-        const app = new GalaxyApp();
-        
-        // Сохраняем глобальную ссылку для отладки
-        window.galaxyApp = app;
-        
-        // Инициализируем приложение
-        await app.init();
-        
-        console.log('🌌 Galaxy Explorer успешно запущен!');
-        return app;
-        
-    } catch (error) {
-        console.error('❌ Ошибка инициализации Galaxy Explorer:', error);
-        throw error;
-    }
+            // Создаем главное приложение
+            const app = new GalaxyApp();
+            
+            // Сохраняем глобальную ссылку для отладки
+            window.galaxyApp = app;
+            
+            // Инициализируем приложение
+            await app.init();
+            
+            console.log('🌌 Galaxy Explorer успешно запущен!');
+            resolve(app);
+            
+        } catch (error) {
+            console.error('❌ Ошибка инициализации Galaxy Explorer:', error);
+            reject(error);
+        }
+    });
 }
 
 // Auto-initialize if script is loaded directly
