@@ -137,7 +137,9 @@ export class EntityInteraction {
         this.selectedEntity = entity;
 
         // Отмечаем как исследованную
-        this.progression.discoverEntity(entity.id || entity.path);
+        if (this.progression && this.progression.discoverEntity) {
+            this.progression.discoverEntity(entity.id || entity.path);
+        }
         
         // Показываем информацию о сущности
         this.showEntityInfo(entity);
@@ -333,7 +335,8 @@ export class EntityInteraction {
         `;
 
         const entityIcon = this.getEntityIcon(entity.type);
-        const isDiscovered = this.progression.isDiscovered(entity.id || entity.path);
+        const isDiscovered = this.progression && this.progression.isDiscovered ? 
+            this.progression.isDiscovered(entity.id || entity.path) : false;
 
         infoPanel.innerHTML = `
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
@@ -349,11 +352,11 @@ export class EntityInteraction {
             </div>
             
             <div style="display: flex; gap: 10px;">
-                <button onclick="entityInteraction.openEntityPage(entityInteraction.selectedEntity)" 
+                <button onclick="window.entityInteraction.openEntityPage(window.entityInteraction.selectedEntity)" 
                         style="background: #4ECDC4; color: #0c0c2e; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: bold;">
                     🌐 Открыть
                 </button>
-                <button onclick="entityInteraction.deselectEntity()" 
+                <button onclick="window.entityInteraction.deselectEntity()" 
                         style="background: rgba(255,255,255,0.1); color: white; border: 1px solid #4ECDC4; padding: 8px 16px; border-radius: 20px; cursor: pointer;">
                     ✕ Закрыть
                 </button>
@@ -433,12 +436,60 @@ export class EntityInteraction {
         }
     }
 
+    // ===== METHODS FOR APP.JS INTEGRATION =====
+    
+    // Метод для обработки наведения мыши (вызывается из app.js)
+    handleMouseOver(entityData) {
+        const previousHovered = this.hoveredEntity;
+        
+        if (entityData && entityData.entityData) {
+            this.hoveredEntity = entityData.entityData;
+        } else {
+            this.hoveredEntity = null;
+        }
+
+        // Обновляем курсор
+        if (this.hoveredEntity && this.renderer?.canvas) {
+            this.renderer.canvas.style.cursor = 'pointer';
+        } else if (this.renderer?.canvas) {
+            this.renderer.canvas.style.cursor = 'default';
+        }
+
+        // Если ховер изменился
+        if (previousHovered !== this.hoveredEntity) {
+            this.onHoverChange(previousHovered, this.hoveredEntity);
+        }
+    }
+
+    // Метод для обработки клика по entity (вызывается из app.js)
+    handleEntityClick(entityData) {
+        if (!entityData) return;
+
+        const entity = entityData.entityData || entityData;
+        this.selectEntity(entity);
+    }
+
+    // Методы для обработки касаний (вызываются из app.js)
+    handleTouchStart(event) {
+        // Базовая реализация для app.js
+        event.preventDefault();
+    }
+
+    handleTouchMove(event) {
+        // Базовая реализация для app.js
+        event.preventDefault();
+    }
+
+    handleTouchEnd(event) {
+        // Базовая реализация для app.js
+    }
+
     // ===== DEBUG METHODS =====
     logInteractionState() {
         console.log('🎯 Состояние взаимодействий:', {
             hovered: this.hoveredEntity?.name,
             selected: this.selectedEntity?.name,
-            discoveredCount: this.progression.getDiscoveredCount()
+            discoveredCount: this.progression ? this.progression.getDiscoveredCount() : 0
         });
     }
 
@@ -450,11 +501,11 @@ export class EntityInteraction {
         // Удаляем обработчики событий
         if (this.renderer?.canvas) {
             const canvas = this.renderer.canvas;
-            const events = ['mousemove', 'click', 'mouseleave', 'touchstart', 'touchend'];
-            
-            events.forEach(event => {
-                canvas.removeEventListener(event, this[`handle${event.charAt(0).toUpperCase() + event.slice(1)}`]);
-            });
+            canvas.removeEventListener('mousemove', this.handleMouseMove);
+            canvas.removeEventListener('click', this.handleClick);
+            canvas.removeEventListener('mouseleave', this.handleMouseLeave);
+            canvas.removeEventListener('touchstart', this.handleTouchStart);
+            canvas.removeEventListener('touchend', this.handleTouchEnd);
         }
         
         document.removeEventListener('keydown', this.handleKeyDown);
