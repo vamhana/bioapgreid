@@ -142,6 +142,7 @@ export class GalaxyApp {
             this.updateLoadingStatus('Настройка взаимодействий...');
             this.entityInteraction = new EntityInteraction();
             this.entityInteraction.init(this.renderer, this.progression, this.camera);
+            this.entityInteraction.setGalaxyData(this.galaxyData);
             
             // 7. Инициализируем UI компоненты
             this.updateLoadingStatus('Инициализация интерфейса...');
@@ -278,16 +279,22 @@ export class GalaxyApp {
         
         canvas.addEventListener('touchstart', (event) => {
             event.preventDefault();
-            this.entityInteraction.handleTouchStart(event);
+            if (this.entityInteraction && this.entityInteraction.handleTouchStart) {
+                this.entityInteraction.handleTouchStart(event);
+            }
         });
 
         canvas.addEventListener('touchmove', (event) => {
             event.preventDefault();
-            this.entityInteraction.handleTouchMove(event);
+            if (this.entityInteraction && this.entityInteraction.handleTouchMove) {
+                this.entityInteraction.handleTouchMove(event);
+            }
         });
 
         canvas.addEventListener('touchend', (event) => {
-            this.entityInteraction.handleTouchEnd(event);
+            if (this.entityInteraction && this.entityInteraction.handleTouchEnd) {
+                this.entityInteraction.handleTouchEnd(event);
+            }
         });
 
         console.log('👆 Обработчики касаний настроены для мобильных устройств');
@@ -353,7 +360,7 @@ export class GalaxyApp {
         const y = event.clientY - rect.top;
         
         const entityData = this.renderer.getEntityAtScreenPoint(x, y, this.camera);
-        if (entityData) {
+        if (entityData && this.entityInteraction && this.entityInteraction.handleEntityClick) {
             this.entityInteraction.handleEntityClick(entityData);
             this.appState.selectedEntity = entityData;
         }
@@ -365,7 +372,9 @@ export class GalaxyApp {
         const y = event.clientY - rect.top;
         
         const entityData = this.renderer.getEntityAtScreenPoint(x, y, this.camera);
-        this.entityInteraction.handleMouseOver(entityData);
+        if (this.entityInteraction && this.entityInteraction.handleMouseOver) {
+            this.entityInteraction.handleMouseOver(entityData);
+        }
     }
 
     handleContextMenu(event) {
@@ -408,7 +417,9 @@ export class GalaxyApp {
         const renderLoop = (timestamp) => {
             if (this.isInitialized) {
                 // Обновляем оптимизатор производительности
-                this.performanceOptimizer.update();
+                if (this.performanceOptimizer && this.performanceOptimizer.update) {
+                    this.performanceOptimizer.update();
+                }
                 
                 // Рендерим 3D сцену
                 this.renderer.render(this.galaxyData, this.camera);
@@ -422,13 +433,19 @@ export class GalaxyApp {
                 this.updatePerformanceStats();
                 
                 // Проверяем необходимость троттлинга
-                if (!this.performanceOptimizer.shouldThrottle()) {
+                const shouldThrottle = this.performanceOptimizer && 
+                                     this.performanceOptimizer.shouldThrottle && 
+                                     this.performanceOptimizer.shouldThrottle();
+                
+                if (!shouldThrottle) {
                     this.animationFrameId = requestAnimationFrame(renderLoop);
                 } else {
                     console.warn('⚠️ Снижение FPS, активирован троттлинг');
+                    const delay = this.performanceOptimizer.getThrottleDelay ? 
+                                this.performanceOptimizer.getThrottleDelay() : 33;
                     setTimeout(() => {
                         this.animationFrameId = requestAnimationFrame(renderLoop);
-                    }, 1000 / 30); // Ограничиваем до 30 FPS
+                    }, delay);
                 }
             }
         };
@@ -446,12 +463,12 @@ export class GalaxyApp {
     }
 
     updatePerformanceStats() {
-        if (this.performanceOptimizer && this.renderer) {
+        if (this.performanceOptimizer && this.performanceOptimizer.updateStats && this.renderer) {
             const rendererStats = this.renderer.getPerformanceInfo();
             this.performanceOptimizer.updateStats({
                 fps: rendererStats.fps,
-                frameTime: parseFloat(rendererStats.frameTime),
-                memory: this.dataLoader?.getMemoryUsage()
+                frameTime: parseFloat(rendererStats.frameTime) || 0,
+                memory: this.dataLoader?.getMemoryUsage?.() || {}
             });
         }
     }
@@ -460,10 +477,14 @@ export class GalaxyApp {
         console.log('🎬 Запуск анимации входа Three.js...');
         
         // Анимация плавного появления камеры
-        this.camera.setInitialView();
+        if (this.camera && this.camera.setInitialView) {
+            this.camera.setInitialView();
+        }
         
         // Запускаем анимацию входа рендерера
-        this.renderer.animateEntrance();
+        if (this.renderer && this.renderer.animateEntrance) {
+            this.renderer.animateEntrance();
+        }
         
         // Показываем приветственное сообщение
         this.showWelcomeMessage();
@@ -514,7 +535,7 @@ export class GalaxyApp {
         
         welcomeMessage.innerHTML = `
             <h3 style="margin: 0 0 10px 0; color: #4ECDC4;">🌌 Добро пожаловать в 3D галактику!</h3>
-            <p style="margin: 0; font-size: 14px;">Исследуйте галактику ${this.galaxyData.name}</p>
+            <p style="margin: 0; font-size: 14px;">Исследуйте галактику ${this.galaxyData?.name || '3D'}</p>
             <p style="margin: 10px 0 0 0; font-size: 12px; opacity: 0.7;">
                 ${touchInstructions}<br>
                 Нажмите O для переключения орбит<br>
@@ -569,7 +590,7 @@ export class GalaxyApp {
 
     getThreeJSVersion() {
         try {
-            return THREE.REVISION || 'Unknown';
+            return THREE?.REVISION || 'Unknown';
         } catch (e) {
             return 'Not loaded';
         }
@@ -626,14 +647,14 @@ export class GalaxyApp {
 
     // Public API methods
     resetView() {
-        if (this.isInitialized) {
+        if (this.isInitialized && this.camera && this.camera.reset) {
             this.camera.reset();
             console.log('🗺️ 3D камера сброшена к обзору');
         }
     }
 
     toggleOrbits() {
-        if (this.isInitialized) {
+        if (this.isInitialized && this.renderer && this.renderer.setOrbitDisplay) {
             this.renderer.setOrbitDisplay(!this.renderer.renderConfig.showOrbits);
             const orbitsVisible = this.renderer.renderConfig.showOrbits;
             console.log('🔄 Отображение орбит:', orbitsVisible ? 'вкл' : 'выкл');
@@ -643,7 +664,7 @@ export class GalaxyApp {
     }
 
     toggleLabels() {
-        if (this.isInitialized) {
+        if (this.isInitialized && this.renderer && this.renderer.setLabelDisplay) {
             this.renderer.setLabelDisplay(!this.renderer.renderConfig.showLabels);
             const labelsVisible = this.renderer.renderConfig.showLabels;
             console.log('🏷️ Отображение меток:', labelsVisible ? 'вкл' : 'выкл');
@@ -653,7 +674,7 @@ export class GalaxyApp {
     }
 
     toggleGrid() {
-        if (this.isInitialized) {
+        if (this.isInitialized && this.renderer && this.renderer.setGridDisplay) {
             this.renderer.setGridDisplay(!this.renderer.renderConfig.showGrid);
             const gridVisible = this.renderer.renderConfig.showGrid;
             console.log('📐 Отображение сетки:', gridVisible ? 'вкл' : 'выкл');
@@ -663,7 +684,7 @@ export class GalaxyApp {
     }
 
     toggleMinimap() {
-        if (this.isInitialized && this.minimap) {
+        if (this.isInitialized && this.minimap && this.minimap.toggleVisibility) {
             this.minimap.toggleVisibility();
             const minimapVisible = this.minimap.isVisible;
             console.log('🗺️ Миникарта:', minimapVisible ? 'вкл' : 'выкл');
@@ -691,19 +712,21 @@ export class GalaxyApp {
     }
 
     showDebugInfo() {
-        const rendererInfo = this.renderer.getRendererInfo();
-        const performanceInfo = this.renderer.getPerformanceInfo();
-        const memoryInfo = this.dataLoader.getMemoryUsage();
+        if (!this.renderer || !this.dataLoader) return;
+        
+        const rendererInfo = this.renderer.getRendererInfo ? this.renderer.getRendererInfo() : {};
+        const performanceInfo = this.renderer.getPerformanceInfo ? this.renderer.getPerformanceInfo() : {};
+        const memoryInfo = this.dataLoader.getMemoryUsage ? this.dataLoader.getMemoryUsage() : {};
         
         console.group('🐛 Debug Information');
         console.log('🎨 Renderer:', rendererInfo);
         console.log('⚡ Performance:', performanceInfo);
         console.log('🧠 Memory:', memoryInfo);
-        console.log('🎥 Camera:', this.camera.getCameraInfo());
+        console.log('🎥 Camera:', this.camera ? this.camera.getCameraInfo() : {});
         console.log('🌌 Galaxy Data:', {
-            entities: this.galaxyData.stats?.total,
-            has3DData: !!this.galaxyData.threeData,
-            loadedAt: this.galaxyData.loadedAt
+            entities: this.galaxyData?.stats?.total,
+            has3DData: !!this.galaxyData?.threeData,
+            loadedAt: this.galaxyData?.loadedAt
         });
         console.groupEnd();
     }
@@ -756,7 +779,7 @@ export class GalaxyApp {
 
     updateProgressDisplay() {
         const progressCount = document.getElementById('progress-count');
-        if (progressCount && this.progression) {
+        if (progressCount && this.progression && this.progression.getDiscoveredCount) {
             progressCount.textContent = this.progression.getDiscoveredCount();
         }
     }
@@ -793,20 +816,20 @@ export class GalaxyApp {
     }
 
     getPerformanceStats() {
-        const rendererStats = this.renderer.getPerformanceInfo();
+        const rendererStats = this.renderer?.getPerformanceInfo ? this.renderer.getPerformanceInfo() : {};
         return {
-            fps: rendererStats.fps,
-            frameTime: rendererStats.frameTime,
+            fps: rendererStats.fps || 0,
+            frameTime: rendererStats.frameTime || '0ms',
             memory: this.diagnostics.memory,
-            drawCalls: rendererStats.drawCalls,
-            renderedMeshes: rendererStats.renderedMeshes,
-            totalMeshes: rendererStats.totalMeshes,
+            drawCalls: rendererStats.drawCalls || 0,
+            renderedMeshes: rendererStats.renderedMeshes || 0,
+            totalMeshes: rendererStats.totalMeshes || 0,
             threeJSVersion: this.diagnostics.threeJSVersion
         };
     }
 
     getRendererInfo() {
-        return this.renderer.getRendererInfo();
+        return this.renderer?.getRendererInfo ? this.renderer.getRendererInfo() : {};
     }
 
     getAppState() {
@@ -814,7 +837,7 @@ export class GalaxyApp {
     }
 
     forceRedraw() {
-        if (this.isInitialized) {
+        if (this.isInitialized && this.renderer && this.renderer.render) {
             this.renderer.render(this.galaxyData, this.camera);
             console.log('🔄 Принудительная перерисовка 3D сцены');
         }
@@ -838,14 +861,14 @@ export class GalaxyApp {
         }
 
         // Уничтожаем компоненты
-        if (this.renderer) this.renderer.dispose();
-        if (this.camera) this.camera.destroy();
-        if (this.dataLoader) this.dataLoader.destroy();
-        if (this.entityInteraction) this.entityInteraction.destroy();
-        if (this.userPanel) this.userPanel.destroy();
-        if (this.minimap) this.minimap.destroy();
-        if (this.assetManager) this.assetManager.destroy();
-        if (this.performanceOptimizer) this.performanceOptimizer.destroy();
+        if (this.renderer && this.renderer.dispose) this.renderer.dispose();
+        if (this.camera && this.camera.destroy) this.camera.destroy();
+        if (this.dataLoader && this.dataLoader.destroy) this.dataLoader.destroy();
+        if (this.entityInteraction && this.entityInteraction.destroy) this.entityInteraction.destroy();
+        if (this.userPanel && this.userPanel.destroy) this.userPanel.destroy();
+        if (this.minimap && this.minimap.destroy) this.minimap.destroy();
+        if (this.assetManager && this.assetManager.destroy) this.assetManager.destroy();
+        if (this.performanceOptimizer && this.performanceOptimizer.dispose) this.performanceOptimizer.dispose();
         
         console.log('🧹 GalaxyApp уничтожен, все ресурсы освобождены');
     }
