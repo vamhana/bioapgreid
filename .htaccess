@@ -1,0 +1,11 @@
+<IfModule mod_mime.c>
+    AddType application/javascript .js
+    AddType text/css .css
+    AddType application/json .json
+</IfModule>
+
+<IfModule mod_headers.c>
+    <FilesMatch "\.(js|css|json)$">
+        Header set Content-Type "application/javascript"
+    </FilesMatch>
+</IfModule>
