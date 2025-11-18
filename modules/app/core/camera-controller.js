@@ -28,7 +28,30 @@ export class CameraController {
         this.canvas = null;
         this.animationFrameId = null;
         
+        // Для pinch-to-zoom
+        this.pinchStartDistance = 0;
+        this.pinchStartZoom = 1;
+        this.isPinching = false;
+        
+        // Привязка методов для корректного удаления обработчиков
+        this._boundHandlers = {};
+        this.bindEventHandlers();
+        
         console.log('🎥 CameraController создан');
+    }
+
+    bindEventHandlers() {
+        // Привязываем методы к экземпляру для корректного удаления обработчиков
+        this._boundHandlers = {
+            mouseDown: this.handleMouseDown.bind(this),
+            mouseMove: this.handleMouseMove.bind(this),
+            mouseUp: this.handleMouseUp.bind(this),
+            mouseLeave: this.handleMouseUp.bind(this),
+            touchStart: this.handleTouchStart.bind(this),
+            touchMove: this.handleTouchMove.bind(this),
+            touchEnd: this.handleTouchEnd.bind(this),
+            wheel: this.handleWheel.bind(this)
+        };
     }
 
     init(canvas) {
@@ -51,18 +74,18 @@ export class CameraController {
         if (!this.canvas) return;
 
         // Mouse events
-        this.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
-        this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
-        this.canvas.addEventListener('mouseup', () => this.handleMouseUp());
-        this.canvas.addEventListener('mouseleave', () => this.handleMouseUp());
+        this.canvas.addEventListener('mousedown', this._boundHandlers.mouseDown);
+        this.canvas.addEventListener('mousemove', this._boundHandlers.mouseMove);
+        this.canvas.addEventListener('mouseup', this._boundHandlers.mouseUp);
+        this.canvas.addEventListener('mouseleave', this._boundHandlers.mouseLeave);
         
         // Touch events
-        this.canvas.addEventListener('touchstart', (e) => this.handleTouchStart(e));
-        this.canvas.addEventListener('touchmove', (e) => this.handleTouchMove(e));
-        this.canvas.addEventListener('touchend', () => this.handleTouchEnd());
+        this.canvas.addEventListener('touchstart', this._boundHandlers.touchStart);
+        this.canvas.addEventListener('touchmove', this._boundHandlers.touchMove);
+        this.canvas.addEventListener('touchend', this._boundHandlers.touchEnd);
         
         // Wheel event for zoom
-        this.canvas.addEventListener('wheel', (e) => this.handleWheel(e), { passive: false });
+        this.canvas.addEventListener('wheel', this._boundHandlers.wheel, { passive: false });
 
         console.log('🎮 Обработчики событий камеры установлены');
     }
@@ -77,7 +100,9 @@ export class CameraController {
         this.velocityY = 0;
         
         // Изменяем курсор
-        this.canvas.style.cursor = 'grabbing';
+        if (this.canvas) {
+            this.canvas.style.cursor = 'grabbing';
+        }
     }
 
     handleMouseMove(event) {
@@ -93,12 +118,14 @@ export class CameraController {
         this.velocityY = deltaY * 0.5;
         
         this.lastX = event.clientX;
-        this.lastY = event.clientY;
+        this.lastY = event.lastY;
     }
 
     handleMouseUp() {
         this.isDragging = false;
-        this.canvas.style.cursor = 'grab';
+        if (this.canvas) {
+            this.canvas.style.cursor = 'grab';
+        }
     }
 
     // ===== TOUCH HANDLERS =====
@@ -121,7 +148,7 @@ export class CameraController {
     handleTouchMove(event) {
         event.preventDefault();
         
-        if (event.touches.length === 1 && this.isDragging) {
+        if (event.touches.length === 1 && this.isDragging && !this.isPinching) {
             // Панорамирование одним пальцем
             const deltaX = event.touches[0].clientX - this.lastX;
             const deltaY = event.touches[0].clientY - this.lastY;
@@ -141,6 +168,8 @@ export class CameraController {
 
     handleTouchEnd() {
         this.isDragging = false;
+        this.isPinching = false;
+        this.pinchStartDistance = 0;
     }
 
     // ===== PINCH-TO-ZOOM =====
@@ -153,9 +182,13 @@ export class CameraController {
             touch2.clientY - touch1.clientY
         );
         this.pinchStartZoom = this.zoom;
+        this.isPinching = true;
+        this.isDragging = false; // Отключаем панорамирование при зуме
     }
 
     handlePinchMove(event) {
+        if (!this.isPinching) return;
+        
         const touch1 = event.touches[0];
         const touch2 = event.touches[1];
         
@@ -208,6 +241,8 @@ export class CameraController {
     }
 
     zoomAtPoint(delta, pointX, pointY) {
+        if (!this.canvas) return;
+        
         const worldX = (pointX - this.canvas.width / 2) / this.zoom - this.x;
         const worldY = (pointY - this.canvas.height / 2) / this.zoom - this.y;
         
@@ -239,6 +274,7 @@ export class CameraController {
         this.velocityX = 0;
         this.velocityY = 0;
         this.isDragging = false;
+        this.isPinching = false;
         
         console.log('🗺️ Камера сброшена к начальному виду');
     }
@@ -268,7 +304,7 @@ export class CameraController {
     }
 
     applyInertia() {
-        if (this.isDragging) return;
+        if (this.isDragging || this.isPinching) return;
         
         // Применяем инерцию только если есть значительная скорость
         if (Math.abs(this.velocityX) > 0.01 || Math.abs(this.velocityY) > 0.01) {
@@ -293,6 +329,8 @@ export class CameraController {
 
     // ===== UTILITY METHODS =====
     screenToWorld(screenX, screenY) {
+        if (!this.canvas) return { x: 0, y: 0 };
+        
         return {
             x: (screenX - this.canvas.width / 2) / this.zoom - this.x,
             y: (screenY - this.canvas.height / 2) / this.zoom - this.y
@@ -300,6 +338,8 @@ export class CameraController {
     }
 
     worldToScreen(worldX, worldY) {
+        if (!this.canvas) return { x: 0, y: 0 };
+        
         return {
             x: (worldX + this.x) * this.zoom + this.canvas.width / 2,
             y: (worldY + this.y) * this.zoom + this.canvas.height / 2
@@ -307,6 +347,10 @@ export class CameraController {
     }
 
     getViewportBounds() {
+        if (!this.canvas) {
+            return { left: 0, right: 0, top: 0, bottom: 0 };
+        }
+        
         const halfWidth = (this.canvas.width / 2) / this.zoom;
         const halfHeight = (this.canvas.height / 2) / this.zoom;
         
@@ -332,6 +376,7 @@ export class CameraController {
             position: { x: this.x, y: this.y },
             zoom: this.zoom,
             isDragging: this.isDragging,
+            isPinching: this.isPinching,
             velocity: { x: this.velocityX, y: this.velocityY },
             viewport: this.getViewportBounds()
         };
@@ -347,14 +392,14 @@ export class CameraController {
         
         // Удаляем обработчики событий
         if (this.canvas) {
-            const events = [
-                'mousedown', 'mousemove', 'mouseup', 'mouseleave',
-                'touchstart', 'touchmove', 'touchend', 'wheel'
-            ];
-            
-            events.forEach(event => {
-                this.canvas.removeEventListener(event, this[`handle${event.charAt(0).toUpperCase() + event.slice(1)}`]);
-            });
+            this.canvas.removeEventListener('mousedown', this._boundHandlers.mouseDown);
+            this.canvas.removeEventListener('mousemove', this._boundHandlers.mouseMove);
+            this.canvas.removeEventListener('mouseup', this._boundHandlers.mouseUp);
+            this.canvas.removeEventListener('mouseleave', this._boundHandlers.mouseLeave);
+            this.canvas.removeEventListener('touchstart', this._boundHandlers.touchStart);
+            this.canvas.removeEventListener('touchmove', this._boundHandlers.touchMove);
+            this.canvas.removeEventListener('touchend', this._boundHandlers.touchEnd);
+            this.canvas.removeEventListener('wheel', this._boundHandlers.wheel);
         }
         
         console.log('🧹 CameraController уничтожен');
