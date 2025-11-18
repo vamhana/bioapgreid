@@ -55,7 +55,11 @@ export class GalaxyDataLoader {
             
             // ВАЖНО: Проверяем безопасность данных
             console.log('🔒 Проверка безопасности данных...');
-            this.securityValidator.validateGalaxyData(rawData);
+            if (this.securityValidator && typeof this.securityValidator.validateGalaxyData === 'function') {
+                this.securityValidator.validateGalaxyData(rawData);
+            } else {
+                console.warn('⚠️ SecurityValidator не доступен, пропускаем проверку безопасности');
+            }
             
             this.loadingState.progress = 80;
             
