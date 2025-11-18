@@ -566,4 +566,4 @@ export class MinimapNavigation {
 // Глобальная ссылка для отладки
 window.minimap = null;
 
-export { MinimapNavigation };
+export default MinimapNavigation;
