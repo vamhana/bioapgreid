@@ -5,7 +5,7 @@ import { CameraController } from './camera-controller.js';
 import { ProgressionTracker } from '../interaction/progression-tracker.js';
 import { EntityInteraction } from '../interaction/entity-interaction.js';
 import { UserPanel } from '../ui/user-panel.js';
-import { MinimapNavigation } from '../ui/minimap-navigation.js';
+import MinimapNavigation from '../ui/minimap-navigation.js';
 import { AssetManager } from '../utils/asset-manager.js';
 import { PerformanceOptimizer } from '../utils/performance-optimizer.js';
 import { APP_CONFIG } from '../constants/config.js';
