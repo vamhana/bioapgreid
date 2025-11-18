@@ -47,3 +47,4 @@ export class ProgressionTracker {
         return this.discoveredEntities.has(entityId);
     }
 }
+export default ProgressionTracker;
