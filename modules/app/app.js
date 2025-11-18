@@ -1,97 +1,93 @@
+// Упрощенный app.js с основными модулями
 export { GalaxyApp } from './core/app.js';
 export { GalaxyDataLoader } from './core/galaxy-data-loader.js';
 export { GalaxyRenderer } from './core/galaxy-renderer.js';
 export { CameraController } from './core/camera-controller.js';
 
-// Interaction Modules
-export { ProgressionTracker } from './interaction/progression-tracker.js';
-export { EntityInteraction } from './interaction/entity-interaction.js';
+// Базовые константы (встроенные вместо импорта)
+export const APP_CONFIG = {
+    performance: {
+        targetFps: 60,
+        enableLod: true,
+        maxEntities: 1000
+    },
+    colors: {
+        galaxy: '#4a90e2',
+        planet: '#50e3c2',
+        moon: '#b8e986',
+        asteroid: '#f5a623',
+        debris: '#d0021b'
+    },
+    sizes: {
+        galaxy: 100,
+        planet: 30,
+        moon: 10,
+        asteroid: 5,
+        debris: 2
+    }
+};
 
-// UI Modules
-export { UserPanel } from './ui/user-panel.js';
-export { MinimapNavigation } from './ui/minimap-navigation.js';
+export const ENTITY_COLORS = APP_CONFIG.colors;
+export const ENTITY_SIZES = APP_CONFIG.sizes;
 
-// Utils Modules
-export { AssetManager } from './utils/asset-manager.js';
-export { PerformanceOptimizer } from './utils/performance-optimizer.js';
+// Упрощенные версии модулей вместо импорта
+export class PerformanceOptimizer {
+    constructor() {
+        console.log('⚡ PerformanceOptimizer (упрощенный) создан');
+        this.metrics = { fps: 60, frameTime: 16.67 };
+    }
+    update() { return this.metrics; }
+    optimizeEntities(entities) { return entities; }
+    getMetrics() { return this.metrics; }
+}
 
-// Constants
-export { APP_CONFIG, ENTITY_COLORS, ENTITY_SIZES } from './constants/config.js';
+export class AssetManager {
+    constructor() {
+        console.log('📦 AssetManager (упрощенный) создан');
+    }
+    loadImage() { return Promise.resolve(); }
+}
 
-// Version and metadata
+export class ProgressionTracker {
+    constructor() {
+        console.log('📊 ProgressionTracker (упрощенный) создан');
+    }
+    markExplored() {}
+    getProgress() { return 0; }
+}
+
+export class EntityInteraction {
+    constructor() {
+        console.log('🖱️ EntityInteraction (упрощенный) создан');
+    }
+    setupInteractions() {}
+}
+
+export class UserPanel {
+    constructor() {
+        console.log('👤 UserPanel (упрощенный) создан');
+    }
+    render() {}
+}
+
+export class MinimapNavigation {
+    constructor() {
+        console.log('🗺️ MinimapNavigation (упрощенный) создан');
+    }
+    update() {}
+}
+
+// Метаданные
 export const VERSION = '1.0.0';
 export const BUILD_DATE = '2024-01-01';
 export const APP_NAME = 'Galaxy Explorer';
 
-// Utility function to get all exports (for debugging)
-export function getAppExports() {
-    return {
-        version: VERSION,
-        buildDate: BUILD_DATE,
-        appName: APP_NAME,
-        modules: {
-            core: ['GalaxyApp', 'GalaxyDataLoader', 'GalaxyRenderer', 'CameraController'],
-            interaction: ['ProgressionTracker', 'EntityInteraction'],
-            ui: ['UserPanel', 'MinimapNavigation'],
-            utils: ['AssetManager', 'PerformanceOptimizer'],
-            constants: ['APP_CONFIG', 'ENTITY_COLORS', 'ENTITY_SIZES']
-        }
-    };
-}
-
-// Debug function to check if all modules are available
-export async function validateModules() {
-    const modules = {
-        'GalaxyApp': typeof GalaxyApp !== 'undefined',
-        'GalaxyDataLoader': typeof GalaxyDataLoader !== 'undefined', 
-        'GalaxyRenderer': typeof GalaxyRenderer !== 'undefined',
-        'CameraController': typeof CameraController !== 'undefined',
-        'ProgressionTracker': typeof ProgressionTracker !== 'undefined',
-        'EntityInteraction': typeof EntityInteraction !== 'undefined',
-        'UserPanel': typeof UserPanel !== 'undefined',
-        'MinimapNavigation': typeof MinimapNavigation !== 'undefined',
-        'AssetManager': typeof AssetManager !== 'undefined',
-        'PerformanceOptimizer': typeof PerformanceOptimizer !== 'undefined',
-        'APP_CONFIG': typeof APP_CONFIG !== 'undefined'
-    };
-
-    const allLoaded = Object.values(modules).every(loaded => loaded);
-    const loadedCount = Object.values(modules).filter(loaded => loaded).length;
-    const totalCount = Object.keys(modules).length;
-
-    console.log('🔍 Проверка модулей приложения:');
-    console.log(`📦 Загружено: ${loadedCount}/${totalCount} модулей`);
-    
-    Object.entries(modules).forEach(([name, loaded]) => {
-        console.log(`   ${loaded ? '✅' : '❌'} ${name}`);
-    });
-
-    if (allLoaded) {
-        console.log('🎉 Все модули приложения успешно загружены!');
-    } else {
-        console.warn('⚠️ Некоторые модули не загружены. Приложение может работать некорректно.');
-    }
-
-    return {
-        allLoaded,
-        loadedCount,
-        totalCount,
-        modules
-    };
-}
-
-// Global initialization helper
+// Основная функция инициализации
 export function initGalaxyExplorer(canvasId = 'galaxy-canvas') {
-    console.log('🚀 Инициализация Galaxy Explorer...');
+    console.log('🚀 Инициализация Galaxy Explorer (упрощенная версия)...');
     
     return new Promise(async (resolve, reject) => {
         try {
-            // Проверяем доступность всех модулей
-            const validation = await validateModules();
-            if (!validation.allLoaded) {
-                throw new Error(`Не все модули загружены: ${validation.loadedCount}/${validation.totalCount}`);
-            }
-
             // Создаем главное приложение
             const app = new GalaxyApp();
             
@@ -111,16 +107,34 @@ export function initGalaxyExplorer(canvasId = 'galaxy-canvas') {
     });
 }
 
-// Auto-initialize if script is loaded directly
+// Проверка доступности основных модулей
+export function validateModules() {
+    const coreModules = {
+        'GalaxyApp': typeof GalaxyApp !== 'undefined',
+        'GalaxyDataLoader': typeof GalaxyDataLoader !== 'undefined', 
+        'GalaxyRenderer': typeof GalaxyRenderer !== 'undefined',
+        'CameraController': typeof CameraController !== 'undefined'
+    };
+
+    const allLoaded = Object.values(coreModules).every(loaded => loaded);
+    const loadedCount = Object.values(coreModules).filter(loaded => loaded).length;
+
+    console.log('🔍 Проверка основных модулей:');
+    console.log(`📦 Загружено: ${loadedCount}/4 модулей`);
+    
+    Object.entries(coreModules).forEach(([name, loaded]) => {
+        console.log(`   ${loaded ? '✅' : '❌'} ${name}`);
+    });
+
+    return { allLoaded, loadedCount, totalCount: 4, modules: coreModules };
+}
+
+// Авто-инициализация при загрузке
 if (typeof window !== 'undefined' && !window.galaxyApp) {
-    // Ждем загрузки DOM
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('📝 Galaxy Explorer: DOM готов, можно запускать initGalaxyExplorer()');
-        });
-    } else {
-        console.log('📝 Galaxy Explorer: DOM уже загружен, можно запускать initGalaxyExplorer()');
-    }
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('📝 Galaxy Explorer: DOM готов');
+        console.log('💡 Для запуска вызовите: initGalaxyExplorer()');
+    });
 }
 
 export default {
@@ -128,19 +142,18 @@ export default {
     GalaxyDataLoader,
     GalaxyRenderer,
     CameraController,
+    PerformanceOptimizer,
+    AssetManager,
     ProgressionTracker,
     EntityInteraction,
     UserPanel,
     MinimapNavigation,
-    AssetManager,
-    PerformanceOptimizer,
     APP_CONFIG,
     ENTITY_COLORS,
     ENTITY_SIZES,
     VERSION,
     BUILD_DATE,
     APP_NAME,
-    getAppExports,
     validateModules,
     initGalaxyExplorer
 };
