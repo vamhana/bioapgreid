@@ -1,14 +1,15 @@
+// modules/app/core/three-scene-manager.js
 import * as THREE from './three.module.js';
 
 export class ThreeSceneManager {
     constructor(canvasId) {
-        this.canvas = this.resolveCanvas(canvasId); // Улучшенная обработка canvas
+        this.canvas = this.resolveCanvas(canvasId);
         this.scene = null;
         this.camera = null;
         this.renderer = null;
         this.lights = new Map();
-        this.backgrounds = new Map(); // Новый: управление фонами
-        this.materialPool = new Map(); // Новый: пул материалов
+        this.backgrounds = new Map();
+        this.materialPool = new Map();
         
         this.initialized = false;
         this.stats = {
@@ -23,7 +24,7 @@ export class ThreeSceneManager {
         console.log('🎮 ThreeSceneManager создан для canvas:', canvasId);
     }
 
-    // Улучшенная обработка canvas с fallback
+    // === БАЗОВЫЕ МЕТОДЫ ИНИЦИАЛИЗАЦИИ ===
     resolveCanvas(canvasId) {
         if (typeof canvasId === 'string') {
             const canvas = document.getElementById(canvasId);
@@ -33,7 +34,6 @@ export class ThreeSceneManager {
             }
             return canvas;
         }
-        // Если передан DOM элемент
         return canvasId;
     }
 
@@ -58,36 +58,25 @@ export class ThreeSceneManager {
             console.log('🚀 Инициализация Three.js сцены...');
             const startTime = performance.now();
 
-            // Проверяем поддержку WebGL
             if (!this.checkWebGLSupport()) {
                 throw new Error('WebGL не поддерживается в этом браузере');
             }
 
-            // Создаем сцену
             this.scene = new THREE.Scene();
             this.scene.background = new THREE.Color(0x0c0c2e);
             this.scene.fog = new THREE.Fog(0x0c0c2e, 500, 3000);
 
-            // Создаем камеру с улучшенными настройками
             this.camera = this.createCamera();
-            
-            // Создаем рендерер с улучшенными настройками
             this.renderer = this.createRenderer(enableAntialiasing, enableShadows);
             
-            // Настройка систем
             this.setupLights();
             this.setupEventListeners();
-            this.setupMaterialPool(); // Новая функция
+            this.setupMaterialPool();
 
             this.initialized = true;
             const initTime = performance.now() - startTime;
             
-            console.log('✅ Three.js сцена инициализирована за', initTime.toFixed(2) + 'ms', {
-                shadows: enableShadows,
-                antialiasing: enableAntialiasing,
-                renderer: this.renderer.info.render,
-                webgl: this.renderer.capabilities
-            });
+            console.log('✅ Three.js сцена инициализирована за', initTime.toFixed(2) + 'ms');
 
         } catch (error) {
             console.error('❌ Ошибка инициализации Three.js:', error);
@@ -96,7 +85,6 @@ export class ThreeSceneManager {
         }
     }
 
-    // Новая функция: проверка поддержки WebGL
     checkWebGLSupport() {
         try {
             const canvas = document.createElement('canvas');
@@ -107,7 +95,6 @@ export class ThreeSceneManager {
         }
     }
 
-    // Новая функция: создание камеры с улучшенными настройками
     createCamera() {
         const camera = new THREE.PerspectiveCamera(
             75, 
@@ -118,14 +105,12 @@ export class ThreeSceneManager {
         camera.position.set(0, 0, 1000);
         camera.lookAt(0, 0, 0);
         
-        // Сохраняем начальное состояние для reset
         camera.initialPosition = camera.position.clone();
         camera.initialTarget = new THREE.Vector3(0, 0, 0);
         
         return camera;
     }
 
-    // Новая функция: создание рендерера с улучшенными настройками
     createRenderer(enableAntialiasing, enableShadows) {
         const renderer = new THREE.WebGLRenderer({ 
             canvas: this.canvas,
@@ -134,7 +119,7 @@ export class ThreeSceneManager {
             alpha: false,
             stencil: false,
             depth: true,
-            preserveDrawingBuffer: false // Оптимизация
+            preserveDrawingBuffer: false
         });
 
         this.setupRenderer(renderer, enableShadows);
@@ -154,15 +139,42 @@ export class ThreeSceneManager {
             renderer.shadowMap.autoUpdate = false;
         }
 
-        // Дополнительные оптимизации
         renderer.autoClear = true;
         renderer.sortObjects = true;
-        renderer.info.autoReset = false; // Контролируем сброс статистики вручную
+        renderer.info.autoReset = false;
     }
 
-    // Новая функция: настройка пула материалов
+    // === БАЗОВОЕ ОСВЕЩЕНИЕ И МАТЕРИАЛЫ ===
+    setupLights() {
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+        this.scene.add(ambientLight);
+        this.lights.set('ambient', ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        directionalLight.position.set(100, 100, 50);
+        directionalLight.castShadow = true;
+        
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = 2000;
+        directionalLight.shadow.camera.left = -500;
+        directionalLight.shadow.camera.right = 500;
+        directionalLight.shadow.camera.top = 500;
+        directionalLight.shadow.camera.bottom = -500;
+        
+        this.scene.add(directionalLight);
+        this.lights.set('sun', directionalLight);
+
+        const pointLight = new THREE.PointLight(0x4ECDC4, 0.5, 1000);
+        pointLight.position.set(0, 0, 0);
+        this.scene.add(pointLight);
+        this.lights.set('centerPoint', pointLight);
+
+        console.log('💡 Освещение настроено:', Array.from(this.lights.keys()));
+    }
+
     setupMaterialPool() {
-        // Базовые материалы для переиспользования
         const basicMaterial = new THREE.MeshBasicMaterial();
         const standardMaterial = new THREE.MeshStandardMaterial();
         const phongMaterial = new THREE.MeshPhongMaterial();
@@ -172,7 +184,96 @@ export class ThreeSceneManager {
         this.materialPool.set('phong', phongMaterial);
     }
 
-    // Улучшенная функция создания звездного поля
+    // === УПРАВЛЕНИЕ ОБЪЕКТАМИ ===
+    addObject(object, parent = null) {
+        const target = parent || this.scene;
+        target.add(object);
+        return object;
+    }
+
+    removeObject(object) {
+        if (object.parent) {
+            object.parent.remove(object);
+        }
+        
+        if (object.geometry) object.geometry.dispose();
+        if (object.material) {
+            if (Array.isArray(object.material)) {
+                object.material.forEach(m => m.dispose());
+            } else {
+                object.material.dispose();
+            }
+        }
+    }
+
+    findObjectByName(name) {
+        return this.scene.getObjectByName(name);
+    }
+
+    findObjectsByType(type) {
+        const objects = [];
+        this.scene.traverse(object => {
+            if (object instanceof type) {
+                objects.push(object);
+            }
+        });
+        return objects;
+    }
+
+    // === УПРАВЛЕНИЕ ОСВЕЩЕНИЕМ ===
+    setLightIntensity(lightName, intensity) {
+        const light = this.lights.get(lightName);
+        if (light) {
+            light.intensity = intensity;
+        }
+    }
+
+    setLightColor(lightName, color) {
+        const light = this.lights.get(lightName);
+        if (light) {
+            light.color.set(color);
+        }
+    }
+
+    // === УПРАВЛЕНИЕ КАМЕРОЙ ===
+    setCameraPosition(x, y, z) {
+        if (this.camera) {
+            this.camera.position.set(x, y, z);
+        }
+    }
+
+    setCameraLookAt(x, y, z) {
+        if (this.camera) {
+            this.camera.lookAt(x, y, z);
+        }
+    }
+
+    // === РЕНДЕРИНГ И СТАТИСТИКА ===
+    render() {
+        if (!this.initialized) {
+            console.warn('⚠️ ThreeSceneManager не инициализирован');
+            return;
+        }
+
+        const startTime = performance.now();
+        this.renderer.info.reset();
+        this.renderer.render(this.scene, this.camera);
+        this.stats.frameTime = performance.now() - startTime;
+
+        this.updateStats();
+    }
+
+    updateStats() {
+        if (this.renderer) {
+            const info = this.renderer.info;
+            this.stats.drawCalls = info.render.calls;
+            this.stats.triangles = info.render.triangles;
+            this.stats.geometries = info.memory.geometries;
+            this.stats.textures = info.memory.textures;
+        }
+    }
+
+    // === ФОНЫ И АТМОСФЕРА ===
     createStarfieldBackground(starCount = 5000, options = {}) {
         const {
             radius = 1000,
@@ -180,7 +281,6 @@ export class ThreeSceneManager {
             colorRange = [[0.8, 0.8, 1.0], [1.0, 0.9, 0.8]]
         } = options;
 
-        // Проверяем, не создавали ли мы уже звездное поле
         if (this.backgrounds.has('starfield')) {
             console.log('⭐ Используем существующее звездное поле');
             return this.backgrounds.get('starfield');
@@ -192,8 +292,7 @@ export class ThreeSceneManager {
         const sizes = new Float32Array(starCount);
 
         for (let i = 0; i < starCount; i++) {
-            // Сферическое распределение с улучшенным алгоритмом
-            const r = radius * (0.8 + Math.random() * 0.4); // Более равномерное распределение
+            const r = radius * (0.8 + Math.random() * 0.4);
             const theta = Math.random() * Math.PI * 2;
             const phi = Math.acos(2 * Math.random() - 1);
 
@@ -201,7 +300,6 @@ export class ThreeSceneManager {
             positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
             positions[i * 3 + 2] = r * Math.cos(phi);
 
-            // Улучшенная цветовая палитра
             const colorMix = Math.random();
             colors[i * 3] = this.lerp(colorRange[0][0], colorRange[1][0], colorMix);
             colors[i * 3 + 1] = this.lerp(colorRange[0][1], colorRange[1][1], colorMix);
@@ -220,33 +318,41 @@ export class ThreeSceneManager {
             vertexColors: true,
             transparent: true,
             opacity: 0.8,
-            depthWrite: false // Оптимизация для фона
+            depthWrite: false
         });
 
         const starField = new THREE.Points(starGeometry, starMaterial);
         starField.name = 'starfield';
-        starField.frustumCulled = false; // Всегда видимый
+        starField.frustumCulled = false;
         
         this.scene.add(starField);
         this.backgrounds.set('starfield', starField);
 
-        // Трекаем использование памяти
         this.trackMemoryUsage('starfield', starGeometry, starMaterial);
-
         return starField;
     }
 
-    // Вспомогательная функция для интерполяции
+    setBackground(colorOrTexture) {
+        if (colorOrTexture instanceof THREE.Texture) {
+            this.scene.background = colorOrTexture;
+        } else {
+            this.scene.background = new THREE.Color(colorOrTexture);
+        }
+    }
+
+    setFog(color, near, far) {
+        this.scene.fog = new THREE.Fog(color, near, far);
+    }
+
+    // === УТИЛИТЫ И СЛУЖЕБНЫЕ МЕТОДЫ ===
     lerp(start, end, factor) {
         return start + (end - start) * factor;
     }
 
-    // Новая функция: трекинг использования памяти
     trackMemoryUsage(name, geometry, material) {
         let memoryUsage = 0;
         
         if (geometry) {
-            // Примерный расчет памяти геометрии
             if (geometry.attributes.position) {
                 memoryUsage += geometry.attributes.position.array.byteLength;
             }
@@ -259,7 +365,7 @@ export class ThreeSceneManager {
         }
         
         if (material) {
-            memoryUsage += 5000; // Примерный размер материала
+            memoryUsage += 5000;
         }
         
         this.stats.memory += memoryUsage;
@@ -274,140 +380,6 @@ export class ThreeSceneManager {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
-    // Новая функция: обработка ошибок инициализации
-    handleInitError(error) {
-        // Показываем пользователю сообщение об ошибке
-        const errorDiv = document.createElement('div');
-        errorDiv.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #ff4444;
-            color: white;
-            padding: 20px;
-            border-radius: 5px;
-            z-index: 10000;
-            text-align: center;
-        `;
-        errorDiv.innerHTML = `
-            <h3>Ошибка инициализации 3D</h3>
-            <p>${error.message}</p>
-            <p>Проверьте поддержку WebGL в вашем браузере</p>
-        `;
-        document.body.appendChild(errorDiv);
-    }
-
-    // Остальные методы остаются в основном без изменений, но с улучшениями...
-    setupLights() {
-        // Ambient light
-        const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
-        this.scene.add(ambientLight);
-        this.lights.set('ambient', ambientLight);
-
-        // Directional light
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
-        directionalLight.position.set(100, 100, 50);
-        directionalLight.castShadow = true;
-        
-        directionalLight.shadow.mapSize.width = 2048;
-        directionalLight.shadow.mapSize.height = 2048;
-        directionalLight.shadow.camera.near = 0.5;
-        directionalLight.shadow.camera.far = 2000;
-        directionalLight.shadow.camera.left = -500;
-        directionalLight.shadow.camera.right = 500;
-        directionalLight.shadow.camera.top = 500;
-        directionalLight.shadow.camera.bottom = -500;
-        
-        this.scene.add(directionalLight);
-        this.lights.set('sun', directionalLight);
-
-        // Point lights
-        const pointLight = new THREE.PointLight(0x4ECDC4, 0.5, 1000);
-        pointLight.position.set(0, 0, 0);
-        this.scene.add(pointLight);
-        this.lights.set('centerPoint', pointLight);
-
-        console.log('💡 Освещение настроено:', Array.from(this.lights.keys()));
-    }
-
-    setupEventListeners() {
-        this.handleResize = this.handleResize.bind(this);
-        window.addEventListener('resize', this.handleResize);
-        
-        // Добавляем обработчик для отслеживания видимости страницы
-        document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
-    }
-
-    handleVisibilityChange() {
-        if (document.hidden) {
-            console.log('⏸️ Страница не видна, можно приостановить тяжелые вычисления');
-        } else {
-            console.log('▶️ Страница снова активна');
-        }
-    }
-
-    handleResize() {
-        if (!this.camera || !this.renderer) return;
-
-        const width = window.innerWidth;
-        const height = window.innerHeight;
-
-        this.camera.aspect = width / height;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(width, height);
-
-        console.log('🔄 Размер сцены обновлен:', `${width}x${height}`);
-    }
-
-    // Улучшенный метод рендеринга
-    render() {
-        if (!this.initialized) {
-            console.warn('⚠️ ThreeSceneManager не инициализирован');
-            return;
-        }
-
-        const startTime = performance.now();
-        
-        // Сбрасываем статистику рендерера перед кадром
-        this.renderer.info.reset();
-        
-        this.renderer.render(this.scene, this.camera);
-        this.stats.frameTime = performance.now() - startTime;
-
-        this.updateStats();
-    }
-
-    updateStats() {
-        if (this.renderer) {
-            const info = this.renderer.info;
-            this.stats.drawCalls = info.render.calls;
-            this.stats.triangles = info.render.triangles;
-            this.stats.geometries = info.memory.geometries;
-            this.stats.textures = info.memory.textures;
-        }
-    }
-
-    // Новые методы для управления сценой
-    setBackground(colorOrTexture) {
-        if (colorOrTexture instanceof THREE.Texture) {
-            this.scene.background = colorOrTexture;
-        } else {
-            this.scene.background = new THREE.Color(colorOrTexture);
-        }
-    }
-
-    setFog(color, near, far) {
-        this.scene.fog = new THREE.Fog(color, near, far);
-    }
-
-    enableShadows(enable) {
-        if (this.renderer) {
-            this.renderer.shadowMap.enabled = enable;
-        }
-    }
-
-    // Метод для получения материала из пула
     getMaterial(type, color, options = {}) {
         const key = `${type}_${color}_${JSON.stringify(options)}`;
         
@@ -437,70 +409,35 @@ export class ThreeSceneManager {
         }
     }
 
-    // Остальные методы остаются...
-    addObject(object, parent = null) {
-        const target = parent || this.scene;
-        target.add(object);
-        return object;
+    // === ОБРАБОТКА СОБЫТИЙ ===
+    setupEventListeners() {
+        this.handleResize = this.handleResize.bind(this);
+        window.addEventListener('resize', this.handleResize);
+        document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
     }
 
-    removeObject(object) {
-        if (object.parent) {
-            object.parent.remove(object);
-        }
-        
-        // Освобождаем ресурсы
-        if (object.geometry) object.geometry.dispose();
-        if (object.material) {
-            if (Array.isArray(object.material)) {
-                object.material.forEach(m => m.dispose());
-            } else {
-                object.material.dispose();
-            }
+    handleVisibilityChange() {
+        if (document.hidden) {
+            console.log('⏸️ Страница не видна, можно приостановить тяжелые вычисления');
+        } else {
+            console.log('▶️ Страница снова активна');
         }
     }
 
-    findObjectByName(name) {
-        return this.scene.getObjectByName(name);
+    handleResize() {
+        if (!this.camera || !this.renderer) return;
+
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        this.camera.aspect = width / height;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(width, height);
+
+        console.log('🔄 Размер сцены обновлен:', `${width}x${height}`);
     }
 
-    findObjectsByType(type) {
-        const objects = [];
-        this.scene.traverse(object => {
-            if (object instanceof type) {
-                objects.push(object);
-            }
-        });
-        return objects;
-    }
-
-    setLightIntensity(lightName, intensity) {
-        const light = this.lights.get(lightName);
-        if (light) {
-            light.intensity = intensity;
-        }
-    }
-
-    setLightColor(lightName, color) {
-        const light = this.lights.get(lightName);
-        if (light) {
-            light.color.set(color);
-        }
-    }
-
-    setCameraPosition(x, y, z) {
-        if (this.camera) {
-            this.camera.position.set(x, y, z);
-        }
-    }
-
-    setCameraLookAt(x, y, z) {
-        if (this.camera) {
-            this.camera.lookAt(x, y, z);
-        }
-    }
-
-    // Улучшенная очистка сцены
+    // === ОЧИСТКА И УПРАВЛЕНИЕ ПАМЯТЬЮ ===
     clearScene(preserveBackgrounds = true) {
         const objectsToRemove = [];
         
@@ -525,31 +462,51 @@ export class ThreeSceneManager {
         });
     }
 
-    // Улучшенный деструктор
+    enableShadows(enable) {
+        if (this.renderer) {
+            this.renderer.shadowMap.enabled = enable;
+        }
+    }
+
+    handleInitError(error) {
+        const errorDiv = document.createElement('div');
+        errorDiv.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #ff4444;
+            color: white;
+            padding: 20px;
+            border-radius: 5px;
+            z-index: 10000;
+            text-align: center;
+        `;
+        errorDiv.innerHTML = `
+            <h3>Ошибка инициализации 3D</h3>
+            <p>${error.message}</p>
+            <p>Проверьте поддержку WebGL в вашем браузере</p>
+        `;
+        document.body.appendChild(errorDiv);
+    }
+
     dispose() {
-        // Останавливаем анимации и таймеры
         this.stopAnimationLoop?.();
-        
-        // Очищаем сцену полностью
         this.clearScene(false);
         
-        // Очищаем пул материалов
         this.materialPool.forEach(material => {
             material.dispose();
         });
         this.materialPool.clear();
 
-        // Очищаем рендерер
         if (this.renderer) {
             this.renderer.dispose();
             this.renderer.forceContextLoss();
         }
 
-        // Удаляем обработчики событий
         window.removeEventListener('resize', this.handleResize);
         document.removeEventListener('visibilitychange', this.handleVisibilityChange);
 
-        // Очищаем все ссылки
         this.scene = null;
         this.camera = null;
         this.renderer = null;
@@ -557,7 +514,6 @@ export class ThreeSceneManager {
         this.backgrounds.clear();
 
         this.initialized = false;
-
         console.log('🧹 ThreeSceneManager уничтожен');
     }
 }
