@@ -2,398 +2,45 @@
 import * as THREE from './three.module.js';
 
 export class CameraController {
-    constructor(threeCamera, threeSceneManager) {
-        this.threeCamera = threeCamera;
-        this.sceneManager = threeSceneManager;
-        
-        // 3D состояние камеры
-        this.position = new THREE.Vector3(0, 0, 1000);
-        this.target = new THREE.Vector3(0, 0, 0);
-        this.zoom = 1;
-        this.minZoom = 0.1;
-        this.maxZoom = 5;
-        
-        // Параметры инерции и плавности
-        this.velocity = new THREE.Vector3(0, 0, 0);
-        this.friction = 0.88;
-        this.isDragging = false;
-        this.lastMouse = new THREE.Vector2();
-        
-        // Ограничения движения
-        this.bounds = {
-            minX: -2000, maxX: 2000,
-            minY: -2000, maxY: 2000,
-            minZ: 100, maxZ: 5000
-        };
-        
-        // Референсы
-        this.canvas = null;
-        this.animationFrameId = null;
-        
-        // Для pinch-to-zoom
-        this.pinchStartDistance = 0;
-        this.pinchStartZoom = 1;
-        this.isPinching = false;
-        
-        // Орбитальные контролы
-        this.orbitControls = null;
-        this.enableOrbit = true;
-        
-        // Привязка методов
-        this._boundHandlers = {};
-        this.bindEventHandlers();
-        
-        console.log('🎥 3D CameraController создан');
-    }
-
-    bindEventHandlers() {
-        this._boundHandlers = {
-            mouseDown: this.handleMouseDown.bind(this),
-            mouseMove: this.handleMouseMove.bind(this),
-            mouseUp: this.handleMouseUp.bind(this),
-            mouseLeave: this.handleMouseUp.bind(this),
-            touchStart: this.handleTouchStart.bind(this),
-            touchMove: this.handleTouchMove.bind(this),
-            touchEnd: this.handleTouchEnd.bind(this),
-            wheel: this.handleWheel.bind(this),
-            contextMenu: this.handleContextMenu.bind(this)
-        };
-    }
-
-    init(canvas) {
+    constructor(camera, canvas, sceneManager) {
+        this.camera = camera;
         this.canvas = canvas;
-        this.setInitialView();
-        this.setupEventListeners();
-        this.startAnimationLoop();
+        this.sceneManager = sceneManager;
         
-        console.log('✅ 3D CameraController инициализирован');
-    }
-
-    setupEventListeners() {
-        if (!this.canvas) return;
-
-        // Mouse events
-        this.canvas.addEventListener('mousedown', this._boundHandlers.mouseDown);
-        this.canvas.addEventListener('mousemove', this._boundHandlers.mouseMove);
-        this.canvas.addEventListener('mouseup', this._boundHandlers.mouseUp);
-        this.canvas.addEventListener('mouseleave', this._boundHandlers.mouseLeave);
-        this.canvas.addEventListener('contextmenu', this._boundHandlers.contextMenu);
-        
-        // Touch events
-        this.canvas.addEventListener('touchstart', this._boundHandlers.touchStart);
-        this.canvas.addEventListener('touchmove', this._boundHandlers.touchMove);
-        this.canvas.addEventListener('touchend', this._boundHandlers.touchEnd);
-        
-        // Wheel event for zoom
-        this.canvas.addEventListener('wheel', this._boundHandlers.wheel, { passive: false });
-    }
-
-    // ===== MOUSE HANDLERS (3D адаптированные) =====
-    handleMouseDown(event) {
-        event.preventDefault();
-        
-        if (event.button === 2) { // Right click for orbit
-            this.enableOrbit = true;
-            return;
-        }
-        
-        this.isDragging = true;
-        this.lastMouse.set(event.clientX, event.clientY);
-        this.velocity.set(0, 0, 0);
-        
-        if (this.canvas) {
-            this.canvas.style.cursor = 'grabbing';
-        }
-    }
-
-    handleMouseMove(event) {
-        if (!this.isDragging) return;
-        
-        const currentMouse = new THREE.Vector2(event.clientX, event.clientY);
-        const delta = new THREE.Vector2().subVectors(currentMouse, this.lastMouse);
-        
-        // 3D панорамирование с учетом направления камеры
-        this.pan(delta.x, delta.y);
-        
-        // Сохраняем скорость для инерции
-        this.velocity.set(delta.x * 0.5, delta.y * 0.5, 0);
-        
-        this.lastMouse.copy(currentMouse);
-    }
-
-    handleMouseUp() {
-        this.isDragging = false;
-        this.enableOrbit = false;
-        
-        if (this.canvas) {
-            this.canvas.style.cursor = 'grab';
-        }
-    }
-
-    handleContextMenu(event) {
-        event.preventDefault(); // Блокируем контекстное меню для правого клика
-    }
-
-    // ===== TOUCH HANDLERS (3D адаптированные) =====
-    handleTouchStart(event) {
-        event.preventDefault();
-        
-        if (event.touches.length === 1) {
-            this.isDragging = true;
-            this.lastMouse.set(event.touches[0].clientX, event.touches[0].clientY);
-            this.velocity.set(0, 0, 0);
-        } else if (event.touches.length === 2) {
-            this.handlePinchStart(event);
-        }
-    }
-
-    handleTouchMove(event) {
-        event.preventDefault();
-        
-        if (event.touches.length === 1 && this.isDragging && !this.isPinching) {
-            const currentMouse = new THREE.Vector2(
-                event.touches[0].clientX, 
-                event.touches[0].clientY
-            );
-            const delta = new THREE.Vector2().subVectors(currentMouse, this.lastMouse);
-            
-            this.pan(delta.x * 0.3, delta.y * 0.3);
-            
-            this.velocity.set(delta.x * 0.2, delta.y * 0.2, 0);
-            this.lastMouse.copy(currentMouse);
-        } else if (event.touches.length === 2) {
-            this.handlePinchMove(event);
-        }
-    }
-
-    handleTouchEnd() {
-        this.isDragging = false;
-        this.isPinching = false;
-        this.pinchStartDistance = 0;
-    }
-
-    // ===== PINCH-TO-ZOOM (3D адаптированный) =====
-    handlePinchStart(event) {
-        const touch1 = event.touches[0];
-        const touch2 = event.touches[1];
-        
-        this.pinchStartDistance = Math.hypot(
-            touch2.clientX - touch1.clientX,
-            touch2.clientY - touch1.clientY
-        );
-        this.pinchStartZoom = this.zoom;
-        this.isPinching = true;
-        this.isDragging = false;
-    }
-
-    handlePinchMove(event) {
-        if (!this.isPinching) return;
-        
-        const touch1 = event.touches[0];
-        const touch2 = event.touches[1];
-        
-        const currentDistance = Math.hypot(
-            touch2.clientX - touch1.clientX,
-            touch2.clientY - touch1.clientY
-        );
-        
-        if (this.pinchStartDistance > 0) {
-            const zoomFactor = currentDistance / this.pinchStartDistance;
-            const newZoom = this.pinchStartZoom * zoomFactor;
-            
-            this.setZoom(newZoom);
-        }
-    }
-
-    // ===== WHEEL ZOOM (3D адаптированный) =====
-    handleWheel(event) {
-        event.preventDefault();
-        
-        const zoomSpeed = 0.001;
-        const zoomDelta = -event.deltaY * zoomSpeed;
-        
-        // Получаем позицию мыши для зума к точке
-        const rect = this.canvas.getBoundingClientRect();
-        const mouseX = event.clientX - rect.left;
-        const mouseY = event.clientY - rect.top;
-        
-        this.zoomAtPoint(zoomDelta, mouseX, mouseY);
-    }
-
-    // ===== CORE 3D CAMERA METHODS =====
-    pan(deltaX, deltaY) {
-        if (this.enableOrbit) {
-            // Орбитальное вращение
-            this.orbitPan(deltaX, deltaY);
-        } else {
-            // Плоское панорамирование
-            const panVector = new THREE.Vector3(-deltaX, deltaY, 0);
-            panVector.multiplyScalar(2 / this.zoom);
-            
-            this.position.add(panVector);
-            this.target.add(panVector);
-            this.updateThreeCamera();
-        }
-        
-        this.applyBounds();
-    }
-
-    orbitPan(deltaX, deltaY) {
-        // Вращение камеры вокруг цели
-        const spherical = new THREE.Spherical();
-        spherical.setFromVector3(
-            this.position.clone().sub(this.target)
-        );
-        
-        spherical.theta -= deltaX * 0.01;
-        spherical.phi -= deltaY * 0.01;
-        spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
-        
-        const newPosition = new THREE.Vector3().setFromSpherical(spherical).add(this.target);
-        this.position.copy(newPosition);
-        this.updateThreeCamera();
-    }
-
-    zoom(delta, focusX = null, focusY = null) {
-        const newZoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.zoom + delta));
-        
-        if (focusX !== null && focusY !== null) {
-            this.zoomAtPoint(newZoom - this.zoom, focusX, focusY);
-        } else {
-            this.setZoom(newZoom);
-        }
-    }
-
-    zoomAtPoint(delta, pointX, pointY) {
-        if (!this.canvas) return;
-        
-        // В 3D зум реализуется через изменение положения камеры
-        const zoomFactor = 1 + delta * 2;
-        const newZoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.zoom * zoomFactor));
-        
-        // Двигаем камеру ближе/дальше от цели
-        const direction = new THREE.Vector3().subVectors(this.position, this.target).normalize();
-        const distanceChange = (newZoom - this.zoom) * 100;
-        
-        this.position.add(direction.multiplyScalar(distanceChange));
-        this.zoom = newZoom;
-        
-        this.updateThreeCamera();
-        this.applyBounds();
-    }
-
-    setZoom(newZoom) {
-        this.zoom = Math.max(this.minZoom, Math.min(this.maxZoom, newZoom));
-        
-        // Обновляем позицию камеры на основе zoom
-        const direction = new THREE.Vector3().subVectors(this.position, this.target).normalize();
-        const baseDistance = 1000;
-        const newDistance = baseDistance / this.zoom;
-        
-        this.position.copy(this.target).add(direction.multiplyScalar(newDistance));
-        this.updateThreeCamera();
-        this.applyBounds();
-    }
-
-    updateThreeCamera() {
-        if (this.threeCamera) {
-            this.threeCamera.position.copy(this.position);
-            this.threeCamera.lookAt(this.target);
-            
-            // Обновляем zoom камеры Three.js если нужно
-            if (this.threeCamera.isPerspectiveCamera) {
-                this.threeCamera.zoom = this.zoom;
-                this.threeCamera.updateProjectionMatrix();
-            }
-        }
-    }
-
-    applyBounds() {
-        // Ограничиваем позицию камеры в 3D пространстве
-        this.position.x = Math.max(this.bounds.minX, Math.min(this.bounds.maxX, this.position.x));
-        this.position.y = Math.max(this.bounds.minY, Math.min(this.bounds.maxY, this.position.y));
-        this.position.z = Math.max(this.bounds.minZ, Math.min(this.bounds.maxZ, this.position.z));
-        
-        // Также ограничиваем цель
-        this.target.x = Math.max(this.bounds.minX, Math.min(this.bounds.maxX, this.target.x));
-        this.target.y = Math.max(this.bounds.minY, Math.min(this.bounds.maxY, this.target.y));
-        
-        this.updateThreeCamera();
-    }
-
-    reset() {
-        this.position.set(0, 0, 1000);
-        this.target.set(0, 0, 0);
-        this.zoom = 1;
-        this.velocity.set(0, 0, 0);
-        this.isDragging = false;
-        this.isPinching = false;
-        this.enableOrbit = false;
-        
-        this.updateThreeCamera();
-        console.log('🗺️ 3D Камера сброшена к начальному виду');
-    }
-
-    setInitialView() {
-        this.reset();
-        
-        // Дополнительная настройка начального 3D вида
-        if (this.threeCamera) {
-            this.threeCamera.fov = 75;
-            this.threeCamera.updateProjectionMatrix();
-        }
-    }
-
-    handleResize() {
-        // При изменении размера обновляем камеру Three.js
-        if (this.threeCamera && this.threeCamera.isPerspectiveCamera) {
-            this.threeCamera.aspect = this.canvas.width / this.canvas.height;
-            this.threeCamera.updateProjectionMatrix();
-        }
-    }
-
-    // ===== ANIMATION AND INERTIA (3D адаптированные) =====
-    startAnimationLoop() {
-        const update = () => {
-            this.applyInertia();
-            this.animationFrameId = requestAnimationFrame(update);
+        this.controls = {
+            enabled: true,
+            minDistance: 50,
+            maxDistance: 5000,
+            zoomSpeed: 1.0,
+            panSpeed: 1.0,
+            rotateSpeed: 1.0
         };
-        update();
-    }
-
-    applyInertia() {
-        if (this.isDragging || this.isPinching) return;
         
-        // Применяем инерцию в 3D пространстве
-        if (this.velocity.length() > 0.01) {
-            const inertiaVector = new THREE.Vector3(
-                this.velocity.x,
-                -this.velocity.y, // Инвертируем Y для естественного движения
-                0
-            ).multiplyScalar(0.5);
-            
-            this.position.add(inertiaVector);
-            this.target.add(inertiaVector);
-            this.updateThreeCamera();
-            
-            // Затухание скорости
-            this.velocity.multiplyScalar(this.friction);
-        } else {
-            this.velocity.set(0, 0, 0);
-        }
-    }
-
-    stopAnimationLoop() {
-        if (this.animationFrameId) {
-            cancelAnimationFrame(this.animationFrameId);
-            this.animationFrameId = null;
-        }
-    }
-
-    // ===== 3D UTILITY METHODS =====
-    screenToWorld(screenX, screenY) {
-        if (!this.canvas || !this.threeCamera) return new THREE.Vector3(0, 0, 0);
+        this.state = {
+            isDragging: false,
+            isPanning: false,
+            lastMousePos: { x: 0, y: 0 },
+            targetPosition: new THREE.Vector3(0, 0, 0),
+            spherical: new THREE.Spherical(1000, Math.PI/2, 0)
+        };
         
+        this.initEventListeners();
+    }
+    
+    initEventListeners() {
+        this.canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
+        this.canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
+        this.canvas.addEventListener('mouseup', this.onMouseUp.bind(this));
+        this.canvas.addEventListener('wheel', this.onWheel.bind(this));
+        
+        // Touch events for mobile
+        this.canvas.addEventListener('touchstart', this.onTouchStart.bind(this));
+        this.canvas.addEventListener('touchmove', this.onTouchMove.bind(this));
+        this.canvas.addEventListener('touchend', this.onTouchEnd.bind(this));
+    }
+    
+    // Координатные преобразования
+    screenToWorld(screenX, screenY, distance = 1000) {
         const vector = new THREE.Vector3();
         const rect = this.canvas.getBoundingClientRect();
         
@@ -401,100 +48,190 @@ export class CameraController {
         vector.y = -((screenY - rect.top) / rect.height) * 2 + 1;
         vector.z = 0.5;
         
-        vector.unproject(this.threeCamera);
+        vector.unproject(this.camera);
         
-        const direction = vector.sub(this.threeCamera.position).normalize();
-        const distance = -this.threeCamera.position.z / direction.z;
-        const worldPosition = this.threeCamera.position.clone().add(direction.multiplyScalar(distance));
-        
-        return worldPosition;
+        const dir = vector.sub(this.camera.position).normalize();
+        return this.camera.position.clone().add(dir.multiplyScalar(distance));
     }
-
-    worldToScreen(worldX, worldY, worldZ = 0) {
-        if (!this.canvas || !this.threeCamera) return { x: 0, y: 0 };
+    
+    worldToScreen(worldPos) {
+        const vector = worldPos.clone();
+        vector.project(this.camera);
         
-        const vector = new THREE.Vector3(worldX, worldY, worldZ);
         const rect = this.canvas.getBoundingClientRect();
-        
-        vector.project(this.threeCamera);
-        
         return {
             x: (vector.x * 0.5 + 0.5) * rect.width + rect.left,
             y: (-vector.y * 0.5 + 0.5) * rect.height + rect.top
         };
     }
-
-    getViewportBounds() {
-        if (!this.canvas || !this.threeCamera) {
-            return { left: 0, right: 0, top: 0, bottom: 0, near: 0, far: 0 };
-        }
+    
+    // Методы управления камерой
+    focusOnEntity(entityPosition, distance = 300) {
+        this.state.targetPosition.copy(entityPosition);
         
-        // Вычисляем границы видимой области в мировых координатах
-        const frustum = new THREE.Frustum();
-        const matrix = new THREE.Matrix4().multiplyMatrices(
-            this.threeCamera.projectionMatrix, 
-            this.threeCamera.matrixWorldInverse
+        // Плавное перемещение камеры к цели
+        this.animateToPosition(
+            entityPosition.x,
+            entityPosition.y,
+            entityPosition.z + distance,
+            1000
         );
-        frustum.setFromProjectionMatrix(matrix);
+    }
+    
+    animateToPosition(x, y, z, duration = 1000) {
+        const startPosition = this.camera.position.clone();
+        const targetPosition = new THREE.Vector3(x, y, z);
+        const startTime = performance.now();
         
-        return {
-            left: -this.target.x - (this.canvas.width / 2) / this.zoom,
-            right: -this.target.x + (this.canvas.width / 2) / this.zoom,
-            top: -this.target.y - (this.canvas.height / 2) / this.zoom,
-            bottom: -this.target.y + (this.canvas.height / 2) / this.zoom,
-            near: this.threeCamera.near,
-            far: this.threeCamera.far
+        const animate = () => {
+            const currentTime = performance.now();
+            const progress = Math.min((currentTime - startTime) / duration, 1);
+            
+            // Кубическая easing функция для плавности
+            const easeProgress = 1 - Math.pow(1 - progress, 3);
+            
+            this.camera.position.lerpVectors(startPosition, targetPosition, easeProgress);
+            this.camera.lookAt(this.state.targetPosition);
+            
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            }
         };
-    }
-
-    isPointInView(x, y, z = 0, radius = 0) {
-        const viewport = this.getViewportBounds();
-        const point = new THREE.Vector3(x, y, z);
         
-        // Простая проверка по границам (можно улучшить с помощью frustum culling)
-        return x + radius >= viewport.left && 
-               x - radius <= viewport.right && 
-               y + radius >= viewport.top && 
-               y - radius <= viewport.bottom;
+        animate();
     }
-
-    // ===== DEBUG AND INFO =====
-    getCameraInfo() {
-        return {
-            position: { x: this.position.x, y: this.position.y, z: this.position.z },
-            target: { x: this.target.x, y: this.target.y, z: this.target.z },
-            zoom: this.zoom,
-            isDragging: this.isDragging,
-            isPinching: this.isPinching,
-            velocity: { x: this.velocity.x, y: this.velocity.y, z: this.velocity.z },
-            viewport: this.getViewportBounds(),
-            enableOrbit: this.enableOrbit
-        };
-    }
-
-    logCameraState() {
-        console.log('🎥 Состояние 3D камеры:', this.getCameraInfo());
-    }
-
-    // ===== DESTRUCTOR =====
-    destroy() {
-        this.stopAnimationLoop();
+    
+    // Обработчики событий
+    onMouseDown(event) {
+        if (!this.controls.enabled) return;
         
-        // Удаляем обработчики событий
-        if (this.canvas) {
-            this.canvas.removeEventListener('mousedown', this._boundHandlers.mouseDown);
-            this.canvas.removeEventListener('mousemove', this._boundHandlers.mouseMove);
-            this.canvas.removeEventListener('mouseup', this._boundHandlers.mouseUp);
-            this.canvas.removeEventListener('mouseleave', this._boundHandlers.mouseLeave);
-            this.canvas.removeEventListener('contextmenu', this._boundHandlers.contextMenu);
-            this.canvas.removeEventListener('touchstart', this._boundHandlers.touchStart);
-            this.canvas.removeEventListener('touchmove', this._boundHandlers.touchMove);
-            this.canvas.removeEventListener('touchend', this._boundHandlers.touchEnd);
-            this.canvas.removeEventListener('wheel', this._boundHandlers.wheel);
+        this.state.isDragging = true;
+        this.state.lastMousePos = { x: event.clientX, y: event.clientY };
+        
+        if (event.button === 2) { // Right click
+            this.state.isPanning = true;
+        }
+    }
+    
+    onMouseMove(event) {
+        if (!this.controls.enabled || !this.state.isDragging) return;
+        
+        const deltaX = event.clientX - this.state.lastMousePos.x;
+        const deltaY = event.clientY - this.state.lastMousePos.y;
+        
+        if (this.state.isPanning) {
+            // Pan camera
+            const panVector = new THREE.Vector3(-deltaX, deltaY, 0);
+            panVector.multiplyScalar(this.controls.panSpeed * 0.1);
+            this.camera.position.add(panVector);
+            this.state.targetPosition.add(panVector);
+        } else {
+            // Rotate camera around target
+            this.state.spherical.theta -= deltaX * 0.01 * this.controls.rotateSpeed;
+            this.state.spherical.phi -= deltaY * 0.01 * this.controls.rotateSpeed;
+            
+            // Clamp phi to avoid flipping
+            this.state.spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, this.state.spherical.phi));
+            
+            this.updateCameraPosition();
         }
         
-        console.log('🧹 3D CameraController уничтожен');
+        this.state.lastMousePos = { x: event.clientX, y: event.clientY };
+        this.camera.lookAt(this.state.targetPosition);
+    }
+    
+    onMouseUp(event) {
+        this.state.isDragging = false;
+        this.state.isPanning = false;
+    }
+    
+    onWheel(event) {
+        if (!this.controls.enabled) return;
+        
+        event.preventDefault();
+        const zoomAmount = event.deltaY * 0.01 * this.controls.zoomSpeed;
+        
+        this.state.spherical.radius = Math.max(
+            this.controls.minDistance,
+            Math.min(this.controls.maxDistance, this.state.spherical.radius + zoomAmount)
+        );
+        
+        this.updateCameraPosition();
+    }
+    
+    // Touch events
+    onTouchStart(event) {
+        if (event.touches.length === 1) {
+            this.state.isDragging = true;
+            this.state.lastMousePos = {
+                x: event.touches[0].clientX,
+                y: event.touches[0].clientY
+            };
+        }
+    }
+    
+    onTouchMove(event) {
+        if (!this.state.isDragging || event.touches.length !== 1) return;
+        
+        const deltaX = event.touches[0].clientX - this.state.lastMousePos.x;
+        const deltaY = event.touches[0].clientY - this.state.lastMousePos.y;
+        
+        this.state.spherical.theta -= deltaX * 0.01;
+        this.state.spherical.phi -= deltaY * 0.01;
+        this.state.spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, this.state.spherical.phi));
+        
+        this.updateCameraPosition();
+        this.state.lastMousePos = {
+            x: event.touches[0].clientX,
+            y: event.touches[0].clientY
+        };
+    }
+    
+    onTouchEnd(event) {
+        this.state.isDragging = false;
+    }
+    
+    updateCameraPosition() {
+        const position = new THREE.Vector3();
+        position.setFromSpherical(this.state.spherical);
+        position.add(this.state.targetPosition);
+        
+        this.camera.position.copy(position);
+        this.camera.lookAt(this.state.targetPosition);
+    }
+    
+    // Утилиты
+    getCameraState() {
+        return {
+            position: this.camera.position.clone(),
+            target: this.state.targetPosition.clone(),
+            distance: this.state.spherical.radius,
+            spherical: {
+                radius: this.state.spherical.radius,
+                phi: this.state.spherical.phi,
+                theta: this.state.spherical.theta
+            }
+        };
+    }
+    
+    setCameraState(state) {
+        this.camera.position.copy(state.position);
+        this.state.targetPosition.copy(state.target);
+        this.state.spherical.radius = state.distance;
+        this.state.spherical.phi = state.spherical.phi;
+        this.state.spherical.theta = state.spherical.theta;
+        
+        this.camera.lookAt(this.state.targetPosition);
+    }
+    
+    dispose() {
+        // Clean up event listeners
+        this.canvas.removeEventListener('mousedown', this.onMouseDown);
+        this.canvas.removeEventListener('mousemove', this.onMouseMove);
+        this.canvas.removeEventListener('mouseup', this.onMouseUp);
+        this.canvas.removeEventListener('wheel', this.onWheel);
+        this.canvas.removeEventListener('touchstart', this.onTouchStart);
+        this.canvas.removeEventListener('touchmove', this.onTouchMove);
+        this.canvas.removeEventListener('touchend', this.onTouchEnd);
     }
 }
-
-export default CameraController;
