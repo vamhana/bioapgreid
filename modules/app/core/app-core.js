@@ -1,6 +1,6 @@
 import GalaxyDataLoader from './galaxy-data-loader.js';
 import GalaxyRenderer from './galaxy-renderer.js';
-import CameraController from './camera-controller.js';
+import { CameraController } from './camera-controller.js';
 import { AppSystemsManager } from './app-systems.js';
 import { AppUIManager } from './app-ui.js';
 import { APP_CONFIG } from '../constants/config.js';
@@ -276,5 +276,6 @@ export class GalaxyApp {
         console.log('🧹 GalaxyApp уничтожен, все ресурсы освобождены');
     }
 }
+
 
 export default GalaxyApp;
