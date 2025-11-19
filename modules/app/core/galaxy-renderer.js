@@ -1,4 +1,4 @@
-import { ThreeSceneManager } from './three-scene-manager.js';
+import { ThreeSceneManager2 } from './three-scene-manager_2.js';
 import { SpatialPartitioner } from './spatial-partitioner.js';
 import { LODManager } from './lod-manager.js';
 import { MemoryManager } from './memory-manager.js';
@@ -11,7 +11,7 @@ export class GalaxyRenderer {
         this.canvas = this.resolveCanvas(canvasId); // Улучшенная обработка
         
         // Инициализация менеджеров
-        this.sceneManager = null;
+        this.sceneManager = new ThreeSceneManager2(canvasId);
         this.spatialPartitioner = new SpatialPartitioner();
         this.lodManager = new LODManager();
         this.memoryManager = new MemoryManager();
@@ -751,5 +751,6 @@ export class GalaxyRenderer {
         console.log('✅ GalaxyRenderer уничтожен');
     }
 }
+
 
 export default GalaxyRenderer;
