@@ -1,14 +1,14 @@
-// modules/app/app.js
+// modules/app/core/app.js
 
 // Импорт всех необходимых модулей с явными расширениями .js
-import { GalaxyDataLoader } from './core/galaxy-data-loader.js';
-import { GalaxyRenderer } from './core/galaxy-renderer.js';
-import { CameraController } from './core/camera-controller.js';
-import { ThreeSceneManager } from './core/three-scene-manager.js';
-import { LODManager } from './core/lod-manager.js';
-import { SpatialPartitioner } from './core/spatial-partitioner.js';
-import { MemoryManager } from './core/memory-manager.js';
-import { SecurityValidator } from './core/security-validator.js';
+import { GalaxyDataLoader } from './galaxy-data-loader.js';
+import { GalaxyRenderer } from './galaxy-renderer.js';
+import { CameraController } from './camera-controller.js';
+import { ThreeSceneManager } from './three-scene-manager.js';
+import { LODManager } from './lod-manager.js';
+import { SpatialPartitioner } from './spatial-partitioner.js';
+import { MemoryManager } from './memory-manager.js';
+import { SecurityValidator } from './security-validator.js';
 
 // Импорт Three.js
 import * as THREE from './core/three.module.js';
@@ -408,3 +408,4 @@ if (typeof window !== 'undefined') {
 }
 
 export default GalaxyApp;
+
