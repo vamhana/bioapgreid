@@ -1,6 +1,7 @@
 // modules/app/core/galaxy-data-loader.js
 import { SecurityValidator } from './security-validator.js';
 import { MemoryManager } from './memory-manager.js';
+import { Galaxy3DLayoutService } from './galaxy-3d-layout-service.js';
 
 export class GalaxyDataLoader {
     constructor() {
@@ -9,13 +10,17 @@ export class GalaxyDataLoader {
         this.cache = new Map();
         this.securityValidator = new SecurityValidator();
         this.memoryManager = new MemoryManager();
+        this.layoutService = new Galaxy3DLayoutService(); // Новая служба 3D
+        
         this.loadingState = {
             isLoading: false,
             progress: 0,
             lastError: null
         };
         
-        console.log('📊 GalaxyDataLoader создан с SecurityValidator и MemoryManager');
+        this.maxProcessingDepth = 10; // Защита от рекурсии
+        
+        console.log('📊 GalaxyDataLoader создан с 3D Layout Service');
     }
 
     async load() {
@@ -53,7 +58,7 @@ export class GalaxyDataLoader {
             
             this.loadingState.progress = 60;
             
-            // ВАЖНО: Проверяем безопасность данных
+            // Проверяем безопасность данных
             console.log('🔒 Проверка безопасности данных...');
             if (this.securityValidator && typeof this.securityValidator.validateGalaxyData === 'function') {
                 this.securityValidator.validateGalaxyData(rawData);
@@ -63,7 +68,7 @@ export class GalaxyDataLoader {
             
             this.loadingState.progress = 80;
             
-            // Обрабатываем данные
+            // Обрабатываем данные (БЕЗ 3D логики)
             this.data = this.processGalaxyData(rawData);
             
             // Кэшируем данные с отслеживанием памяти
@@ -104,19 +109,17 @@ export class GalaxyDataLoader {
     }
 
     processGalaxyData(rawData) {
-        // Дополнительная обработка данных для Three.js
+        // Только базовая обработка данных - БЕЗ 3D логики
         const processedData = {
             ...rawData,
-            // Добавляем 3D позиции для объектов
-            threeData: this.generate3DPositions(rawData),
-            // Добавляем метаданные для рендеринга
-            renderConfig: this.generateRenderConfig(rawData),
-            // Временные метки
-            loadedAt: new Date().toISOString(),
-            version: '1.0.0'
+            // Убираем 3D позиции - они теперь в layout service
+            metadata: {
+                processedAt: new Date().toISOString(),
+                version: '2.0.0-data-only'
+            }
         };
 
-        // Рекурсивно обрабатываем детей
+        // Рекурсивно обрабатываем детей с защитой глубины
         if (processedData.children) {
             processedData.children = processedData.children.map(child => 
                 this.processEntityData(child, 0)
@@ -127,174 +130,47 @@ export class GalaxyDataLoader {
     }
 
     processEntityData(entity, depth) {
+        // Защита от бесконечной рекурсии
+        if (depth > this.maxProcessingDepth) {
+            console.warn(`⚠️ Превышена глубина обработки: ${depth}`);
+            return entity;
+        }
+
         const processedEntity = {
             ...entity,
-            threeData: {
-                position: this.calculateOrbitalPosition(depth, entity.index || 0),
-                scale: this.calculateEntityScale(entity.type),
-                rotation: this.calculateEntityRotation(entity.type)
-            },
-            renderConfig: {
-                color: entity.config?.color || this.getDefaultColor(entity.type),
-                emissive: entity.type === 'star' ? entity.config?.color || '#FFD700' : '#000000',
-                emissiveIntensity: entity.type === 'star' ? 0.5 : 0,
-                material: this.getMaterialType(entity.type)
+            // Базовые данные без 3D логики
+            metadata: {
+                processedDepth: depth,
+                hasChildren: !!(entity.children && entity.children.length > 0)
             }
         };
 
-        // Обрабатываем детей рекурсивно
-        if (processedEntity.children) {
+        // Обрабатываем детей рекурсивно с контролем глубины
+        if (processedEntity.children && depth < this.maxProcessingDepth) {
             processedEntity.children = processedEntity.children.map((child, index) => 
-                this.processEntityData(child, depth + 1, index)
+                this.processEntityData(child, depth + 1)
             );
         }
 
         return processedEntity;
     }
 
-    generate3DPositions(galaxyData, depth = 0) {
-        // Защита от бесконечной рекурсии
-        if (depth > 10) {
-            console.warn('⚠️ Превышена глубина рекурсии в generate3DPositions');
-            return { center: { x: 0, y: 0, z: 0 }, orbitalLayers: [] };
-        }
-
-        const positions = {
-            center: { x: 0, y: 0, z: 0 },
-            orbitalLayers: []
-        };
-
-        if (galaxyData && galaxyData.children) {
-            galaxyData.children.forEach((planet, planetIndex) => {
-                const planetOrbit = {
-                    radius: 200 + planetIndex * 150,
-                    planets: []
-                };
-
-                // Позиция планеты
-                const planetAngle = (planetIndex / galaxyData.children.length) * Math.PI * 2;
-                planetOrbit.planets.push({
-                    entityId: planet.cleanPath || planet.name,
-                    position: {
-                        x: Math.cos(planetAngle) * planetOrbit.radius,
-                        y: Math.sin(planetAngle) * planetOrbit.radius,
-                        z: 0
-                    }
-                });
-
-                // Позиции лун
-                if (planet.children) {
-                    planet.children.forEach((moon, moonIndex) => {
-                        const moonAngle = (moonIndex / planet.children.length) * Math.PI * 2;
-                        planetOrbit.planets.push({
-                            entityId: moon.cleanPath || moon.name,
-                            position: {
-                                x: Math.cos(planetAngle) * planetOrbit.radius + Math.cos(moonAngle) * 60,
-                                y: Math.sin(planetAngle) * planetOrbit.radius + Math.sin(moonAngle) * 60,
-                                z: 0
-                            }
-                        });
-                    });
-                }
-
-                positions.orbitalLayers.push(planetOrbit);
-            });
-        }
-
-        return positions;
-    }
-
-    generateRenderConfig(galaxyData) {
-        return {
-            starfield: {
-                enabled: true,
-                starCount: 5000,
-                nebulaEnabled: true
-            },
-            lighting: {
-                ambientIntensity: 0.6,
-                directionalIntensity: 1.2,
-                enableShadows: true
-            },
-            postProcessing: {
-                antialiasing: true,
-                toneMapping: true
-            },
-            performance: {
-                lodEnabled: true,
-                frustumCulling: true,
-                maxVisibleEntities: 1000
-            }
-        };
-    }
-
-    calculateOrbitalPosition(depth, index, totalAtDepth = 8) {
-        const baseRadius = 200;
-        const radius = baseRadius + depth * 150;
-        const angle = (index / totalAtDepth) * Math.PI * 2;
+    // Новый метод для получения данных с 3D layout
+    async loadWith3DLayout() {
+        const basicData = await this.load();
+        const dataWithLayout = this.layoutService.generate3DLayout(basicData);
         
-        // Добавляем немного случайности для естественного вида
-        const randomOffset = (Math.random() - 0.5) * 20 * depth;
+        // Обновляем кэш
+        this.cache.set('galaxyDataWithLayout', dataWithLayout);
+        this.data = dataWithLayout;
         
-        return {
-            x: Math.cos(angle) * (radius + randomOffset),
-            y: Math.sin(angle) * (radius + randomOffset),
-            z: (Math.random() - 0.5) * 50 // Небольшая вариация по Z
-        };
-    }
-
-    calculateEntityScale(entityType) {
-        const scales = {
-            galaxy: 3.0,
-            star: 2.0,
-            planet: 1.0,
-            moon: 0.3,
-            asteroid: 0.1,
-            debris: 0.05
-        };
-        
-        return scales[entityType] || 1.0;
-    }
-
-    calculateEntityRotation(entityType) {
-        // Случайная начальная ротация
-        return {
-            x: Math.random() * Math.PI * 2,
-            y: Math.random() * Math.PI * 2,
-            z: Math.random() * Math.PI * 2
-        };
-    }
-
-    getDefaultColor(entityType) {
-        const colors = {
-            galaxy: '#FFD700',
-            star: '#FFD700',
-            planet: '#4ECDC4',
-            moon: '#CCCCCC',
-            asteroid: '#888888',
-            debris: '#666666'
-        };
-        
-        return colors[entityType] || '#FFFFFF';
-    }
-
-    getMaterialType(entityType) {
-        const materials = {
-            galaxy: 'emissive',
-            star: 'emissive',
-            planet: 'standard',
-            moon: 'standard',
-            asteroid: 'basic',
-            debris: 'basic'
-        };
-        
-        return materials[entityType] || 'standard';
+        return dataWithLayout;
     }
 
     getFallbackData() {
         console.warn('⚠️ Используются тестовые данные');
         
-        // Создаем базовый объект без рекурсивных вызовов
+        // Упрощенные fallback данные без 3D логики
         const fallbackData = {
             name: "Test Galaxy",
             type: "galaxy",
@@ -379,30 +255,12 @@ export class GalaxyDataLoader {
                     }
                 }
             ],
-            // ИСПРАВЛЕНО: убраны рекурсивные вызовы
-            threeData: this.generate3DPositions({
-                children: [
-                    { cleanPath: "earth", name: "earth" },
-                    { 
-                        cleanPath: "mars", 
-                        name: "mars",
-                        children: [
-                            { cleanPath: "phobos", name: "phobos" }, 
-                            { cleanPath: "deimos", name: "deimos" }
-                        ] 
-                    },
-                    { cleanPath: "jupiter", name: "jupiter" }
-                ]
-            }),
-            renderConfig: this.generateRenderConfig({
-                name: "Test Galaxy",
-                stats: { total: 7 }
-            }),
-            loadedAt: new Date().toISOString(),
-            version: '1.0.0-fallback'
+            metadata: {
+                isFallback: true,
+                processedAt: new Date().toISOString()
+            }
         };
 
-        // Обрабатываем fallback данные
         const processedFallback = this.processGalaxyData(fallbackData);
         
         // Кэшируем fallback данные
@@ -419,6 +277,7 @@ export class GalaxyDataLoader {
         return processedFallback;
     }
 
+    // Остальные методы остаются без изменений...
     getEntityByPath(path) {
         if (!this.data) {
             console.warn('⚠️ Данные не загружены');
@@ -443,49 +302,6 @@ export class GalaxyDataLoader {
         return result;
     }
 
-    // Новые методы для работы с Three.js данными
-    getEntity3DPosition(entityId) {
-        if (!this.data?.threeData) {
-            return { x: 0, y: 0, z: 0 };
-        }
-
-        // Ищем позицию в сгенерированных данных
-        for (const orbit of this.data.threeData.orbitalLayers || []) {
-            for (const entity of orbit.planets || []) {
-                if (entity.entityId === entityId) {
-                    return entity.position;
-                }
-            }
-        }
-
-        // Fallback: вычисляем позицию на лету
-        return this.calculateFallbackPosition(entityId);
-    }
-
-    calculateFallbackPosition(entityId) {
-        // Простой алгоритм для вычисления позиции на основе entityId
-        const hash = this.hashString(entityId);
-        const angle = (hash % 100) / 100 * Math.PI * 2;
-        const radius = 200 + ((hash % 1000) / 1000) * 800;
-        
-        return {
-            x: Math.cos(angle) * radius,
-            y: Math.sin(angle) * radius,
-            z: (Math.random() - 0.5) * 100
-        };
-    }
-
-    hashString(str) {
-        let hash = 0;
-        for (let i = 0; i < str.length; i++) {
-            const char = str.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash = hash & hash; // Convert to 32bit integer
-        }
-        return Math.abs(hash);
-    }
-
-    // Методы для работы с прогрессом загрузки
     getLoadingState() {
         return { ...this.loadingState };
     }
@@ -502,7 +318,6 @@ export class GalaxyDataLoader {
         return this.loadingState.lastError;
     }
 
-    // Расширенные методы для работы с данными
     getAllEntities() {
         if (!this.data) return [];
         
@@ -528,26 +343,25 @@ export class GalaxyDataLoader {
         if (!this.data) return null;
         
         const memoryStats = this.memoryManager.getMemoryStats();
+        const allEntities = this.getAllEntities();
         
         return {
             name: this.data.name,
-            totalEntities: this.getAllEntities().length,
+            totalEntities: allEntities.length,
             byType: this.data.stats?.entities || {},
             memoryUsage: memoryStats.formattedAllocated,
             lastUpdated: new Date().toISOString(),
-            version: this.data.version || '1.0.0',
-            has3DData: !!this.data.threeData
+            version: this.data.version || '2.0.0',
+            has3DData: !!this.data.threeData,
+            processingDepth: this.maxProcessingDepth
         };
     }
 
-    // Методы для управления памятью
     getMemoryUsage() {
         return this.memoryManager.getMemoryStats();
     }
 
-    // Очистка кэша с учетом менеджера памяти
     clearCache() {
-        // Удаляем из менеджера памяти
         this.cache.forEach((data, key) => {
             this.memoryManager.decrementReference(this.getCacheKey(key));
         });
@@ -560,17 +374,16 @@ export class GalaxyDataLoader {
         return `galaxy_data_${key}`;
     }
 
-    // Перезагрузка данных
     async reload() {
         this.clearCache();
         this.loadingState.progress = 0;
         return this.load();
     }
 
-    // Деструктор с очисткой памяти
     destroy() {
         this.clearCache();
         this.data = null;
+        this.layoutService.dispose();
         this.memoryManager.dispose();
         console.log('🧹 GalaxyDataLoader уничтожен');
     }
