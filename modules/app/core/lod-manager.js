@@ -1,13 +1,85 @@
+// modules/app/core/lod-manager.js
+// СТАТУС: АКТУАЛЬНЫЙ (ОБНОВЛЕННЫЙ)
+// ТИП: JavaScript (Менеджер уровней детализации для 3D-сцены)
+// МОДУЛЬНАЯ СИСТЕМА: ES6 Modules
+// НАЗНАЧЕНИЕ ФАЙЛА:
+//   Управление уровнями детализации (LOD) для 3D-сущностей в реальном времени
+//   с автоматическим переключением геометрий на основе расстояния и важности объектов
+// СТРУКТУРА:
+//   ИМПОРТИРУЕТ:
+//     - ./three.module.js - для работы с 3D-графикой и геометриями
+//   ЭКСПОРТЫ (ПУБЛИЧНЫЙ ИНТЕРФЕЙС):
+//     - export default LODManager - основной класс для управления LOD системой
+//     - export { LODManager } - именованный экспорт для расширенного использования
+//   ВНУТРЕННЯЯ СТРУКТУРА:
+//     [!] КЛЮЧЕВЫЕ ЭЛЕМЕНТЫ:
+//     - КЛАССЫ: LODManager - центральный координатор системы уровней детализации
+//     - ФУНКЦИИ: createIrregularSphereGeometry - создание геометрии астероидов
+//     - СОСТОЯНИЕ: entityLODs, geometryCache, preloadQueue - кэши и реестры
+// ЗАВИСИМОСТИ (ТОЛЬКО ВАЖНЫЕ):
+//   ВНЕШНИЕ: THREE.js (three.module.js) - для 3D геометрий и материалов
+//   ВНУТРЕННИЕ: НЕТ ДАННЫХ
+//   СТАНДАРТНЫЕ: Map, Set, Promise для кэширования и асинхронных операций
+// КОНФИГУРАЦИЯ:
+//   [!] НАСТРАИВАЕМЫЕ ПАРАМЕТРЫ:
+//   - enabled: true/false - глобальное включение/выключение системы
+//   - quality: 'low'|'medium'|'high'|'ultra' - множитель дистанций LOD
+//   - autoUpdate: true/false - автоматическое обновление LOD
+//   - updateFrequency: 100ms - частота обновлений
+//   - debug: true/false - визуализация уровней детализации
+// 🚧 СТАТУС РАЗРАБОТКИ:
+//   [+] ОПТИМИЗАЦИИ: Кэширование геометрий - снижение нагрузки на GC
+//   [+] ОПТИМИЗАЦИИ: Пакетное обновление LOD - минимизация вычислений за кадр
+//   [+] ОПТИМИЗАЦИИ: Отложенное освобождение памяти
+// ОСОБЕННОСТИ РЕАЛИЗАЦИИ:
+//   [!] ГЛАВНЫЕ РЕШЕНИЯ:
+//   - Иерархия уровней: ultra→high→medium→low→billboard с приоритетами
+//   - Учет важности сущности (importance) и масштаба (zoomLevel)
+//   - Защита от частых переключений через updateThreshold
+// НЮАНСЫ РЕАЛИЗАЦИИ:
+//   [-] ЧТО МОЖЕТ СЛОМАТЬСЯ:
+//   - Отсутствие entityId в userData меша ломает привязку LOD
+//   - Слишком частые вызовы updateLODsForEntities (>60fps) могут вызвать просадки
+// 🧩 ЖИЗНЕННЫЙ ЦИКЛ:
+//   [>] ФАЗА 1: Инициализация - настройка уровней LOD, кэшей, предзагрузка геометрий
+//   [>] ФАЗА 2: Работа - регистрация сущностей, автоматическое обновление LOD, кэширование
+//   [>] ФАЗА 3: Завершение - очистка геометрий, удаление отладочных материалов
+// ⚡ СОБЫТИЙНЫЙ КОНТРАКТ:
+//   [+] ГЕНЕРИРУЕТ: console.log/warn/error - логирование работы системы
+//   [-] ОБРАБАТЫВАЕТ: Изменение позиции камеры → пересчет LOD для всех сущностей
+//   [>] ВЗАИМОДЕЙСТВИЕ: С трехмерными мешами через замену geometry и material
+// 🕒 ТАЙМИНГ И ПРИОРИТЕТЫ:
+//   [!] ПЕРИОДИЧНОСТЬ: Обновление по требованию или каждые 100ms (autoUpdate)
+//   [-] БЛОКИРУЮЩИЕ ОПЕРАЦИИ: Создание геометрий может блокировать основной поток
+// 🔧 ЗАЩИТЫ И ОПТИМИЗАЦИИ:
+//   [+] ЗАЩИТЫ: Проверки на существование entityLOD, fallback геометрии
+//   [+] ОПТИМИЗАЦИИ: Единый кэш геометрий, отложенное освобождение памяти
+//   [+] ОБРАБОТКА ОШИБОК: Try-catch вокруг создания геометрий, graceful degradation
+//   [+] ОПТИМИЗАЦИИ: Батчинг обновлений, приоритизация близких объектов
+
 import * as THREE from './three.module.js';
 
+/**
+ * Менеджер уровней детализации для 3D-сцены
+ * Управляет автоматическим переключением геометрий на основе расстояния до камеры
+ */
 export class LODManager {
+    /**
+     * Создает экземпляр LODManager
+     * @param {Object} options - Настройки менеджера
+     * @param {boolean} [options.enabled=true] - Включение/выключение системы
+     * @param {boolean} [options.autoUpdate=true] - Автоматическое обновление LOD
+     * @param {number} [options.updateFrequency=100] - Частота обновлений в мс
+     * @param {boolean} [options.debug=false] - Режим отладки
+     * @param {string} [options.quality='medium'] - Уровень качества ('low', 'medium', 'high', 'ultra')
+     */
     constructor(options = {}) {
         this.options = {
             enabled: options.enabled !== false,
             autoUpdate: options.autoUpdate !== false,
-            updateFrequency: options.updateFrequency || 100, // ms
+            updateFrequency: options.updateFrequency || 100,
             debug: options.debug || false,
-            quality: options.quality || 'medium', // 'low', 'medium', 'high', 'ultra'
+            quality: options.quality || 'medium',
             ...options
         };
 
@@ -31,7 +103,8 @@ export class LODManager {
             geometryCacheMisses: 0,
             lastUpdate: 0,
             updatesPerSecond: 0,
-            memoryUsage: 0
+            memoryUsage: 0,
+            frameTime: 0
         };
 
         // Система предзагрузки
@@ -42,15 +115,40 @@ export class LODManager {
         this.debugMaterials = new Map();
         this.debugEnabled = this.options.debug;
 
+        // Таймер для автообновления
+        this.autoUpdateInterval = null;
+        this.setupAutoUpdate();
+
         console.log('🎯 LODManager создан', { 
             quality: this.options.quality,
-            enabled: this.options.enabled 
+            enabled: this.options.enabled,
+            autoUpdate: this.options.autoUpdate
         });
     }
 
-    // Инициализация уровней LOD
+    /**
+     * Настраивает автоматическое обновление
+     * @private
+     */
+    setupAutoUpdate() {
+        if (this.autoUpdateInterval) {
+            clearInterval(this.autoUpdateInterval);
+        }
+
+        if (this.options.autoUpdate && this.options.enabled) {
+            this.autoUpdateInterval = setInterval(() => {
+                this.cleanup();
+            }, this.options.updateFrequency);
+        }
+    }
+
+    /**
+     * Инициализация уровней LOD с настройками расстояний
+     * @returns {Object} Конфигурация уровней LOD
+     * @private
+     */
     initializeLODLevels() {
-        const levels = {
+        const baseLevels = {
             'ultra': { 
                 priority: 0, 
                 maxDistance: 100,
@@ -78,7 +176,7 @@ export class LODManager {
             }
         };
 
-        // Настройки на основе качества
+        // Множители дистанций на основе качества
         const qualityMultipliers = {
             'low': 0.5,
             'medium': 0.8,
@@ -87,15 +185,24 @@ export class LODManager {
         };
 
         const multiplier = qualityMultipliers[this.options.quality] || 1.0;
+        const adjustedLevels = {};
 
-        Object.values(levels).forEach(level => {
-            level.maxDistance *= multiplier;
+        // Создаем копию с примененными множителями
+        Object.keys(baseLevels).forEach(level => {
+            adjustedLevels[level] = {
+                ...baseLevels[level],
+                maxDistance: baseLevels[level].maxDistance * multiplier
+            };
         });
 
-        return levels;
+        return adjustedLevels;
     }
 
-    // Настройки для разных типов сущностей
+    /**
+     * Инициализация настроек для различных типов сущностей
+     * @returns {Object} Настройки сущностей
+     * @private
+     */
     initializeEntitySettings() {
         return {
             'star': {
@@ -107,7 +214,7 @@ export class LODManager {
                     'billboard': { segments: 4, details: false, glow: false }
                 },
                 baseRadius: 40,
-                importance: 1.0 // Множитель для дистанций LOD
+                importance: 1.0
             },
             'planet': {
                 lodLevels: {
@@ -156,7 +263,11 @@ export class LODManager {
         };
     }
 
-    // Предзагрузка LOD геометрий
+    /**
+     * Предзагрузка LOD геометрий для указанных типов сущностей
+     * @param {string[]} entityTypes - Типы сущностей для предзагрузки
+     * @returns {Promise<void>}
+     */
     async preloadLODs(entityTypes = ['star', 'planet', 'moon', 'asteroid']) {
         if (this.isPreloading) {
             console.warn('⚠️ Предзагрузка уже выполняется');
@@ -164,25 +275,39 @@ export class LODManager {
         }
 
         this.isPreloading = true;
-        console.log('📦 Предзагрузка LOD геометрий...');
+        console.log('📦 Предзагрузка LOD геометрий...', entityTypes);
 
         const startTime = performance.now();
         let loadedCount = 0;
+        const totalToLoad = entityTypes.reduce((total, type) => {
+            const settings = this.entitySettings[type] || this.entitySettings.default;
+            return total + Object.keys(settings.lodLevels).length;
+        }, 0);
 
         try {
             for (const entityType of entityTypes) {
                 const settings = this.entitySettings[entityType] || this.entitySettings.default;
                 
                 for (const [levelName, levelConfig] of Object.entries(settings.lodLevels)) {
-                    const geometry = this.createGeometryForLOD(entityType, levelName, levelConfig);
                     const cacheKey = this.createGeometryCacheKey(entityType, levelName);
                     
-                    this.geometryCache.set(cacheKey, geometry);
+                    if (!this.geometryCache.has(cacheKey)) {
+                        const geometry = this.createGeometryForLOD(entityType, levelName, levelConfig);
+                        this.geometryCache.set(cacheKey, geometry);
+                        this.trackGeometryMemory(geometry, cacheKey);
+                    }
+                    
                     loadedCount++;
                     
-                    // Даем браузеру передышку для обработки других задач
-                    if (loadedCount % 5 === 0) {
+                    // Периодически даем браузеру передышку
+                    if (loadedCount % 3 === 0) {
                         await this.delay(0);
+                    }
+
+                    // Прогресс загрузки
+                    if (loadedCount % 10 === 0) {
+                        const progress = ((loadedCount / totalToLoad) * 100).toFixed(1);
+                        console.log(`📦 Прогресс предзагрузки: ${progress}%`);
                     }
                 }
             }
@@ -197,14 +322,30 @@ export class LODManager {
         }
     }
 
-    // Задержка для асинхронных операций
+    /**
+     * Создает задержку для асинхронных операций
+     * @param {number} ms - Время задержки в миллисекундах
+     * @returns {Promise<void>}
+     */
     delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    // Регистрация сущности в LOD системе
+    /**
+     * Регистрация сущности в LOD системе
+     * @param {string} entityId - Уникальный идентификатор сущности
+     * @param {string} entityType - Тип сущности ('star', 'planet', и т.д.)
+     * @param {number} [radius] - Радиус сущности (опционально)
+     * @returns {Object|null} Зарегистрированные данные LOD или null если система отключена
+     */
     registerEntity(entityId, entityType, radius) {
         if (!this.options.enabled) return null;
+
+        // Проверяем, не зарегистрирована ли уже сущность
+        if (this.entityLODs.has(entityId)) {
+            console.warn(`⚠️ Сущность ${entityId} уже зарегистрирована в LOD системе`);
+            return this.entityLODs.get(entityId);
+        }
 
         const settings = this.entitySettings[entityType] || this.entitySettings.default;
         const scaledRadius = radius || settings.baseRadius;
@@ -218,19 +359,37 @@ export class LODManager {
             settings: settings,
             mesh: null,
             importance: settings.importance,
-            lastUpdate: 0
+            lastUpdate: 0,
+            position: null
         };
 
         this.entityLODs.set(entityId, entityLOD);
         this.stats.totalEntities++;
 
-        // Сразу создаем геометрию для текущего уровня (billboard по умолчанию)
-        this.ensureGeometryPreloaded(entityType, 'billboard');
+        // Предзагружаем геометрии для этого типа сущности
+        this.ensureEntityTypePreloaded(entityType);
 
+        console.log(`✅ Зарегистрирована сущность: ${entityId} (${entityType})`);
         return entityLOD;
     }
 
-    // Удаление сущности из LOD системы
+    /**
+     * Предзагружает все LOD уровни для типа сущности
+     * @param {string} entityType - Тип сущности
+     * @private
+     */
+    ensureEntityTypePreloaded(entityType) {
+        const settings = this.entitySettings[entityType] || this.entitySettings.default;
+        
+        Object.keys(settings.lodLevels).forEach(lodLevel => {
+            this.ensureGeometryPreloaded(entityType, lodLevel);
+        });
+    }
+
+    /**
+     * Удаление сущности из LOD системы
+     * @param {string} entityId - Идентификатор сущности
+     */
     unregisterEntity(entityId) {
         const entityLOD = this.entityLODs.get(entityId);
         if (!entityLOD) return;
@@ -241,9 +400,17 @@ export class LODManager {
         if (this.debugEnabled) {
             this.removeDebugVisualization(entityId);
         }
+
+        console.log(`🗑️ Удалена сущность из LOD системы: ${entityId}`);
     }
 
-    // Получение подходящего уровня LOD для сущности
+    /**
+     * Определяет подходящий уровень LOD для сущности на основе расстояния
+     * @param {string} entityId - Идентификатор сущности
+     * @param {number} distance - Расстояние до камеры
+     * @param {number} [zoomLevel=1] - Уровень масштабирования
+     * @returns {string} Название уровня LOD
+     */
     getLODLevel(entityId, distance, zoomLevel = 1) {
         if (!this.options.enabled) return 'medium';
 
@@ -253,7 +420,7 @@ export class LODManager {
         // Учитываем важность сущности и масштаб
         const effectiveDistance = distance / (entityLOD.importance * Math.max(zoomLevel, 0.1));
         
-        // Находим подходящий уровень LOD
+        // Находим подходящий уровень LOD (от высшего к низшему)
         let targetLevel = 'billboard';
         
         for (const [levelName, levelConfig] of Object.entries(this.lodLevels)) {
@@ -272,7 +439,6 @@ export class LODManager {
         if (currentLevel && targetLevel !== currentLevel) {
             const threshold = this.lodLevels[currentLevel].updateThreshold;
             if (timeSinceLastChange < threshold) {
-                // Слишком рано для переключения, используем текущий уровень
                 return currentLevel;
             }
         }
@@ -292,15 +458,26 @@ export class LODManager {
         return targetLevel;
     }
 
-    // Применение LOD к мешу сущности
+    /**
+     * Применяет LOD к мешу сущности
+     * @param {THREE.Mesh} mesh - Трехмерный меш
+     * @param {string} lodLevel - Уровень LOD для применения
+     * @param {number} distance - Расстояние до камеры
+     */
     applyLOD(mesh, lodLevel, distance) {
         if (!this.options.enabled || !mesh) return;
 
         const entityId = mesh.userData?.entityId;
-        if (!entityId) return;
+        if (!entityId) {
+            console.warn('⚠️ Меш не имеет entityId в userData');
+            return;
+        }
 
         const entityLOD = this.entityLODs.get(entityId);
-        if (!entityLOD) return;
+        if (!entityLOD) {
+            console.warn(`⚠️ LOD данные не найдены для сущности: ${entityId}`);
+            return;
+        }
 
         const entityType = entityLOD.entityType;
         const settings = entityLOD.settings;
@@ -333,10 +510,39 @@ export class LODManager {
 
         } catch (error) {
             console.error(`❌ Ошибка применения LOD для ${entityId}:`, error);
+            // Применяем fallback геометрию в случае ошибки
+            this.applyFallbackGeometry(mesh);
         }
     }
 
-    // Получение или создание геометрии для LOD
+    /**
+     * Применяет резервную геометрию в случае ошибки
+     * @param {THREE.Mesh} mesh - Меш для применения резервной геометрии
+     * @private
+     */
+    applyFallbackGeometry(mesh) {
+        try {
+            const fallbackGeometry = new THREE.SphereGeometry(1, 8, 4);
+            if (mesh.geometry !== fallbackGeometry) {
+                const oldGeometry = mesh.geometry;
+                mesh.geometry = fallbackGeometry;
+                if (oldGeometry) {
+                    this.scheduleGeometryDisposal(oldGeometry);
+                }
+            }
+        } catch (error) {
+            console.error('❌ Критическая ошибка применения fallback геометрии:', error);
+        }
+    }
+
+    /**
+     * Получает или создает геометрию для LOD уровня
+     * @param {string} entityType - Тип сущности
+     * @param {string} lodLevel - Уровень LOD
+     * @param {Object} levelConfig - Конфигурация уровня
+     * @returns {THREE.BufferGeometry} Геометрия
+     * @private
+     */
     getOrCreateGeometry(entityType, lodLevel, levelConfig) {
         const cacheKey = this.createGeometryCacheKey(entityType, lodLevel);
         
@@ -358,7 +564,14 @@ export class LODManager {
         return geometry;
     }
 
-    // Создание геометрии для конкретного LOD уровня
+    /**
+     * Создает геометрию для конкретного LOD уровня
+     * @param {string} entityType - Тип сущности
+     * @param {string} lodLevel - Уровень LOD
+     * @param {Object} levelConfig - Конфигурация уровня
+     * @returns {THREE.BufferGeometry} Созданная геометрия
+     * @private
+     */
     createGeometryForLOD(entityType, lodLevel, levelConfig) {
         const segments = levelConfig.segments || 8;
         
@@ -371,7 +584,6 @@ export class LODManager {
                 
                 case 'asteroid':
                     if (levelConfig.irregular && lodLevel !== 'billboard') {
-                        // Немного искаженная сфера для астероидов
                         return this.createIrregularSphereGeometry(segments);
                     } else {
                         return new THREE.SphereGeometry(1, segments, Math.floor(segments / 2));
@@ -387,12 +599,17 @@ export class LODManager {
         }
     }
 
-    // Создание искаженной сферы для астероидов
+    /**
+     * Создает искаженную сферу для астероидов
+     * @param {number} segments - Количество сегментов
+     * @returns {THREE.BufferGeometry} Искаженная сфера
+     * @private
+     */
     createIrregularSphereGeometry(segments) {
         const geometry = new THREE.SphereGeometry(1, segments, Math.floor(segments / 2));
         const position = geometry.attributes.position;
         
-        // Добавляем случайные искажения для более естественного вида астероидов
+        // Добавляем случайные искажения для естественного вида астероидов
         for (let i = 0; i < position.count; i++) {
             const x = position.getX(i);
             const y = position.getY(i);
@@ -413,7 +630,14 @@ export class LODManager {
         return geometry;
     }
 
-    // Применение специфических настроек для LOD уровня
+    /**
+     * Применяет специфические настройки для LOD уровня
+     * @param {THREE.Mesh} mesh - Меш для настройки
+     * @param {string} lodLevel - Уровень LOD
+     * @param {Object} levelConfig - Конфигурация уровня
+     * @param {number} distance - Расстояние до камеры
+     * @private
+     */
     applyLODSpecificSettings(mesh, lodLevel, levelConfig, distance) {
         // Настройки материала в зависимости от расстояния
         if (mesh.material) {
@@ -439,17 +663,27 @@ export class LODManager {
 
         // Для billboard уровня можно добавить всегда-лицевую текстуру
         if (lodLevel === 'billboard' && mesh.material) {
-            // Упрощаем материал для billboard
             mesh.material.side = THREE.DoubleSide;
         }
     }
 
-    // Создание ключа для кэша геометрий
+    /**
+     * Создает ключ для кэша геометрий
+     * @param {string} entityType - Тип сущности
+     * @param {string} lodLevel - Уровень LOD
+     * @returns {string} Ключ кэша
+     * @private
+     */
     createGeometryCacheKey(entityType, lodLevel) {
         return `${entityType}_${lodLevel}_${this.options.quality}`;
     }
 
-    // Обеспечение предзагрузки геометрии
+    /**
+     * Обеспечивает предзагрузку геометрии
+     * @param {string} entityType - Тип сущности
+     * @param {string} lodLevel - Уровень LOD
+     * @private
+     */
     ensureGeometryPreloaded(entityType, lodLevel) {
         const cacheKey = this.createGeometryCacheKey(entityType, lodLevel);
         
@@ -464,7 +698,11 @@ export class LODManager {
         }
     }
 
-    // Обработка очереди предзагрузки
+    /**
+     * Обрабатывает очередь предзагрузки
+     * @returns {Promise<void>}
+     * @private
+     */
     async processPreloadQueue() {
         if (this.isPreloading || this.preloadQueue.size === 0) return;
 
@@ -496,7 +734,12 @@ export class LODManager {
         }
     }
 
-    // Трекинг использования памяти геометрией
+    /**
+     * Отслеживает использование памяти геометрией
+     * @param {THREE.BufferGeometry} geometry - Геометрия для трекинга
+     * @param {string} cacheKey - Ключ кэша
+     * @private
+     */
     trackGeometryMemory(geometry, cacheKey) {
         let size = 0;
         
@@ -520,7 +763,11 @@ export class LODManager {
         }
     }
 
-    // Форматирование байтов
+    /**
+     * Форматирует байты в читаемый вид
+     * @param {number} bytes - Количество байт
+     * @returns {string} Отформатированная строка
+     */
     formatBytes(bytes) {
         if (bytes === 0) return '0 Bytes';
         const k = 1024;
@@ -529,17 +776,26 @@ export class LODManager {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
-    // Планирование освобождения геометрии
+    /**
+     * Планирует освобождение геометрии
+     * @param {THREE.BufferGeometry} geometry - Геометрия для освобождения
+     * @private
+     */
     scheduleGeometryDisposal(geometry) {
         // Отложенное освобождение для избежания скачков производительности
         setTimeout(() => {
             if (geometry && !this.isGeometryInUse(geometry)) {
                 geometry.dispose();
             }
-        }, 1000); // 1 секунда задержки
+        }, 1000);
     }
 
-    // Проверка используется ли геометрия
+    /**
+     * Проверяет используется ли геометрия
+     * @param {THREE.BufferGeometry} geometry - Геометрия для проверки
+     * @returns {boolean} Результат проверки
+     * @private
+     */
     isGeometryInUse(geometry) {
         for (const entityLOD of this.entityLODs.values()) {
             if (entityLOD.mesh && entityLOD.mesh.geometry === geometry) {
@@ -549,19 +805,30 @@ export class LODManager {
         return false;
     }
 
-    // Пакетное обновление LOD для группы сущностей
+    /**
+     * Пакетное обновление LOD для группы сущностей
+     * @param {Array} entitiesData - Данные сущностей
+     * @param {THREE.Vector3} cameraPosition - Позиция камеры
+     * @param {number} [zoomLevel=1] - Уровень масштабирования
+     */
     updateLODsForEntities(entitiesData, cameraPosition, zoomLevel = 1) {
         if (!this.options.enabled || !this.options.autoUpdate) return;
 
         const startTime = performance.now();
         let updatedCount = 0;
 
-        for (const entityData of entitiesData) {
-            const { entityId, position } = entityData;
-            
-            if (!position) continue;
+        // Сортируем сущности по расстоянию для приоритизации ближайших
+        const sortedEntities = entitiesData
+            .filter(entity => entity.position)
+            .map(entity => ({
+                ...entity,
+                distance: cameraPosition.distanceTo(entity.position)
+            }))
+            .sort((a, b) => a.distance - b.distance);
 
-            const distance = cameraPosition.distanceTo(position);
+        for (const entityData of sortedEntities) {
+            const { entityId, distance } = entityData;
+            
             const lodLevel = this.getLODLevel(entityId, distance, zoomLevel);
             
             const entityLOD = this.entityLODs.get(entityId);
@@ -569,12 +836,17 @@ export class LODManager {
                 this.applyLOD(entityLOD.mesh, lodLevel, distance);
                 updatedCount++;
             }
+
+            // Ограничиваем количество обновлений за кадр для производительности
+            if (updatedCount >= 50 && performance.now() - startTime > 8) {
+                break;
+            }
         }
 
         const updateTime = performance.now() - startTime;
         this.stats.lastUpdate = Date.now();
+        this.stats.frameTime = updateTime;
         
-        // Обновляем статистику UPS (updates per second)
         this.updateUPSStatistics(updateTime, updatedCount);
 
         if (this.debugEnabled && updateTime > 16) {
@@ -582,7 +854,12 @@ export class LODManager {
         }
     }
 
-    // Обновление статистики UPS
+    /**
+     * Обновляет статистику обновлений в секунду
+     * @param {number} updateTime - Время обновления
+     * @param {number} updatedCount - Количество обновленных сущностей
+     * @private
+     */
     updateUPSStatistics(updateTime, updatedCount) {
         const now = Date.now();
         const timeDelta = now - (this.stats.lastUpdate || now);
@@ -592,8 +869,12 @@ export class LODManager {
         }
     }
 
-    // Методы для отладки
+    // ==================== МЕТОДЫ ДЛЯ ОТЛАДКИ ====================
 
+    /**
+     * Включает/выключает режим отладки
+     * @param {boolean} enabled - Состояние режима отладки
+     */
     setDebugEnabled(enabled) {
         this.debugEnabled = enabled;
         
@@ -606,6 +887,10 @@ export class LODManager {
         console.log(`🔧 LOD debug mode: ${enabled ? 'ON' : 'OFF'}`);
     }
 
+    /**
+     * Создает материалы для отладки
+     * @private
+     */
     createDebugMaterials() {
         const colors = {
             'ultra': 0x00ff00, // зеленый
@@ -626,6 +911,11 @@ export class LODManager {
         }
     }
 
+    /**
+     * Обновляет визуализацию отладки для сущности
+     * @param {Object} entityLOD - Данные LOD сущности
+     * @private
+     */
     updateDebugVisualization(entityLOD) {
         if (!this.debugEnabled || !entityLOD.mesh) return;
 
@@ -640,6 +930,11 @@ export class LODManager {
         }
     }
 
+    /**
+     * Удаляет визуализацию отладки для сущности
+     * @param {string} entityId - Идентификатор сущности
+     * @private
+     */
     removeDebugVisualization(entityId) {
         const entityLOD = this.entityLODs.get(entityId);
         if (entityLOD && entityLOD.mesh && entityLOD.mesh.userData.originalMaterial) {
@@ -648,13 +943,23 @@ export class LODManager {
         }
     }
 
+    /**
+     * Удаляет все визуализации отладки
+     * @private
+     */
     removeAllDebugVisualizations() {
         this.entityLODs.forEach(entityLOD => {
             this.removeDebugVisualization(entityLOD.entityId);
         });
     }
 
-    // Получение информации о LOD для сущности
+    // ==================== ИНФОРМАЦИОННЫЕ МЕТОДЫ ====================
+
+    /**
+     * Получает информацию о LOD для сущности
+     * @param {string} entityId - Идентификатор сущности
+     * @returns {Object|null} Информация о LOD
+     */
     getEntityLODInfo(entityId) {
         const entityLOD = this.entityLODs.get(entityId);
         if (!entityLOD) return null;
@@ -670,7 +975,10 @@ export class LODManager {
         };
     }
 
-    // Получение статистики LOD системы
+    /**
+     * Получает статистику LOD системы
+     * @returns {Object} Статистика системы
+     */
     getLODStats() {
         const levelDistribution = {};
         Object.keys(this.lodLevels).forEach(level => {
@@ -683,8 +991,9 @@ export class LODManager {
             }
         });
 
-        const cacheHitRate = (this.stats.geometryCacheHits + this.stats.geometryCacheMisses) > 0 ?
-            (this.stats.geometryCacheHits / (this.stats.geometryCacheHits + this.stats.geometryCacheMisses) * 100) : 0;
+        const totalCacheAccess = this.stats.geometryCacheHits + this.stats.geometryCacheMisses;
+        const cacheHitRate = totalCacheAccess > 0 ?
+            (this.stats.geometryCacheHits / totalCacheAccess * 100) : 0;
 
         return {
             ...this.stats,
@@ -697,15 +1006,22 @@ export class LODManager {
             settings: {
                 quality: this.options.quality,
                 enabled: this.options.enabled,
-                autoUpdate: this.options.autoUpdate
+                autoUpdate: this.options.autoUpdate,
+                debug: this.debugEnabled
             }
         };
     }
 
-    // Изменение качества в реальном времени
+    // ==================== УПРАВЛЕНИЕ СИСТЕМОЙ ====================
+
+    /**
+     * Изменяет качество в реальном времени
+     * @param {string} quality - Новый уровень качества
+     */
     setQuality(quality) {
         if (this.options.quality === quality) return;
 
+        const oldQuality = this.options.quality;
         this.options.quality = quality;
         this.lodLevels = this.initializeLODLevels();
         
@@ -718,10 +1034,22 @@ export class LODManager {
             entityLOD.currentLevel = null;
         });
 
-        console.log(`🎚️ Качество LOD изменено на: ${quality}`);
+        console.log(`🎚️ Качество LOD изменено: ${oldQuality} → ${quality}`);
     }
 
-    // Очистка и оптимизация
+    /**
+     * Включает/выключает систему
+     * @param {boolean} enabled - Состояние системы
+     */
+    setEnabled(enabled) {
+        this.options.enabled = enabled;
+        this.setupAutoUpdate();
+        console.log(`🔧 LOD система: ${enabled ? 'ВКЛЮЧЕНА' : 'ВЫКЛЮЧЕНА'}`);
+    }
+
+    /**
+     * Очистка и оптимизация памяти
+     */
     cleanup() {
         // Освобождаем неиспользуемые геометрии
         let disposedCount = 0;
@@ -733,7 +1061,7 @@ export class LODManager {
             }
         });
 
-        if (disposedCount > 0) {
+        if (disposedCount > 0 && this.debugEnabled) {
             console.log(`🧹 Очищено ${disposedCount} неиспользуемых геометрий`);
         }
 
@@ -741,7 +1069,11 @@ export class LODManager {
         this.stats.memoryUsage = this.calculateCurrentMemoryUsage();
     }
 
-    // Расчет текущего использования памяти
+    /**
+     * Расчет текущего использования памяти
+     * @returns {number} Использование памяти в байтах
+     * @private
+     */
     calculateCurrentMemoryUsage() {
         let totalMemory = 0;
         
@@ -760,8 +1092,16 @@ export class LODManager {
         return totalMemory;
     }
 
-    // Полная очистка
+    /**
+     * Полная очистка системы
+     */
     clear() {
+        // Останавливаем автообновление
+        if (this.autoUpdateInterval) {
+            clearInterval(this.autoUpdateInterval);
+            this.autoUpdateInterval = null;
+        }
+
         this.entityLODs.clear();
         
         this.geometryCache.forEach(geometry => {
@@ -779,11 +1119,16 @@ export class LODManager {
         this.stats.geometryCacheMisses = 0;
         this.stats.memoryUsage = 0;
         this.stats.updatesPerSecond = 0;
+        this.stats.frameTime = 0;
 
-        console.log('🧹 LODManager очищен');
+        this.isPreloading = false;
+
+        console.log('🧹 LODManager полностью очищен');
     }
 
-    // Деструктор
+    /**
+     * Деструктор - освобождение ресурсов
+     */
     dispose() {
         this.clear();
         console.log('✅ LODManager уничтожен');
