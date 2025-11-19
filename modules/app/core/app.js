@@ -1,14 +1,25 @@
-// modules/app/core/app.js
-import GalaxyDataLoader from './galaxy-data-loader.js';
-import GalaxyRenderer from './galaxy-renderer.js';
-import CameraController from './camera-controller.js';
-import ProgressionTracker from '../interaction/progression-tracker.js';
-import EntityInteraction from '../interaction/entity-interaction.js';
-import UserPanel from '../ui/user-panel.js';
-import MinimapNavigation from '../ui/minimap-navigation.js';
-import AssetManager from '../utils/asset-manager.js';
-import PerformanceOptimizer from '../utils/performance-optimizer.js';
-import { APP_CONFIG } from '../constants/config.js';
+// modules/app/app.js
+
+// Импорты для GalaxyApp
+import GalaxyDataLoader from './core/galaxy-data-loader.js';
+import GalaxyRenderer from './core/galaxy-renderer.js';
+import CameraController from './core/camera-controller.js';
+import ProgressionTracker from './interaction/progression-tracker.js';
+import EntityInteraction from './interaction/entity-interaction.js';
+import UserPanel from './ui/user-panel.js';
+import MinimapNavigation from './ui/minimap-navigation.js';
+import AssetManager from './utils/asset-manager.js';
+import PerformanceOptimizer from './utils/performance-optimizer.js';
+import { APP_CONFIG } from './constants/config.js';
+
+// Новые сервисы из рефакторинга
+import Galaxy3DLayoutService from './core/galaxy-3d-layout-service.js';
+import AnimationSystem from './core/animation-system.js';
+import MaterialPool from './core/material-pool.js';
+import SpatialPartitioner from './core/spatial-partitioner.js';
+import LODManager from './core/lod-manager.js';
+
+// ==================== КЛАСС GALAXY APP ====================
 
 export class GalaxyApp {
     constructor() {
@@ -23,10 +34,16 @@ export class GalaxyApp {
         this.assetManager = null;
         this.performanceOptimizer = null;
         
+        // Новые 3D сервисы
+        this.layoutService = null;
+        this.animationSystem = null;
+        this.materialPool = null;
+        this.spatialPartitioner = null;
+        this.lodManager = null;
+        
         this.isInitialized = false;
         this.galaxyData = null;
         this.animationFrameId = null;
-        this.threeSceneManager = null;
         
         // Состояние приложения
         this.appState = {
@@ -34,7 +51,8 @@ export class GalaxyApp {
             isAnimating: false,
             currentView: 'galaxy',
             selectedEntity: null,
-            debugMode: false
+            debugMode: false,
+            version: '2.0.0' // Добавляем версию из новой архитектуры
         };
         
         // Диагностические данные
@@ -50,20 +68,23 @@ export class GalaxyApp {
             webGL: this.detectWebGLSupport(),
             language: navigator.language,
             cookieEnabled: navigator.cookieEnabled,
-            threeJSVersion: this.getThreeJSVersion()
+            threeJSVersion: this.getThreeJSVersion(),
+            appVersion: '2.0.0', // Из новой версии
+            buildDate: '2024-01-15' // Из новой версии
         };
         
-        console.log('📱 GalaxyApp создан с диагностикой:', this.diagnostics);
+        console.log('📱 GalaxyApp v2.0.0 создан с диагностикой:', this.diagnostics);
     }
 
     async init() {
-        console.log('🚀 Инициализация Galaxy Explorer с Three.js...');
+        console.log('🚀 Инициализация Galaxy Explorer 3D (v2.0.0)...');
         console.log('📱 Платформа:', this.diagnostics.platform);
         console.log('🖥️  Размер экрана:', this.diagnostics.screenSize);
         console.log('🔧 Поддержка ES6:', this.diagnostics.supportsES6);
         console.log('🌐 Онлайн статус:', this.diagnostics.isOnline);
         console.log('🎨 WebGL поддержка:', this.diagnostics.webGL);
         console.log('🔄 Three.js версия:', this.diagnostics.threeJSVersion);
+        console.log('✨ Новая 3D архитектура активирована');
         
         const loadingElement = document.getElementById('loading');
         
@@ -72,12 +93,13 @@ export class GalaxyApp {
             if (loadingElement) {
                 loadingElement.innerHTML = `
                     <div class="loading-spinner"></div>
-                    <div>Загрузка 3D галактики...</div>
+                    <div>Загрузка 3D галактики v2.0.0...</div>
                     <div style="font-size: 12px; margin-top: 10px; opacity: 0.7;">
                         Платформа: ${this.diagnostics.platform}<br>
                         Экран: ${this.diagnostics.screenSize}<br>
                         WebGL: ${this.diagnostics.webGL ? '✅' : '❌'}<br>
-                        Three.js: ${this.diagnostics.threeJSVersion}
+                        Three.js: ${this.diagnostics.threeJSVersion}<br>
+                        Архитектура: 3D Enhanced
                     </div>
                 `;
             }
@@ -90,7 +112,6 @@ export class GalaxyApp {
             // Проверяем WebGL поддержку
             if (!this.diagnostics.webGL) {
                 console.warn('⚠️ WebGL не поддерживается, некоторые функции могут быть недоступны');
-                // Можно добавить fallback на Canvas 2D
             }
 
             // Проверяем онлайн статус
@@ -99,9 +120,13 @@ export class GalaxyApp {
             }
 
             // Инициализируем основные компоненты
-            this.updateLoadingStatus('Инициализация системы...');
+            this.updateLoadingStatus('Инициализация системы v2.0.0...');
             
-            // 1. Загружаем данные галактики
+            // 1. Инициализируем новые 3D сервисы
+            this.updateLoadingStatus('Инициализация 3D сервисов...');
+            await this.init3DServices();
+            
+            // 2. Загружаем данные галактики
             this.updateLoadingStatus('Загрузка данных галактики...');
             this.dataLoader = new GalaxyDataLoader();
             this.galaxyData = await this.dataLoader.load();
@@ -116,12 +141,12 @@ export class GalaxyApp {
                 has3DData: !!this.galaxyData.threeData
             });
 
-            // 2. Инициализируем Three.js рендерер
+            // 3. Инициализируем Three.js рендерер
             this.updateLoadingStatus('Инициализация 3D графики...');
             this.renderer = new GalaxyRenderer('galaxy-canvas');
             await this.renderer.init();
             
-            // 3. Инициализируем 3D камеру
+            // 4. Инициализируем 3D камеру
             this.updateLoadingStatus('Настройка 3D камеры...');
             this.camera = new CameraController(
                 this.renderer.sceneManager.camera,
@@ -129,22 +154,22 @@ export class GalaxyApp {
             );
             this.camera.init(this.renderer.canvas);
             
-            // 4. Создаем 3D объекты галактики
+            // 5. Создаем 3D объекты галактики с новой системой компоновки
             this.updateLoadingStatus('Создание 3D объектов...');
-            this.create3DGalaxyFromData();
+            this.create3DGalaxyWithNewLayout();
             
-            // 5. Инициализируем систему прогресса
+            // 6. Инициализируем систему прогресса
             this.updateLoadingStatus('Загрузка прогресса...');
             this.progression = new ProgressionTracker();
             await this.progression.init(this.galaxyData);
             
-            // 6. Инициализируем взаимодействия
+            // 7. Инициализируем взаимодействия
             this.updateLoadingStatus('Настройка взаимодействий...');
             this.entityInteraction = new EntityInteraction();
             this.entityInteraction.init(this.renderer, this.progression, this.camera);
             this.entityInteraction.setGalaxyData(this.galaxyData);
             
-            // 7. Инициализируем UI компоненты
+            // 8. Инициализируем UI компоненты
             this.updateLoadingStatus('Инициализация интерфейса...');
             this.userPanel = new UserPanel();
             this.userPanel.init(this.progression);
@@ -152,12 +177,12 @@ export class GalaxyApp {
             this.minimap = new MinimapNavigation();
             this.minimap.init(this.galaxyData, this.camera);
             
-            // 8. Инициализируем менеджер ресурсов
+            // 9. Инициализируем менеджер ресурсов
             this.updateLoadingStatus('Предзагрузка ресурсов...');
             this.assetManager = new AssetManager();
             await this.assetManager.preloadAssets(this.getRequiredAssets());
             
-            // 9. Инициализируем оптимизатор производительности
+            // 10. Инициализируем оптимизатор производительности
             this.performanceOptimizer = new PerformanceOptimizer();
             
             // Настраиваем обработчики событий
@@ -174,40 +199,121 @@ export class GalaxyApp {
 
             this.isInitialized = true;
             
-            console.log('✅ Galaxy Explorer успешно инициализирован с Three.js');
+            console.log('✅ Galaxy Explorer 3D v2.0.0 успешно инициализирован');
             this.hideLoadingScreen();
 
             // Запускаем анимацию входа
             this.animateEntrance();
 
         } catch (error) {
-            console.error('❌ Ошибка инициализации приложения:', error);
+            console.error('❌ Ошибка инициализации приложения v2.0.0:', error);
             this.showError(error);
         }
     }
 
-    create3DGalaxyFromData() {
+    async init3DServices() {
+        console.log('✨ Инициализация новых 3D сервисов...');
+        
+        try {
+            // 1. Сервис компоновки 3D
+            this.layoutService = new Galaxy3DLayoutService();
+            await this.layoutService.init();
+            console.log('✅ Galaxy3DLayoutService инициализирован');
+
+            // 2. Система анимаций
+            this.animationSystem = new AnimationSystem();
+            await this.animationSystem.init();
+            console.log('✅ AnimationSystem инициализирована');
+
+            // 3. Пул материалов
+            this.materialPool = new MaterialPool();
+            await this.materialPool.init();
+            console.log('✅ MaterialPool инициализирован');
+
+            // 4. Пространственное разделение
+            this.spatialPartitioner = new SpatialPartitioner();
+            await this.spatialPartitioner.init();
+            console.log('✅ SpatialPartitioner инициализирован');
+
+            // 5. Менеджер LOD
+            this.lodManager = new LODManager();
+            await this.lodManager.init();
+            console.log('✅ LODManager инициализирован');
+
+            console.log('🎉 Все 3D сервисы успешно инициализированы');
+            
+        } catch (error) {
+            console.warn('⚠️ Некоторые 3D сервисы не инициализированы:', error);
+            // Продолжаем работу даже если некоторые сервисы не загрузились
+        }
+    }
+
+    create3DGalaxyWithNewLayout() {
         if (!this.galaxyData || !this.renderer) {
             console.error('❌ Нет данных или рендерера для создания 3D галактики');
             return;
         }
 
-        console.log('🌌 Создание 3D галактики из данных...');
+        console.log('🌌 Создание 3D галактики с новой системой компоновки...');
 
-        // Создаем центральную звезду (галактику)
+        // Используем новую систему компоновки если доступна
+        if (this.layoutService && this.layoutService.createGalaxyLayout) {
+            const layout = this.layoutService.createGalaxyLayout(this.galaxyData);
+            
+            // Создаем центральную звезду (галактику)
+            const galaxyPosition = layout.galaxyPosition || { x: 0, y: 0, z: 0 };
+            this.renderer.createEntityMesh(this.galaxyData, galaxyPosition);
+
+            // Создаем планеты и их спутники используя новую компоновку
+            if (layout.planets) {
+                layout.planets.forEach((planetLayout, planetIndex) => {
+                    const planet = this.galaxyData.children?.[planetIndex];
+                    if (planet) {
+                        const planetMesh = this.renderer.createEntityMesh(planet, planetLayout.position);
+
+                        // Создаем спутники
+                        if (planetLayout.moons && planet.children) {
+                            planet.children.forEach((moon, moonIndex) => {
+                                const moonPosition = planetLayout.moons[moonIndex]?.position || 
+                                                   this.dataLoader.getEntity3DPosition(moon.cleanPath);
+                                this.renderer.createEntityMesh(moon, moonPosition);
+                            });
+                        }
+                    }
+                });
+            }
+        } else {
+            // Fallback на старую систему
+            this.create3DGalaxyFromData();
+        }
+
+        console.log('✅ 3D галактика создана с новой архитектурой:', {
+            totalMeshes: this.renderer.entityMeshes.size,
+            hasStarfield: true,
+            hasLighting: true,
+            usesNewLayout: !!this.layoutService
+        });
+    }
+
+    create3DGalaxyFromData() {
+        // Реализация из старой версии (как fallback)
+        if (!this.galaxyData || !this.renderer) {
+            console.error('❌ Нет данных или рендерера для создания 3D галактики');
+            return;
+        }
+
+        console.log('🌌 Создание 3D галактики из данных (fallback)...');
+
         const galaxyPosition = { x: 0, y: 0, z: 0 };
         this.renderer.createEntityMesh(this.galaxyData, galaxyPosition);
 
-        // Создаем планеты и их спутники
         if (this.galaxyData.children) {
             this.galaxyData.children.forEach((planet, planetIndex) => {
-                // Используем позиции из threeData если есть, иначе генерируем
                 const planetPosition = this.galaxyData.threeData?.orbitalLayers?.[planetIndex]?.planets?.[0]?.position || 
                                     this.dataLoader.getEntity3DPosition(planet.cleanPath);
                 
                 const planetMesh = this.renderer.createEntityMesh(planet, planetPosition);
 
-                // Создаем спутники
                 if (planet.children) {
                     planet.children.forEach((moon, moonIndex) => {
                         const moonPosition = this.galaxyData.threeData?.orbitalLayers?.[planetIndex]?.planets?.[moonIndex + 1]?.position || 
@@ -218,14 +324,7 @@ export class GalaxyApp {
                 }
             });
         }
-
-        console.log('✅ 3D галактика создана:', {
-            totalMeshes: this.renderer.entityMeshes.size,
-            hasStarfield: true,
-            hasLighting: true
-        });
     }
-
     updateLoadingStatus(message) {
         const loadingElement = document.getElementById('loading');
         if (loadingElement) {
@@ -874,7 +973,169 @@ export class GalaxyApp {
     }
 }
 
-// Глобальные обработчики ошибок для лучшей отладки
+// ==================== ЭКСПОРТЫ И ФУНКЦИИ ИЗ НОВОЙ ВЕРСИИ ====================
+
+// Экспорт основных модулей
+export { default as GalaxyDataLoader } from './core/galaxy-data-loader.js';
+export { default as GalaxyRenderer } from './core/galaxy-renderer.js';
+export { default as CameraController } from './core/camera-controller.js';
+
+// Новые сервисы из рефакторинга
+export { default as Galaxy3DLayoutService } from './core/galaxy-3d-layout-service.js';
+export { default as AnimationSystem } from './core/animation-system.js';
+export { default as MaterialPool } from './core/material-pool.js';
+export { default as SpatialPartitioner } from './core/spatial-partitioner.js';
+export { default as LODManager } from './core/lod-manager.js';
+
+// Существующие модули
+export { default as ProgressionTracker } from './interaction/progression-tracker.js';
+export { default as EntityInteraction } from './interaction/entity-interaction.js';
+export { default as UserPanel } from './ui/user-panel.js';
+export { default as MinimapNavigation } from './ui/minimap-navigation.js';
+export { default as AssetManager } from './utils/asset-manager.js';
+export { default as PerformanceOptimizer } from './utils/performance-optimizer.js';
+
+// Константы
+export { APP_CONFIG, ENTITY_COLORS, ENTITY_SIZES } from './constants/config.js';
+
+// Версия и метаданные
+export const VERSION = '2.0.0';
+export const BUILD_DATE = '2024-01-15';
+export const APP_NAME = 'Galaxy Explorer 3D';
+
+// Обновить утилиту получения экспортов
+export function getAppExports() {
+    return {
+        version: VERSION,
+        buildDate: BUILD_DATE,
+        appName: APP_NAME,
+        modules: {
+            core: [
+                'GalaxyApp', 'GalaxyDataLoader', 'GalaxyRenderer', 'CameraController',
+                'Galaxy3DLayoutService', 'AnimationSystem', 'MaterialPool',
+                'SpatialPartitioner', 'LODManager'
+            ],
+            interaction: ['ProgressionTracker', 'EntityInteraction'],
+            ui: ['UserPanel', 'MinimapNavigation'],
+            utils: ['AssetManager', 'PerformanceOptimizer'],
+            constants: ['APP_CONFIG', 'ENTITY_COLORS', 'ENTITY_SIZES']
+        }
+    };
+}
+
+// Обновить валидацию модулей
+export async function validateModules() {
+    const modules = {
+        // Основные модули
+        'GalaxyApp': typeof GalaxyApp !== 'undefined',
+        'GalaxyDataLoader': typeof GalaxyDataLoader !== 'undefined', 
+        'GalaxyRenderer': typeof GalaxyRenderer !== 'undefined',
+        'CameraController': typeof CameraController !== 'undefined',
+        
+        // Новые сервисы
+        'Galaxy3DLayoutService': typeof Galaxy3DLayoutService !== 'undefined',
+        'AnimationSystem': typeof AnimationSystem !== 'undefined',
+        'MaterialPool': typeof MaterialPool !== 'undefined',
+        'SpatialPartitioner': typeof SpatialPartitioner !== 'undefined',
+        'LODManager': typeof LODManager !== 'undefined',
+        
+        // Существующие модули
+        'ProgressionTracker': typeof ProgressionTracker !== 'undefined',
+        'EntityInteraction': typeof EntityInteraction !== 'undefined',
+        'UserPanel': typeof UserPanel !== 'undefined',
+        'MinimapNavigation': typeof MinimapNavigation !== 'undefined',
+        'AssetManager': typeof AssetManager !== 'undefined',
+        'PerformanceOptimizer': typeof PerformanceOptimizer !== 'undefined',
+        'APP_CONFIG': typeof APP_CONFIG !== 'undefined'
+    };
+
+    const allLoaded = Object.values(modules).every(loaded => loaded);
+    const loadedCount = Object.values(modules).filter(loaded => loaded).length;
+    const totalCount = Object.keys(modules).length;
+
+    console.log('🔍 Проверка модулей приложения (v2.0.0):');
+    console.log(`📦 Загружено: ${loadedCount}/${totalCount} модулей`);
+    
+    Object.entries(modules).forEach(([name, loaded]) => {
+        console.log(`   ${loaded ? '✅' : '❌'} ${name}`);
+    });
+
+    if (allLoaded) {
+        console.log('🎉 Все модули приложения успешно загружены!');
+        console.log('🚀 Новая архитектура 3D готова к работе');
+    } else {
+        console.warn('⚠️ Некоторые модули не загружены. Приложение может работать некорректно.');
+    }
+
+    return {
+        allLoaded,
+        loadedCount,
+        totalCount,
+        modules
+    };
+}
+
+// Global initialization helper из новой версии
+export function initGalaxyExplorer(canvasId = 'galaxy-canvas') {
+    console.log('🚀 Инициализация Galaxy Explorer 3D v2.0.0...');
+    
+    return new Promise(async (resolve, reject) => {
+        try {
+            // Проверяем доступность всех модулей
+            const validation = await validateModules();
+            if (!validation.allLoaded) {
+                throw new Error(`Не все модули загружены: ${validation.loadedCount}/${validation.totalCount}`);
+            }
+
+            // Создаем главное приложение
+            const app = new GalaxyApp();
+            
+            // Сохраняем глобальную ссылку для отладки
+            window.galaxyApp = app;
+            
+            // Инициализируем приложение
+            await app.init();
+            
+            console.log('🌌 Galaxy Explorer 3D v2.0.0 успешно запущен!');
+            console.log('✨ Новая 3D архитектура активирована:');
+            console.log('   • Galaxy3DLayoutService - 3D компоновка');
+            console.log('   • AnimationSystem - система анимаций');
+            console.log('   • MaterialPool - оптимизация материалов');
+            console.log('   • SpatialPartitioner - пространственное разделение');
+            console.log('   • LODManager - управление уровнем детализации');
+            
+            resolve(app);
+            
+        } catch (error) {
+            console.error('❌ Ошибка инициализации Galaxy Explorer 3D:', error);
+            reject(error);
+        }
+    });
+}
+
+// Auto-initialize if script is loaded directly
+if (typeof window !== 'undefined' && !window.galaxyApp) {
+    // Ждем загрузки DOM
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('📝 Galaxy Explorer 3D v2.0.0: DOM готов, можно запускать initGalaxyExplorer()');
+        });
+    } else {
+        console.log('📝 Galaxy Explorer 3D v2.0.0: DOM уже загружен, можно запускать initGalaxyExplorer()');
+    }
+}
+
+// Безопасная глобальная регистрация для отладки
+if (typeof window !== 'undefined' && !window.GALAXY_EXPLORER) {
+    window.GALAXY_EXPLORER = {
+        version: VERSION,
+        init: initGalaxyExplorer,
+        validate: validateModules,
+        getExports: getAppExports
+    };
+}
+
+// Глобальные обработчики ошибок из старой версии
 window.addEventListener('error', (event) => {
     console.error('🚨 Global Error:', event.error);
     console.error('Error details:', {
@@ -889,5 +1150,44 @@ window.addEventListener('unhandledrejection', (event) => {
     console.error('🚨 Unhandled Promise Rejection:', event.reason);
 });
 
-// Экспортируем класс для использования в других модулях
-export default GalaxyApp;
+export default {
+    // Core modules
+    GalaxyApp,
+    GalaxyDataLoader,
+    GalaxyRenderer,
+    CameraController,
+    
+    // New 3D services
+    Galaxy3DLayoutService,
+    AnimationSystem,
+    MaterialPool,
+    SpatialPartitioner,
+    LODManager,
+    
+    // Interaction modules
+    ProgressionTracker,
+    EntityInteraction,
+    
+    // UI modules
+    UserPanel,
+    MinimapNavigation,
+    
+    // Utils modules
+    AssetManager,
+    PerformanceOptimizer,
+    
+    // Constants
+    APP_CONFIG,
+    ENTITY_COLORS,
+    ENTITY_SIZES,
+    
+    // Metadata
+    VERSION,
+    BUILD_DATE,
+    APP_NAME,
+    
+    // Utilities
+    getAppExports,
+    validateModules,
+    initGalaxyExplorer
+};
