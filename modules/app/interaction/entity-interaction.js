@@ -9,11 +9,14 @@ export class EntityInteraction {
         // Состояние взаимодействий
         this.hoveredEntity = null;
         this.selectedEntity = null;
-        this.hoverRadius = 40; // Радиус попадания для hover
         
         // Визуальные эффекты
         this.highlightColor = '#FFD700';
         this.highlightGlow = 15;
+        
+        // Анимации
+        this.pulseAnimation = null;
+        this.infoPanel = null;
         
         console.log('🎯 EntityInteraction создан');
     }
@@ -32,91 +35,62 @@ export class EntityInteraction {
     }
 
     setupEventListeners() {
-        if (!this.renderer?.canvas) return;
-
-        const canvas = this.renderer.canvas;
-
-        // Mouse events
-        canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
-        canvas.addEventListener('click', (e) => this.handleClick(e));
-        canvas.addEventListener('mouseleave', () => this.handleMouseLeave());
-
-        // Touch events
-        canvas.addEventListener('touchstart', (e) => this.handleTouchStart(e));
-        canvas.addEventListener('touchend', (e) => this.handleTouchEnd(e));
-
-        // Keyboard events
+        // Обработчики теперь устанавливаются в app.js
+        // Оставляем только обработку клавиатуры
         document.addEventListener('keydown', (e) => this.handleKeyDown(e));
 
-        console.log('🖱️ Обработчики взаимодействий установлены');
+        console.log('⌨️ Обработчики клавиатуры установлены');
     }
 
-    // ===== MOUSE INTERACTIONS =====
-    handleMouseMove(event) {
-        if (!this.galaxyData) return;
-
-        const rect = this.renderer.canvas.getBoundingClientRect();
-        const mouseX = event.clientX - rect.left;
-        const mouseY = event.clientY - rect.top;
-
+    // ===== MOUSE INTERACTIONS (вызываются из app.js) =====
+    handleMouseOver(entityData) {
         const previousHovered = this.hoveredEntity;
-        this.hoveredEntity = this.getEntityAtPosition(mouseX, mouseY);
-
-        // Обновляем курсор если нужно
-        if (this.hoveredEntity) {
-            this.renderer.canvas.style.cursor = 'pointer';
+        
+        if (entityData && entityData.entityData) {
+            this.hoveredEntity = entityData.entityData;
         } else {
+            this.hoveredEntity = null;
+        }
+
+        // Обновляем курсор
+        if (this.hoveredEntity && this.renderer?.canvas) {
+            this.renderer.canvas.style.cursor = 'pointer';
+        } else if (this.renderer?.canvas) {
             this.renderer.canvas.style.cursor = 'default';
         }
 
-        // Если ховер изменился, перерисовываем
+        // Если ховер изменился
         if (previousHovered !== this.hoveredEntity) {
             this.onHoverChange(previousHovered, this.hoveredEntity);
         }
     }
 
-    handleClick(event) {
-        if (!this.hoveredEntity) return;
+    handleEntityClick(entityData) {
+        if (!entityData) return;
 
-        event.preventDefault();
-        this.selectEntity(this.hoveredEntity);
+        const entity = entityData.entityData || entityData;
+        this.selectEntity(entity);
     }
 
-    handleMouseLeave() {
-        if (this.hoveredEntity) {
-            this.onHoverChange(this.hoveredEntity, null);
-            this.hoveredEntity = null;
-        }
-        this.renderer.canvas.style.cursor = 'default';
-    }
-
-    // ===== TOUCH INTERACTIONS =====
+    // ===== TOUCH INTERACTIONS (вызываются из app.js) =====
     handleTouchStart(event) {
-        if (!this.galaxyData) return;
-
+        // Базовая реализация - предотвращаем стандартное поведение
         event.preventDefault();
-        const touch = event.touches[0];
-        const rect = this.renderer.canvas.getBoundingClientRect();
-        const touchX = touch.clientX - rect.left;
-        const touchY = touch.clientY - rect.top;
+    }
 
-        this.hoveredEntity = this.getEntityAtPosition(touchX, touchY);
+    handleTouchMove(event) {
+        event.preventDefault();
     }
 
     handleTouchEnd(event) {
-        if (!this.hoveredEntity) return;
-
         event.preventDefault();
-        this.selectEntity(this.hoveredEntity);
-        
-        // Сбрасываем ховер после тапа
-        setTimeout(() => {
-            this.hoveredEntity = null;
-        }, 100);
     }
 
     // ===== KEYBOARD INTERACTIONS =====
     handleKeyDown(event) {
+        // Игнорируем сочетания с Ctrl/Alt/Meta
+        if (event.ctrlKey || event.altKey || event.metaKey) return;
+
         switch (event.key) {
             case 'Escape':
                 this.deselectEntity();
@@ -124,6 +98,12 @@ export class EntityInteraction {
             case 'Enter':
                 if (this.selectedEntity) {
                     this.openEntityPage(this.selectedEntity);
+                }
+                break;
+            case ' ':
+                event.preventDefault();
+                if (this.selectedEntity) {
+                    this.focusOnSelectedEntity();
                 }
                 break;
         }
@@ -138,7 +118,8 @@ export class EntityInteraction {
 
         // Отмечаем как исследованную
         if (this.progression && this.progression.discoverEntity) {
-            this.progression.discoverEntity(entity.id || entity.path);
+            const entityId = entity.cleanPath || entity.name || entity.id;
+            this.progression.discoverEntity(entityId);
         }
         
         // Показываем информацию о сущности
@@ -147,10 +128,13 @@ export class EntityInteraction {
         // Визуальная обратная связь
         this.onSelectionChange(previousSelected, entity);
         
+        // Фокусируем камеру на выбранной сущности
+        this.focusOnSelectedEntity();
+        
         console.log('🔍 Выбрана сущность:', {
             name: entity.name,
             type: entity.type,
-            path: entity.path
+            path: entity.cleanPath || entity.name
         });
     }
 
@@ -166,131 +150,92 @@ export class EntityInteraction {
         console.log('❌ Выбор сущности сброшен');
     }
 
-    // ===== ENTITY DETECTION =====
-    getEntityAtPosition(screenX, screenY) {
-        if (!this.galaxyData?.children) return null;
+    focusOnSelectedEntity() {
+        if (!this.selectedEntity || !this.camera || !this.renderer) return;
 
-        const worldPos = this.camera.screenToWorld(screenX, screenY);
-        
-        // Проверяем планеты
-        const planet = this.findEntityAtPosition(
-            this.galaxyData.children, 
-            worldPos.x, 
-            worldPos.y
-        );
-        
-        if (planet) return planet;
+        try {
+            // Получаем позицию сущности из 3D данных
+            const entityId = this.selectedEntity.cleanPath || this.selectedEntity.name;
+            let position = null;
 
-        // TODO: В будущем можно добавить проверку спутников и других сущностей
-        
-        return null;
-    }
-
-    findEntityAtPosition(entities, worldX, worldY) {
-        for (const entity of entities) {
-            const entityPos = this.getEntityPosition(entity);
-            if (!entityPos) continue;
-
-            const distance = Math.sqrt(
-                Math.pow(worldX - entityPos.x, 2) + 
-                Math.pow(worldY - entityPos.y, 2)
-            );
-
-            // Радиус попадания зависит от типа сущности
-            const hitRadius = this.getEntityHitRadius(entity);
-            
-            if (distance <= hitRadius) {
-                return entity;
+            // Ищем позицию в 3D данных
+            if (this.galaxyData?.threeData?.positions) {
+                const positions = this.galaxyData.threeData.positions;
+                if (positions.has(entityId)) {
+                    position = positions.get(entityId).absolute;
+                }
             }
+
+            // Если позиция не найдена, используем fallback
+            if (!position && this.renderer.getEntity3DPosition) {
+                position = this.renderer.getEntity3DPosition(entityId);
+            }
+
+            if (position) {
+                this.camera.focusOnEntity(position, 200);
+                console.log('🎥 Камера сфокусирована на сущности:', entityId);
+            } else {
+                console.warn('⚠️ Не удалось найти позицию для фокусировки:', entityId);
+            }
+        } catch (error) {
+            console.error('❌ Ошибка фокусировки камеры:', error);
         }
-        return null;
-    }
-
-    getEntityPosition(entity) {
-        // Для простоты считаем, что все планеты расположены по кругу
-        // В реальном приложении здесь должна быть логика позиционирования из рендерера
-        const planets = this.galaxyData?.children || [];
-        const index = planets.findIndex(p => p === entity);
-        
-        if (index === -1) return null;
-
-        const angle = (index / planets.length) * Math.PI * 2;
-        const distance = 200; // Должно совпадать с рендерером
-        
-        return {
-            x: Math.cos(angle) * distance,
-            y: Math.sin(angle) * distance
-        };
-    }
-
-    getEntityHitRadius(entity) {
-        // Разные сущности имеют разные радиусы попадания
-        const baseSizes = {
-            galaxy: 50,
-            planet: 30,
-            moon: 20,
-            asteroid: 15,
-            debris: 10
-        };
-        
-        return (baseSizes[entity.type] || 25) / this.camera.zoom;
     }
 
     // ===== VISUAL FEEDBACK =====
     onHoverChange(previousEntity, newEntity) {
-        // Можно добавить визуальные эффекты при наведении
-        // Например, подсветку или анимацию
-        
+        // Убираем подсветку с предыдущей сущности
         if (previousEntity) {
-            console.log('🚪 Ушли с сущности:', previousEntity.name);
+            const previousEntityId = previousEntity.cleanPath || previousEntity.name;
+            this.renderer.highlightEntity(previousEntityId, false);
         }
-        
+
+        // Добавляем подсветку на новую сущность
         if (newEntity) {
-            console.log('🎯 Навели на сущность:', newEntity.name);
+            const newEntityId = newEntity.cleanPath || newEntity.name;
+            this.renderer.highlightEntity(newEntityId, true);
         }
-        
-        // Перерисовываем сцену чтобы показать/скрыть эффекты
+
+        // Запрашиваем перерисовку
         this.requestRender();
     }
 
     onSelectionChange(previousEntity, newEntity) {
-        // Визуальная обратная связь при выборе сущности
-        
+        // Убираем подсветку с предыдущей выбранной сущности
         if (previousEntity) {
-            console.log('📤 Снят выбор с:', previousEntity.name);
+            const previousEntityId = previousEntity.cleanPath || previousEntity.name;
+            this.renderer.highlightEntity(previousEntityId, false);
+            this.stopPulseAnimation();
         }
         
+        // Добавляем подсветку на новую выбранную сущность
         if (newEntity) {
-            console.log('📥 Выбрана:', newEntity.name);
-            this.showSelectionEffect(newEntity);
-        } else {
-            this.hideSelectionEffect();
+            const newEntityId = newEntity.cleanPath || newEntity.name;
+            this.renderer.highlightEntity(newEntityId, true);
+            this.startPulseAnimation(newEntity);
         }
         
+        // Запрашиваем перерисовку
         this.requestRender();
     }
 
-    showSelectionEffect(entity) {
-        // Анимация выбора - пульсация, свечение и т.д.
-        this.startPulseAnimation(entity);
-    }
-
-    hideSelectionEffect() {
-        // Останавливаем анимации выбора
-        this.stopPulseAnimation();
-    }
-
     startPulseAnimation(entity) {
-        // Простая анимация пульсации выбранной сущности
+        // Анимация пульсации через систему анимации рендерера
+        const entityId = entity.cleanPath || entity.name;
+        
+        if (this.renderer.animationSystem) {
+            // Можно добавить специальную анимацию для выбранной сущности
+            console.log('🎬 Запуск анимации пульсации для:', entityId);
+        }
+        
+        // Простая CSS-анимация через интервал (как fallback)
+        this.stopPulseAnimation();
         let scale = 1;
         const pulseSpeed = 0.05;
         
         this.pulseAnimation = setInterval(() => {
             scale = 1 + Math.sin(Date.now() * pulseSpeed) * 0.1;
-            
             // Здесь можно обновить визуальное представление
-            // Например, через кастомные свойства в рендерере
-            
         }, 50);
     }
 
@@ -328,39 +273,64 @@ export class EntityInteraction {
             border-radius: 15px;
             padding: 20px;
             color: white;
-            max-width: 300px;
+            max-width: 350px;
             z-index: 1000;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             animation: slideIn 0.3s ease;
         `;
 
         const entityIcon = this.getEntityIcon(entity.type);
-        const isDiscovered = this.progression && this.progression.isDiscovered ? 
-            this.progression.isDiscovered(entity.id || entity.path) : false;
+        const entityId = entity.cleanPath || entity.name;
+        const isDiscovered = this.progression && this.progression.isEntityDiscovered ? 
+            this.progression.isEntityDiscovered(entityId) : false;
 
         infoPanel.innerHTML = `
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
                 <span style="font-size: 24px;">${entityIcon}</span>
-                <h3 style="margin: 0; color: #4ECDC4;">${entity.config?.title || entity.name}</h3>
-                ${isDiscovered ? '<span style="color: #4ECDC4;">✅</span>' : '<span style="color: #FFD700;">🔍</span>'}
+                <div>
+                    <h3 style="margin: 0; color: #4ECDC4;">${entity.config?.title || entity.name}</h3>
+                    <div style="font-size: 12px; color: #a0a0cc;">
+                        ${isDiscovered ? '✅ Исследовано' : '🔍 Не исследовано'}
+                    </div>
+                </div>
             </div>
             
             <div style="margin-bottom: 15px;">
-                <div style="font-size: 14px; color: #a0a0cc; margin-bottom: 5px;">Тип: ${this.getEntityTypeName(entity.type)}</div>
-                ${entity.config?.description ? `<div style="font-size: 14px; margin-bottom: 10px;">${entity.config.description}</div>` : ''}
-                <div style="font-size: 12px; color: #888;">Путь: ${entity.path}</div>
+                <div style="font-size: 14px; color: #a0a0cc; margin-bottom: 5px;">
+                    Тип: ${this.getEntityTypeName(entity.type)}
+                </div>
+                ${entity.config?.description ? `
+                    <div style="font-size: 14px; margin-bottom: 10px; line-height: 1.4;">
+                        ${entity.config.description}
+                    </div>
+                ` : ''}
+                <div style="font-size: 12px; color: #888; font-family: monospace;">
+                    ID: ${entityId}
+                </div>
             </div>
             
-            <div style="display: flex; gap: 10px;">
-                <button onclick="window.entityInteraction.openEntityPage(window.entityInteraction.selectedEntity)" 
-                        style="background: #4ECDC4; color: #0c0c2e; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: bold;">
-                    🌐 Открыть
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button onclick="window.galaxyApp?.entityInteraction?.openEntityPage(window.galaxyApp?.entityInteraction?.selectedEntity)" 
+                        style="background: #4ECDC4; color: #0c0c2e; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: bold; flex: 1;">
+                    🌐 Открыть страницу
                 </button>
-                <button onclick="window.entityInteraction.deselectEntity()" 
-                        style="background: rgba(255,255,255,0.1); color: white; border: 1px solid #4ECDC4; padding: 8px 16px; border-radius: 20px; cursor: pointer;">
+                <button onclick="window.galaxyApp?.entityInteraction?.focusOnSelectedEntity()" 
+                        style="background: rgba(255,215,0,0.2); color: #FFD700; border: 1px solid #FFD700; padding: 8px 16px; border-radius: 20px; cursor: pointer; flex: 1;">
+                    🎥 Сфокусировать
+                </button>
+                <button onclick="window.galaxyApp?.entityInteraction?.deselectEntity()" 
+                        style="background: rgba(255,255,255,0.1); color: white; border: 1px solid #666; padding: 8px 16px; border-radius: 20px; cursor: pointer;">
                     ✕ Закрыть
                 </button>
             </div>
+            
+            ${entity.children && entity.children.length > 0 ? `
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <div style="font-size: 12px; color: #a0a0cc; margin-bottom: 8px;">
+                        Содержит: ${entity.children.length} объектов
+                    </div>
+                </div>
+            ` : ''}
         `;
 
         document.body.appendChild(infoPanel);
@@ -373,6 +343,10 @@ export class EntityInteraction {
                 @keyframes slideIn {
                     from { transform: translateX(-100%); opacity: 0; }
                     to { transform: translateX(0); opacity: 1; }
+                }
+                #entity-info-panel button:hover {
+                    transform: translateY(-1px);
+                    transition: transform 0.2s ease;
                 }
             `;
             document.head.appendChild(style);
@@ -390,19 +364,36 @@ export class EntityInteraction {
 
     // ===== ENTITY NAVIGATION =====
     openEntityPage(entity) {
-        if (!entity.fullUrl) {
-            console.warn('❌ Нет URL для сущности:', entity);
+        if (!entity) {
+            console.warn('❌ Нет сущности для открытия страницы');
             return;
         }
 
-        console.log('🌐 Открытие страницы сущности:', entity.fullUrl);
-        window.open(entity.fullUrl, '_blank');
+        // Пытаемся получить URL разными способами
+        let url = entity.fullUrl || entity.url || entity.path;
+        
+        if (!url) {
+            // Формируем URL на основе cleanPath
+            const entityPath = entity.cleanPath || entity.name;
+            if (entityPath) {
+                url = `/${entityPath}`;
+            }
+        }
+
+        if (url) {
+            console.log('🌐 Открытие страницы сущности:', url);
+            window.open(url, '_blank');
+        } else {
+            console.warn('❌ Не удалось определить URL для сущности:', entity);
+            this.showNotification('URL страницы не найден', 3000);
+        }
     }
 
     // ===== UTILITY METHODS =====
     getEntityIcon(type) {
         const icons = {
-            galaxy: '⭐',
+            galaxy: '🌌',
+            star: '⭐',
             planet: '🪐',
             moon: '🌙',
             asteroid: '☄️',
@@ -414,6 +405,7 @@ export class EntityInteraction {
     getEntityTypeName(type) {
         const names = {
             galaxy: 'Галактика',
+            star: 'Звезда',
             planet: 'Планета',
             moon: 'Спутник',
             asteroid: 'Астероид',
@@ -427,61 +419,64 @@ export class EntityInteraction {
         if (this.progression && typeof this.progression.updateProgressDisplay === 'function') {
             this.progression.updateProgressDisplay();
         }
+        
+        // Также можно обновить через app если доступен
+        if (window.galaxyApp && typeof window.galaxyApp.updateProgressDisplay === 'function') {
+            window.galaxyApp.updateProgressDisplay();
+        }
     }
 
     requestRender() {
-        // Запрашиваем перерисовку сцены
-        if (this.renderer && this.galaxyData && this.camera) {
-            this.renderer.render(this.galaxyData, this.camera);
+        // Запрашиваем перерисовку сцены через рендерер
+        if (this.renderer && typeof this.renderer.render === 'function') {
+            this.renderer.render();
         }
     }
 
-    // ===== METHODS FOR APP.JS INTEGRATION =====
-    
-    // Метод для обработки наведения мыши (вызывается из app.js)
-    handleMouseOver(entityData) {
-        const previousHovered = this.hoveredEntity;
+    showNotification(message, duration = 2000) {
+        // Создаем уведомление
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(12, 12, 46, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(78, 205, 196, 0.3);
+            border-radius: 10px;
+            padding: 15px 20px;
+            color: white;
+            z-index: 1002;
+            animation: slideInRight 0.3s ease, slideOutRight 0.3s ease ${duration}ms forwards;
+            max-width: 300px;
+        `;
+        notification.textContent = message;
         
-        if (entityData && entityData.entityData) {
-            this.hoveredEntity = entityData.entityData;
-        } else {
-            this.hoveredEntity = null;
+        // Добавляем стили анимации если их нет
+        if (!document.querySelector('#notification-styles')) {
+            const style = document.createElement('style');
+            style.id = 'notification-styles';
+            style.textContent = `
+                @keyframes slideInRight {
+                    from { transform: translateX(100%); }
+                    to { transform: translateX(0); }
+                }
+                @keyframes slideOutRight {
+                    from { transform: translateX(0); }
+                    to { transform: translateX(100%); }
+                }
+            `;
+            document.head.appendChild(style);
         }
-
-        // Обновляем курсор
-        if (this.hoveredEntity && this.renderer?.canvas) {
-            this.renderer.canvas.style.cursor = 'pointer';
-        } else if (this.renderer?.canvas) {
-            this.renderer.canvas.style.cursor = 'default';
-        }
-
-        // Если ховер изменился
-        if (previousHovered !== this.hoveredEntity) {
-            this.onHoverChange(previousHovered, this.hoveredEntity);
-        }
-    }
-
-    // Метод для обработки клика по entity (вызывается из app.js)
-    handleEntityClick(entityData) {
-        if (!entityData) return;
-
-        const entity = entityData.entityData || entityData;
-        this.selectEntity(entity);
-    }
-
-    // Методы для обработки касаний (вызываются из app.js)
-    handleTouchStart(event) {
-        // Базовая реализация для app.js
-        event.preventDefault();
-    }
-
-    handleTouchMove(event) {
-        // Базовая реализация для app.js
-        event.preventDefault();
-    }
-
-    handleTouchEnd(event) {
-        // Базовая реализация для app.js
+        
+        document.body.appendChild(notification);
+        
+        // Удаляем уведомление после анимации
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, duration + 300);
     }
 
     // ===== DEBUG METHODS =====
@@ -493,21 +488,32 @@ export class EntityInteraction {
         });
     }
 
+    getInteractionStats() {
+        return {
+            hoveredEntity: this.hoveredEntity ? {
+                name: this.hoveredEntity.name,
+                type: this.hoveredEntity.type,
+                id: this.hoveredEntity.cleanPath || this.hoveredEntity.name
+            } : null,
+            selectedEntity: this.selectedEntity ? {
+                name: this.selectedEntity.name,
+                type: this.selectedEntity.type,
+                id: this.selectedEntity.cleanPath || this.selectedEntity.name
+            } : null,
+            progression: this.progression ? {
+                discoveredCount: this.progression.getDiscoveredCount(),
+                totalCount: this.progression.getTotalCount()
+            } : null
+        };
+    }
+
     // ===== DESTRUCTOR =====
     destroy() {
         this.removeInfoPanel();
         this.stopPulseAnimation();
+        this.deselectEntity();
         
         // Удаляем обработчики событий
-        if (this.renderer?.canvas) {
-            const canvas = this.renderer.canvas;
-            canvas.removeEventListener('mousemove', this.handleMouseMove);
-            canvas.removeEventListener('click', this.handleClick);
-            canvas.removeEventListener('mouseleave', this.handleMouseLeave);
-            canvas.removeEventListener('touchstart', this.handleTouchStart);
-            canvas.removeEventListener('touchend', this.handleTouchEnd);
-        }
-        
         document.removeEventListener('keydown', this.handleKeyDown);
         
         console.log('🧹 EntityInteraction уничтожен');
