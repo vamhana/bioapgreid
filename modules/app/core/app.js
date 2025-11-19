@@ -11,7 +11,7 @@ import { MemoryManager } from './memory-manager.js';
 import { SecurityValidator } from './security-validator.js';
 
 // Импорт Three.js
-import * as THREE from './core/three.module.js';
+import * as THREE from './three.module.js';
 
 // Импорт конфигурации
 import { APP_CONFIG, ENTITY_COLORS, ENTITY_SIZES } from './constants/config.js';
@@ -408,4 +408,5 @@ if (typeof window !== 'undefined') {
 }
 
 export default GalaxyApp;
+
 
