@@ -1,30 +1,17 @@
 {
-  "name": "galaxy-explorer",
-  "version": "1.0.0", 
-  "description": "Интерактивный исследователь галактики",
+  "name": "galaxy-explorer-3d",
+  "version": "3.0.0",
   "type": "module",
-  "main": "modules/build-script/index.js",
   "scripts": {
-    "build": "node modules/build-script/index.js",
-    "scan": "node scanner/index.js",
-    "scan:latin": "node scanner/index.js --latin",
-    "scan:history": "node scanner/index.js --history",
     "dev": "vite",
+    "build": "vite build",
     "preview": "vite preview",
-    "build:vite": "vite build",
-    "test": "echo 'Откройте http://localhost:3000/module-test.html для тестирования'",
-    "clean": "rm -rf public dist"
+    "deploy": "npm run build && vercel --prod"
   },
-  "keywords": ["galaxy", "explorer", "space", "interactive"],
-  "author": "BioApGreid Team",
-  "license": "MIT",
   "dependencies": {
     "three": "^0.158.0"
   },
   "devDependencies": {
-    "vite": "^5.0.0"
-  },
-  "engines": {
-    "node": ">=16.0.0"
+    "vite": "^4.4.5"
   }
 }
