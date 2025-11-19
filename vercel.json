@@ -1,7 +1,6 @@
 {
   "version": 2,
   "routes": [
-    // Rewrites
     {
       "src": "/app/core/(.*)",
       "dest": "/app/core/$1.js"
@@ -14,7 +13,6 @@
       "src": "/modules/(.*)",
       "dest": "/modules/$1.js"
     },
-    // Specific for /app/...js files
     {
       "src": "/app/(.*)\\.js",
       "headers": {
@@ -24,7 +22,6 @@
       },
       "continue": false
     },
-    // For any .js files (but not in /app/ because they are handled above and continue: false)
     {
       "src": "/(.*)\\.js",
       "headers": {
@@ -33,7 +30,6 @@
       },
       "continue": true
     },
-    // For .mjs files
     {
       "src": "/(.*)\\.mjs",
       "headers": {
@@ -41,7 +37,6 @@
       },
       "continue": true
     },
-    // For JSON in /results/
     {
       "src": "/results/(.*)\\.json",
       "headers": {
@@ -49,7 +44,6 @@
       },
       "continue": true
     },
-    // For any file in /app/ that is not JS (so without .js extension) - set Content-Type
     {
       "src": "/app/(.*)",
       "headers": {
@@ -57,7 +51,6 @@
       },
       "continue": true
     },
-    // Finally, catch-all to index.html
     {
       "src": "/(.*)",
       "dest": "/index.html"
