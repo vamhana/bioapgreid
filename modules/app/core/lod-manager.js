@@ -684,22 +684,41 @@ export class LODManager {
      * @param {string} lodLevel - Уровень LOD
      * @private
      */
-    /**
-     * Обеспечивает предзагрузку геометрии
-     * @param {string} entityType - Тип сущности
-     * @param {string} lodLevel - Уровень LOD
-     * @private
-     */
+    // Обеспечение предзагрузки геометрии
     ensureGeometryPreloaded(entityType, lodLevel) {
+        // Защитные проверки
+        if (!this.geometryCache) {
+            console.warn('⚠️ geometryCache не инициализирован, инициализирую...');
+            this.geometryCache = new Map();
+        }
+        
+        if (!this.entitySettings) {
+            console.warn('⚠️ entitySettings не инициализированы');
+            return;
+        }
+        
+        if (!this.preloadQueue) {
+            console.warn('⚠️ preloadQueue не инициализирован, инициализирую...');
+            this.preloadQueue = new Set();
+        }
+    
         const cacheKey = this.createGeometryCacheKey(entityType, lodLevel);
         
-        if (!this.geometryCache.has(cacheKey) {
+        if (!this.geometryCache.has(cacheKey)) {
             const settings = this.entitySettings[entityType] || this.entitySettings.default;
+            
+            if (!settings || !settings.lodLevels) {
+                console.warn(`⚠️ Настройки не найдены для типа: ${entityType}`);
+                return;
+            }
+            
             const levelConfig = settings.lodLevels[lodLevel];
             
             if (levelConfig) {
                 this.preloadQueue.add(cacheKey);
                 this.processPreloadQueue();
+            } else {
+                console.warn(`⚠️ Конфигурация LOD уровня не найдена: ${entityType}.${lodLevel}`);
             }
         }
     }
@@ -1142,5 +1161,6 @@ export class LODManager {
 }
 
 export default LODManager;
+
 
 
