@@ -3,24 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Galaxy Explorer</title>
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.skypack.dev/three@0.158.0",
-            "three/": "https://cdn.skypack.dev/three@0.158.0/"
-        }
-    }
-    </script>
+    <title>Galaxy Explorer 3D</title>
+    
+    <!-- Мета-теги для корректных MIME-типов -->
+    <meta http-equiv="Content-Security-Policy" 
+          content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.bioapgreid.ru; 
+                   script-src 'self' 'unsafe-inline' 'unsafe-eval'; 
+                   style-src 'self' 'unsafe-inline';">
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <link rel="manifest" href="/web-app-manifest.json" type="application/manifest+json">
+    
     <style>
+        /* Базовые стили */
         body { 
             margin: 0; 
             padding: 0; 
             background: #0c0c2e;
             overflow: hidden;
-            font-family: Arial, sans-serif;
+            font-family: 'Arial', sans-serif;
         }
-        #loading {
+        
+        #app-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        .loading-screen {
             position: fixed;
             top: 0;
             left: 0;
@@ -34,75 +46,88 @@
             color: white;
             z-index: 1000;
         }
-        .loading-spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid #4ECDC4;
-            border-top: 5px solid transparent;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        #galaxy-canvas {
-            display: block;
-            width: 100vw;
-            height: 100vh;
-        }
-        #progress-count {
+        
+        .error-screen {
             position: fixed;
-            top: 20px;
-            left: 20px;
-            background: rgba(12, 12, 46, 0.8);
-            color: #4ECDC4;
-            padding: 10px 15px;
-            border-radius: 20px;
-            font-size: 14px;
-            z-index: 100;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0c0c2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 1000;
         }
     </style>
 </head>
 <body>
-    <div id="loading">
-        <div class="loading-spinner"></div>
-        <div>Загрузка 3D галактики...</div>
+    <div id="app-container">
+        <div class="loading-screen" id="loading-screen">
+            <h1>🚀 Galaxy Explorer 3D</h1>
+            <p>Загрузка космического пространства...</p>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+        </div>
+        
+        <canvas id="galaxy-canvas"></canvas>
     </div>
-    
-    <canvas id="galaxy-canvas"></canvas>
-    <div id="progress-count">Объектов: 0</div>
 
+    <!-- Основной скрипт приложения с явным указанием типа -->
     <script type="module">
-        import { GalaxyApp } from './modules/app/core/app.js';
-        
-        // Глобальная переменная для отладки
-        window.galaxyApp = new GalaxyApp();
-        
-        // Запускаем приложение после загрузки страницы
-        window.addEventListener('DOMContentLoaded', async () => {
-            try {
-                await window.galaxyApp.init();
-            } catch (error) {
-                console.error('Ошибка запуска приложения:', error);
-                document.getElementById('loading').innerHTML = `
-                    <div style="color: #ff6b6b; text-align: center;">
-                        <h3>❌ Ошибка загрузки</h3>
-                        <p>${error.message}</p>
-                        <button onclick="window.location.reload()" style="
-                            background: #4ECDC4;
-                            border: none;
-                            padding: 10px 20px;
-                            border-radius: 20px;
-                            color: white;
-                            cursor: pointer;
-                            margin-top: 20px;
-                        ">Перезагрузить</button>
-                    </div>
-                `;
+        // Глобальная обработка ошибок загрузки модулей
+        window.addEventListener('error', function(e) {
+            if (e.target.tagName === 'SCRIPT' && e.target.type === 'module') {
+                console.error('Module loading error:', e.error);
+                showErrorScreen(`Ошибка загрузки модуля: ${e.target.src}`);
             }
         });
+
+        // Обработка неперехваченных обещаний
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('Unhandled promise rejection:', e.reason);
+            showErrorScreen(`Ошибка приложения: ${e.reason.message}`);
+        });
+
+        function showErrorScreen(message) {
+            const loadingScreen = document.getElementById('loading-screen');
+            loadingScreen.innerHTML = `
+                <div class="error-screen">
+                    <h2>🚨 Ошибка загрузки</h2>
+                    <p>${message}</p>
+                    <div class="error-details">
+                        <p><strong>Путь:</strong> ${window.location.href}</p>
+                        <p><strong>Браузер:</strong> ${navigator.userAgent}</p>
+                    </div>
+                    <div class="error-actions">
+                        <button onclick="location.reload()">🔄 Перезагрузить</button>
+                        <button onclick="switchTo2DMode()">📱 2D Режим</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function switchTo2DMode() {
+            // Fallback на 2D версию
+            window.location.href = '/2d-fallback.html';
+        }
+
+        // Динамический импорт основного приложения
+        import('./app/core/app.js')
+            .then(module => {
+                // Скрываем экран загрузки
+                document.getElementById('loading-screen').style.display = 'none';
+                
+                // Инициализируем приложение
+                const GalaxyApp = module.GalaxyApp || module.default;
+                window.galaxyApp = new GalaxyApp();
+            })
+            .catch(error => {
+                console.error('Failed to load main application:', error);
+                showErrorScreen(`Не удалось загрузить основное приложение: ${error.message}`);
+            });
     </script>
 </body>
 </html>
