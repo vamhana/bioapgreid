@@ -687,7 +687,7 @@ export class LODManager {
     ensureGeometryPreloaded(entityType, lodLevel) {
         const cacheKey = this.createGeometryCacheKey(entityType, lodLevel);
         
-        if (!this.geometryCache.has(cacheKey) {
+        if (this.geometryCache.has(cacheKey) {
             const settings = this.entitySettings[entityType] || this.entitySettings.default;
             const levelConfig = settings.lodLevels[lodLevel];
             
@@ -1136,3 +1136,4 @@ export class LODManager {
 }
 
 export default LODManager;
+
