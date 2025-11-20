@@ -6,7 +6,6 @@
 // import { UnrealBloomPass } from './UnrealBloomPass.js';
 // import Stats from './stats.js';
 
-// modules/app/core/three-scene-manager_2.js
 import { ThreeSceneManager } from './three-scene-manager.js';
 import * as THREE from './three.module.js';
 
@@ -107,7 +106,6 @@ export class ThreeSceneManager2 extends ThreeSceneManager {
         const nebulaGroup = new THREE.Group();
         nebulaGroup.name = 'nebula';
 
-        // Создаем несколько слоев туманности
         for (let i = 0; i < layers; i++) {
             const layerRadius = radius * (0.7 + i * 0.1);
             const segments = 32 + i * 16;
@@ -123,7 +121,6 @@ export class ThreeSceneManager2 extends ThreeSceneManager {
 
             const nebulaLayer = new THREE.Mesh(geometry, material);
             
-            // Добавляем случайное вращение и смещение для естественного вида
             nebulaLayer.rotation.x = Math.random() * Math.PI;
             nebulaLayer.rotation.y = Math.random() * Math.PI;
             nebulaLayer.position.set(
@@ -135,7 +132,6 @@ export class ThreeSceneManager2 extends ThreeSceneManager {
             nebulaGroup.add(nebulaLayer);
         }
 
-        // Добавляем анимацию для плавного движения туманности
         this.addAnimationCallback((deltaTime) => {
             nebulaGroup.rotation.y += deltaTime * 0.01;
             nebulaGroup.rotation.x += deltaTime * 0.005;
@@ -233,7 +229,6 @@ export class ThreeSceneManager2 extends ThreeSceneManager {
         galaxy.name = 'galaxy';
         galaxy.frustumCulled = false;
 
-        // Анимация вращения галактики
         this.addAnimationCallback((deltaTime) => {
             galaxy.rotation.y += deltaTime * 0.02;
         });
@@ -529,11 +524,33 @@ export class ThreeSceneManager2 extends ThreeSceneManager {
             isAnimating: this.isAnimating
         };
     }
-}
 
-export default ThreeSceneManager2;
-        
-        return extendedStats;
+    // Вспомогательная функция для интерполяции
+    lerp(start, end, factor) {
+        return start + (end - start) * factor;
+    }
+
+    // Обработчик ошибок инициализации
+    handleInitError(error) {
+        const errorDiv = document.createElement('div');
+        errorDiv.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #ff4444;
+            color: white;
+            padding: 20px;
+            border-radius: 5px;
+            z-index: 10000;
+            text-align: center;
+        `;
+        errorDiv.innerHTML = `
+            <h3>Ошибка инициализации 3D</h3>
+            <p>${error.message}</p>
+            <p>Проверьте поддержку WebGL в вашем браузере</p>
+        `;
+        document.body.appendChild(errorDiv);
     }
 }
 
