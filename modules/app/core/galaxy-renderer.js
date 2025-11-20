@@ -1,5 +1,5 @@
-[file name]: galaxy-renderer-enhanced.js
-[file content begin]
+galaxy-renderer-enhanced.js
+
 import { ThreeSceneManager2 } from './three-scene-manager_2.js';
 import { SpatialPartitioner } from './spatial-partitioner.js';
 import { LODManager } from './lod-manager.js';
@@ -846,4 +846,5 @@ export class GalaxyRenderer {
 }
 
 export default GalaxyRenderer;
-[file content end]
+
+
