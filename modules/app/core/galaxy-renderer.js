@@ -98,7 +98,7 @@ export class GalaxyRenderer {
             console.log('🚀 Инициализация GalaxyRenderer...');
             
             // Инициализируем менеджер сцены с улучшенной обработкой
-            this.sceneManager2 = new ThreeSceneManager(this.canvas);
+            this.sceneManager = new ThreeSceneManager2(this.canvas);
             await this.sceneManager.init(
                 this.renderConfig.enableShadows, 
                 this.renderConfig.enablePostProcessing
@@ -754,4 +754,5 @@ export class GalaxyRenderer {
 
 
 export default GalaxyRenderer;
+
 
