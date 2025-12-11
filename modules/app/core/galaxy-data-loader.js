@@ -1,24 +1,233 @@
 // modules/app/core/galaxy-data-loader.js
 import { SecurityValidator } from './security-validator.js';
 import { MemoryManager } from './memory-manager.js';
-import { DataLoaderConfig } from './config/data-loader-config.js';
-import { PositionGenerator } from './utils/position-generator.js';
-import { DataLoaderResult, DataLoadingError } from './errors/data-loader-errors.js';
+
+// Вспомогательные классы внутри модуля
+class DataLoaderResult {
+    constructor(success, data = null, error = null, warnings = []) {
+        this.success = success;
+        this.data = data;
+        this.error = error;
+        this.warnings = warnings;
+        this.timestamp = Date.now();
+    }
+    
+    static success(data, warnings = []) {
+        return new DataLoaderResult(true, data, null, warnings);
+    }
+    
+    static error(error, warnings = []) {
+        return new DataLoaderResult(false, null, error, warnings);
+    }
+}
+
+class PositionGenerator {
+    constructor(seed = 0x4ECDC4) {
+        this.seed = seed;
+        this.stats = {
+            calculations: 0,
+            cacheHits: 0,
+            averageTime: 0
+        };
+    }
+    
+    generatePosition(entityId, options = {}) {
+        const startTime = performance.now();
+        
+        // Детерминированный алгоритм на основе entityId
+        const hash = this.hashEntityId(entityId);
+        const random = this.seededRandom(hash);
+        
+        const baseRadius = options.baseRadius || 200;
+        const spread = options.spread || 150;
+        
+        const position = {
+            x: (random() - 0.5) * 1000,
+            y: (random() - 0.5) * 1000,
+            z: (random() - 0.5) * 500
+        };
+        
+        // Нормализуем для орбитального распределения
+        const distance = Math.sqrt(position.x ** 2 + position.y ** 2);
+        const targetDistance = baseRadius + (hash % 1000) / 1000 * spread;
+        
+        if (distance > 0) {
+            const scale = targetDistance / distance;
+            position.x *= scale;
+            position.y *= scale;
+        }
+        
+        const endTime = performance.now();
+        this.stats.calculations++;
+        this.stats.averageTime = 
+            (this.stats.averageTime * (this.stats.calculations - 1) + (endTime - startTime)) / 
+            this.stats.calculations;
+        
+        return position;
+    }
+    
+    hashEntityId(str) {
+        // FNV-1a hash
+        let hash = 0x811c9dc5;
+        for (let i = 0; i < str.length; i++) {
+            hash ^= str.charCodeAt(i);
+            hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+        }
+        return hash >>> 0;
+    }
+    
+    seededRandom(seed) {
+        return () => {
+            seed = (seed * 9301 + 49297) % 233280;
+            return seed / 233280;
+        };
+    }
+    
+    getStats() {
+        return { ...this.stats };
+    }
+}
+
+class SmartCache {
+    constructor(maxSize = 50 * 1024 * 1024) { // 50MB по умолчанию
+        this.cache = new Map();
+        this.stats = {
+            hits: 0,
+            misses: 0,
+            size: 0
+        };
+        this.maxSize = maxSize;
+    }
+    
+    async getOrSet(key, factory, options = {}) {
+        const cached = this.cache.get(key);
+        
+        if (cached && !this.isExpired(cached, options.ttl)) {
+            this.stats.hits++;
+            cached.lastAccessed = Date.now();
+            return cached.data;
+        }
+        
+        this.stats.misses++;
+        const data = await factory();
+        this.set(key, data, options);
+        return data;
+    }
+    
+    set(key, data, options = {}) {
+        const item = {
+            data,
+            timestamp: Date.now(),
+            lastAccessed: Date.now(),
+            ttl: options.ttl,
+            size: this.estimateSize(data)
+        };
+        
+        this.cache.set(key, item);
+        this.stats.size += item.size;
+        
+        // Автоматическая очистка при превышении лимита
+        if (this.stats.size > this.maxSize) {
+            this.autoCleanup(this.maxSize * 0.7); // Очистить до 70% лимита
+        }
+    }
+    
+    get(key) {
+        const item = this.cache.get(key);
+        if (item && !this.isExpired(item, item.ttl)) {
+            this.stats.hits++;
+            item.lastAccessed = Date.now();
+            return item.data;
+        }
+        this.stats.misses++;
+        return null;
+    }
+    
+    delete(key) {
+        const item = this.cache.get(key);
+        if (item) {
+            this.stats.size -= item.size;
+            this.cache.delete(key);
+        }
+    }
+    
+    clear() {
+        this.cache.clear();
+        this.stats.size = 0;
+        this.stats.hits = 0;
+        this.stats.misses = 0;
+    }
+    
+    isExpired(cachedItem, ttl) {
+        if (!ttl) return false;
+        return Date.now() - cachedItem.timestamp > ttl;
+    }
+    
+    autoCleanup(targetSize) {
+        // Сортируем элементы по времени последнего доступа
+        const entries = Array.from(this.cache.entries())
+            .sort((a, b) => a[1].lastAccessed - b[1].lastAccessed);
+        
+        for (const [key, item] of entries) {
+            if (this.stats.size <= targetSize) break;
+            
+            this.delete(key);
+        }
+    }
+    
+    estimateSize(data) {
+        try {
+            return new Blob([JSON.stringify(data)]).size;
+        } catch {
+            return 1024; // Базовый размер, если не удалось вычислить
+        }
+    }
+    
+    getStats() {
+        return {
+            ...this.stats,
+            formattedSize: this.formatBytes(this.stats.size),
+            entries: this.cache.size,
+            hitRate: this.stats.hits + this.stats.misses > 0 
+                ? (this.stats.hits / (this.stats.hits + this.stats.misses) * 100).toFixed(1) + '%'
+                : '0%'
+        };
+    }
+    
+    formatBytes(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+}
 
 export class GalaxyDataLoader {
     constructor(config = {}) {
-        this.config = { ...DataLoaderConfig.DEFAULT, ...config };
-        this.securityValidator = new SecurityValidator(this.config.security);
-        this.memoryManager = new MemoryManager(this.config.memory);
-        this.positionGenerator = new PositionGenerator(this.config.seed);
+        // Конфигурация по умолчанию
+        this.config = {
+            sitemapUrl: '/results/sitemap.json',
+            enableCache: true,
+            cacheTTL: 5 * 60 * 1000, // 5 минут
+            maxCacheSize: 50 * 1024 * 1024, // 50MB
+            enableFallback: true,
+            maxEntities: 10000,
+            maxDepth: 20,
+            ...config
+        };
+        
+        this.securityValidator = new SecurityValidator();
+        this.memoryManager = new MemoryManager();
+        this.positionGenerator = new PositionGenerator(0x4ECDC4);
         
         // Индексы для быстрого поиска
-        this.entityIndex = new Map();      // id → entity
-        this.positionIndex = new Map();    // id → position
-        this.parentIndex = new Map();      // id → parentId
+        this.entityIndex = new Map();      // entityId → entity
+        this.positionIndex = new Map();    // entityId → position
+        this.parentIndex = new Map();      // entityId → parentId
         
         // Кэши
-        this.dataCache = new SmartCache(this.config.cache);
+        this.dataCache = new SmartCache(this.config.maxCacheSize);
         this.positionCache = new Map();
         
         // Состояние
@@ -29,11 +238,12 @@ export class GalaxyDataLoader {
             stats: {
                 loadTime: 0,
                 entityCount: 0,
-                cacheHits: 0
+                cacheHits: 0,
+                lastLoad: null
             }
         };
         
-        console.log('📊 GalaxyDataLoader создан с конфигом:', this.config.name);
+        console.log('📊 GalaxyDataLoader создан');
     }
     
     async load(options = {}) {
@@ -44,7 +254,7 @@ export class GalaxyDataLoader {
             this.state.lastError = null;
             
             // Пытаемся загрузить из кэша
-            if (options.useCache !== false) {
+            if (this.config.enableCache && options.useCache !== false) {
                 const cached = await this.tryLoadFromCache();
                 if (cached) {
                     console.log('✅ Данные загружены из кэша');
@@ -58,25 +268,32 @@ export class GalaxyDataLoader {
             // Обновляем статистику
             this.state.stats.loadTime = performance.now() - startTime;
             this.state.stats.entityCount = this.entityIndex.size;
+            this.state.stats.lastLoad = new Date().toISOString();
             
             return result;
             
         } catch (error) {
             this.state.lastError = error;
+            console.error('❌ Ошибка загрузки:', error);
             
             // Пробуем загрузить fallback данные
-            if (options.fallback !== false) {
+            if (this.config.enableFallback && options.fallback !== false) {
                 console.warn('⚠️ Используем fallback данные');
-                const fallbackResult = await this.loadFallbackData();
-                return DataLoaderResult.success(
-                    fallbackResult.data, 
-                    ['fallback_used', error.message]
-                );
+                try {
+                    const fallbackResult = await this.loadFallbackData();
+                    return DataLoaderResult.success(
+                        fallbackResult.data, 
+                        ['fallback_used', error.message]
+                    );
+                } catch (fallbackError) {
+                    console.error('❌ Ошибка в fallback данных:', fallbackError);
+                    return DataLoaderResult.error(
+                        new Error(`Failed to load galaxy data: ${error.message}`)
+                    );
+                }
             }
             
-            return DataLoaderResult.error(
-                new DataLoadingError('Failed to load galaxy data', { cause: error })
-            );
+            return DataLoaderResult.error(error);
             
         } finally {
             this.state.isLoading = false;
@@ -87,99 +304,121 @@ export class GalaxyDataLoader {
         const warnings = [];
         
         // 1. Загружаем сырые данные
-        const rawData = await this.fetchData(this.config.sitemapUrl);
+        console.log('📥 Загрузка данных из:', this.config.sitemapUrl);
+        const response = await fetch(this.config.sitemapUrl);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const rawData = await response.json();
         
         // 2. Валидируем безопасность
         try {
             this.securityValidator.validateGalaxyData(rawData);
         } catch (validationError) {
             warnings.push(`Security validation: ${validationError.message}`);
-            // Решаем, продолжать или нет в зависимости от конфига
-            if (this.config.security.strictMode) {
+            if (this.config.strictMode) {
                 throw validationError;
             }
         }
         
         // 3. Обрабатываем данные
-        const processedData = await this.processData(rawData, options.progressCallback);
+        const processedData = this.processData(rawData, options.progressCallback);
         
         // 4. Строим индексы
         this.buildIndexes(processedData);
         
         // 5. Кэшируем результат
-        await this.cacheData(processedData);
+        if (this.config.enableCache) {
+            await this.cacheData(processedData);
+        }
         
         return DataLoaderResult.success(processedData, warnings);
     }
     
-    async processData(rawData, progressCallback = null) {
-        const processor = new GalaxyDataProcessor(this.config);
+    processData(rawData, progressCallback = null) {
+        const processedData = this.deepClone(rawData);
         
-        // Разбиваем обработку на этапы
-        const stages = [
-            { name: 'parsing', weight: 0.1 },
-            { name: 'validation', weight: 0.2 },
-            { name: '3d_generation', weight: 0.5 },
-            { name: 'indexing', weight: 0.2 }
-        ];
+        // Добавляем 3D данные
+        processedData.threeData = this.generate3DLayout(processedData);
         
-        let progress = 0;
-        
-        for (const stage of stages) {
-            if (progressCallback) {
-                progressCallback({ stage: stage.name, progress });
+        // Обрабатываем всех детей рекурсивно с защитой от циклов
+        const visited = new WeakSet();
+        const processEntity = (entity, depth = 0, parentId = null) => {
+            if (visited.has(entity)) {
+                console.warn('⚠️ Циклическая ссылка обнаружена:', entity.name);
+                return entity;
             }
             
-            switch (stage.name) {
-                case 'parsing':
-                    rawData = processor.parseStructure(rawData);
-                    break;
-                case 'validation':
-                    processor.validateData(rawData);
-                    break;
-                case '3d_generation':
-                    rawData.threeData = this.generateComplete3DLayout(rawData);
-                    break;
-                case 'indexing':
-                    this.indexData(rawData);
-                    break;
+            if (depth > this.config.maxDepth) {
+                console.warn(`⚠️ Превышена глубина ${this.config.maxDepth} для:`, entity.name);
+                return entity;
             }
             
-            progress += stage.weight;
-        }
-        
-        // Добавляем метаданные
-        rawData.metadata = {
-            processedAt: new Date().toISOString(),
-            version: this.config.version,
-            processor: 'GalaxyDataLoader',
-            stats: {
-                totalEntities: this.entityIndex.size,
-                depth: this.calculateTreeDepth(rawData),
-                memoryEstimate: this.estimateMemoryUsage(rawData)
+            visited.add(entity);
+            
+            // Добавляем cleanPath если его нет
+            if (!entity.cleanPath) {
+                entity.cleanPath = entity.name || `entity_${Math.random().toString(36).substr(2, 9)}`;
             }
+            
+            // Добавляем позицию
+            if (processedData.threeData?.entityPositions) {
+                const position = processedData.threeData.entityPositions.get(entity.cleanPath);
+                if (position) {
+                    entity.position3D = position;
+                }
+            }
+            
+            // Добавляем родителя
+            if (parentId) {
+                entity.parentId = parentId;
+            }
+            
+            // Обрабатываем детей
+            if (entity.children && Array.isArray(entity.children)) {
+                entity.children.forEach((child, index) => {
+                    processEntity(child, depth + 1, entity.cleanPath);
+                });
+            }
+            
+            visited.delete(entity);
+            return entity;
         };
         
-        return rawData;
+        processEntity(processedData);
+        
+        // Добавляем метаданные
+        processedData.metadata = {
+            processedAt: new Date().toISOString(),
+            version: '2.0.0',
+            totalEntities: this.countEntities(processedData),
+            maxDepth: this.calculateTreeDepth(processedData)
+        };
+        
+        return processedData;
     }
     
-    generateComplete3DLayout(data) {
+    generate3DLayout(data) {
         const layout = {
             center: { x: 0, y: 0, z: 0 },
             orbitalLayers: [],
             entityPositions: new Map()
         };
         
-        if (!data.children) {
+        if (!data.children || !Array.isArray(data.children)) {
             return layout;
         }
         
-        // Генерируем орбитальные слои
+        // Генерируем орбитальные слои для планет
         data.children.forEach((planet, planetIndex) => {
+            if (!planet.cleanPath) return;
+            
             const orbitRadius = 200 + planetIndex * 150;
             const orbit = {
                 radius: orbitRadius,
-                tilt: (Math.random() - 0.5) * 0.2, // Наклон орбиты
+                tilt: (Math.random() - 0.5) * 0.2,
                 planets: []
             };
             
@@ -194,8 +433,10 @@ export class GalaxyDataLoader {
             layout.entityPositions.set(planet.cleanPath, planetPos);
             
             // Позиции лун
-            if (planet.children) {
+            if (planet.children && Array.isArray(planet.children)) {
                 planet.children.forEach((moon, moonIndex) => {
+                    if (!moon.cleanPath) return;
+                    
                     const moonAngle = (moonIndex / planet.children.length) * Math.PI * 2;
                     const moonOrbitRadius = 60 + moonIndex * 20;
                     const moonPos = {
@@ -232,38 +473,31 @@ export class GalaxyDataLoader {
         this.positionIndex.clear();
         this.parentIndex.clear();
         
+        const visited = new Set();
         const indexEntity = (entity, parentId = null) => {
-            if (!entity || !entity.cleanPath) {
-                console.warn('⚠️ Entity without cleanPath found:', entity);
+            const entityId = entity.cleanPath;
+            if (!entityId || visited.has(entityId)) {
                 return;
             }
             
-            const entityId = entity.cleanPath;
+            visited.add(entityId);
             
-            // Добавляем в индексы
+            // Индексируем сущность
             this.entityIndex.set(entityId, entity);
             
+            // Индексируем позицию
+            if (entity.position3D) {
+                this.positionIndex.set(entityId, entity.position3D);
+            }
+            
+            // Индексируем родителя
             if (parentId) {
                 this.parentIndex.set(entityId, parentId);
             }
             
-            // Добавляем позицию если есть
-            if (data.threeData?.entityPositions) {
-                const position = data.threeData.entityPositions.get(entityId);
-                if (position) {
-                    this.positionIndex.set(entityId, position);
-                }
-            }
-            
-            // Рекурсивно индексируем детей с защитой от циклов
-            if (entity.children) {
-                const visited = new Set();
+            // Индексируем детей
+            if (entity.children && Array.isArray(entity.children)) {
                 entity.children.forEach(child => {
-                    if (visited.has(child.cleanPath)) {
-                        console.warn('⚠️ Duplicate child found:', child.cleanPath);
-                        return;
-                    }
-                    visited.add(child.cleanPath);
                     indexEntity(child, entityId);
                 });
             }
@@ -278,11 +512,126 @@ export class GalaxyDataLoader {
         });
     }
     
-    // Улучшенные методы поиска
+    async tryLoadFromCache() {
+        try {
+            const cachedData = this.dataCache.get('galaxy_data');
+            if (cachedData) {
+                // Восстанавливаем индексы из кэшированных данных
+                this.buildIndexes(cachedData);
+                return cachedData;
+            }
+        } catch (error) {
+            console.warn('⚠️ Ошибка чтения кэша:', error);
+        }
+        return null;
+    }
+    
+    async cacheData(data) {
+        try {
+            this.dataCache.set('galaxy_data', data, {
+                ttl: this.config.cacheTTL
+            });
+        } catch (error) {
+            console.warn('⚠️ Ошибка кэширования:', error);
+        }
+    }
+    
+    async loadFallbackData() {
+        // Простые fallback данные для разработки
+        const fallbackData = {
+            name: "Development Galaxy",
+            type: "galaxy",
+            cleanPath: "galaxy",
+            config: { 
+                color: "#FFD700", 
+                title: "Тестовая Галактика",
+                description: "Демонстрационные данные"
+            },
+            stats: {
+                entities: { galaxy: 1, planet: 3, moon: 3, asteroid: 0, debris: 0 },
+                total: 7
+            },
+            children: [
+                {
+                    name: "earth",
+                    type: "planet",
+                    cleanPath: "earth",
+                    config: { 
+                        color: "#4ECDC4", 
+                        title: "Земля",
+                        description: "Голубая планета"
+                    },
+                    children: [
+                        {
+                            name: "moon",
+                            type: "moon",
+                            cleanPath: "moon",
+                            config: { 
+                                color: "#CCCCCC", 
+                                title: "Луна",
+                                description: "Естественный спутник"
+                            }
+                        }
+                    ]
+                },
+                {
+                    name: "mars", 
+                    type: "planet",
+                    cleanPath: "mars",
+                    config: { 
+                        color: "#FF6B6B", 
+                        title: "Марс",
+                        description: "Красная планета"
+                    },
+                    children: [
+                        {
+                            name: "phobos",
+                            type: "moon",
+                            cleanPath: "phobos",
+                            config: { 
+                                color: "#888888", 
+                                title: "Фобос",
+                                description: "Спутник Марса"
+                            }
+                        }
+                    ]
+                },
+                {
+                    name: "jupiter",
+                    type: "planet",
+                    cleanPath: "jupiter", 
+                    config: { 
+                        color: "#FFA500", 
+                        title: "Юпитер",
+                        description: "Газовый гигант"
+                    }
+                }
+            ],
+            metadata: {
+                processedAt: new Date().toISOString(),
+                version: 'fallback',
+                isFallback: true
+            }
+        };
+        
+        // Генерируем 3D данные
+        fallbackData.threeData = this.generate3DLayout(fallbackData);
+        
+        // Обрабатываем данные
+        const processedData = this.processData(fallbackData);
+        
+        // Строим индексы
+        this.buildIndexes(processedData);
+        
+        return DataLoaderResult.success(processedData, ['fallback_data_used']);
+    }
+    
+    // ==== ПУБЛИЧНЫЕ МЕТОДЫ ====
+    
     getEntityByPath(path) {
         const entity = this.entityIndex.get(path);
         if (!entity) {
-            console.warn(`⚠️ Entity not found: ${path}`);
+            console.warn(`⚠️ Объект не найден: ${path}`);
             // Пробуем найти по частичному совпадению
             return this.findEntityByPartialPath(path);
         }
@@ -319,7 +668,6 @@ export class GalaxyDataLoader {
         return position;
     }
     
-    // Новые полезные методы
     getEntityChildren(parentId) {
         const children = [];
         for (const [childId, parentIdOfChild] of this.parentIndex.entries()) {
@@ -336,51 +684,89 @@ export class GalaxyDataLoader {
         return parentId ? this.entityIndex.get(parentId) : null;
     }
     
-    getEntityDepth(entityId) {
-        let depth = 0;
-        let currentId = entityId;
-        
-        while (this.parentIndex.has(currentId)) {
-            depth++;
-            currentId = this.parentIndex.get(currentId);
-            if (depth > 100) { // Защита от бесконечного цикла
-                console.warn('⚠️ Possible circular reference detected');
-                break;
-            }
-        }
-        
-        return depth;
+    getAllEntities() {
+        return Array.from(this.entityIndex.values());
     }
     
-    // Методы для работы с памятью
-    estimateMemoryUsage(data) {
-        const jsonString = JSON.stringify(data);
-        const bytes = new Blob([jsonString]).size;
+    getEntitiesByType(type) {
+        return this.getAllEntities().filter(entity => entity.type === type);
+    }
+    
+    getGalaxyStats() {
+        const memoryStats = this.memoryManager.getMemoryStats();
         
         return {
-            bytes,
-            formatted: this.formatBytes(bytes),
-            entities: this.entityIndex.size,
-            positions: this.positionIndex.size
+            name: this.entityIndex.get('galaxy')?.name || 'Unknown',
+            totalEntities: this.entityIndex.size,
+            byType: this.countEntitiesByType(),
+            memory: {
+                data: this.dataCache.getStats(),
+                positions: this.positionCache.size
+            },
+            performance: {
+                loadTime: this.state.stats.loadTime.toFixed(2) + 'ms',
+                cacheHits: this.state.stats.cacheHits
+            },
+            lastUpdated: this.state.stats.lastLoad || 'Never'
         };
     }
     
-    formatBytes(bytes) {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    // ==== СЛУЖЕБНЫЕ МЕТОДЫ ====
+    
+    countEntities(data) {
+        let count = 0;
+        const countRecursive = (entity) => {
+            count++;
+            if (entity.children && Array.isArray(entity.children)) {
+                entity.children.forEach(countRecursive);
+            }
+        };
+        countRecursive(data);
+        return count;
     }
     
-    // Очистка памяти
+    countEntitiesByType() {
+        const counts = {};
+        for (const entity of this.entityIndex.values()) {
+            counts[entity.type] = (counts[entity.type] || 0) + 1;
+        }
+        return counts;
+    }
+    
+    calculateTreeDepth(data) {
+        let maxDepth = 0;
+        
+        const calculateDepth = (node, currentDepth) => {
+            maxDepth = Math.max(maxDepth, currentDepth);
+            if (node.children && Array.isArray(node.children)) {
+                node.children.forEach(child => {
+                    calculateDepth(child, currentDepth + 1);
+                });
+            }
+        };
+        
+        calculateDepth(data, 0);
+        return maxDepth;
+    }
+    
+    deepClone(obj) {
+        try {
+            return JSON.parse(JSON.stringify(obj));
+        } catch (error) {
+            console.error('❌ Ошибка клонирования объекта:', error);
+            return { ...obj };
+        }
+    }
+    
+    // ==== ОЧИСТКА И УНИЧТОЖЕНИЕ ====
+    
     clearCache() {
         this.dataCache.clear();
         this.positionCache.clear();
         console.log('🧹 Кэши данных очищены');
     }
     
-    dispose() {
+    destroy() {
         this.clearCache();
         this.entityIndex.clear();
         this.positionIndex.clear();
@@ -391,171 +777,19 @@ export class GalaxyDataLoader {
         console.log('🧹 GalaxyDataLoader уничтожен');
     }
     
-    // Статистика и отладка
+    // ==== ДИАГНОСТИКА ====
+    
     getStats() {
         return {
-            ...this.state.stats,
-            cache: {
-                entityIndexSize: this.entityIndex.size,
-                positionIndexSize: this.positionIndex.size,
-                parentIndexSize: this.parentIndex.size,
-                positionCacheSize: this.positionCache.size
+            state: { ...this.state },
+            cache: this.dataCache.getStats(),
+            indexes: {
+                entities: this.entityIndex.size,
+                positions: this.positionIndex.size,
+                parents: this.parentIndex.size
             },
-            performance: {
-                avgPositionCalculation: this.positionGenerator.getStats()
-            }
+            config: { ...this.config }
         };
-    }
-    
-    // Вспомогательные методы
-    async tryLoadFromCache() {
-        if (!this.config.cache.enabled) return null;
-        
-        try {
-            const cached = await this.dataCache.getOrSet(
-                'galaxy_data',
-                () => Promise.reject(new Error('Cache miss')),
-                { ttl: this.config.cache.ttl }
-            );
-            
-            // Восстанавливаем индексы из кэшированных данных
-            if (cached) {
-                this.buildIndexes(cached);
-                return cached;
-            }
-        } catch (error) {
-            // Кэш не найден или просрочен
-        }
-        
-        return null;
-    }
-    
-    async cacheData(data) {
-        if (!this.config.cache.enabled) return;
-        
-        await this.dataCache.set('galaxy_data', data, {
-            ttl: this.config.cache.ttl,
-            size: this.estimateMemoryUsage(data).bytes
-        });
-    }
-    
-    calculateTreeDepth(data) {
-        let maxDepth = 0;
-        
-        const calculateDepth = (node, currentDepth) => {
-            maxDepth = Math.max(maxDepth, currentDepth);
-            
-            if (node.children) {
-                node.children.forEach(child => {
-                    calculateDepth(child, currentDepth + 1);
-                });
-            }
-        };
-        
-        calculateDepth(data, 0);
-        return maxDepth;
-    }
-}
-
-// Вспомогательные классы
-class GalaxyDataProcessor {
-    constructor(config) {
-        this.config = config;
-    }
-    
-    parseStructure(rawData) {
-        // Нормализуем структуру данных
-        const normalized = {
-            ...rawData,
-            children: rawData.children || [],
-            config: rawData.config || {},
-            stats: rawData.stats || this.calculateStats(rawData)
-        };
-        
-        // Обеспечиваем наличие cleanPath
-        this.ensureCleanPaths(normalized);
-        
-        return normalized;
-    }
-    
-    ensureCleanPaths(node, parentPath = '') {
-        if (!node.cleanPath) {
-            node.cleanPath = parentPath ? `${parentPath}/${node.name}` : node.name;
-        }
-        
-        if (node.children) {
-            node.children.forEach(child => {
-                this.ensureCleanPaths(child, node.cleanPath);
-            });
-        }
-    }
-    
-    calculateStats(data) {
-        const stats = {
-            entities: {},
-            total: 0
-        };
-        
-        const countEntities = (node) => {
-            stats.total++;
-            stats.entities[node.type] = (stats.entities[node.type] || 0) + 1;
-            
-            if (node.children) {
-                node.children.forEach(countEntities);
-            }
-        };
-        
-        countEntities(data);
-        return stats;
-    }
-    
-    validateData(data) {
-        // Проверка максимальной глубины
-        const depth = this.calculateDepth(data);
-        if (depth > this.config.validation.maxDepth) {
-            throw new Error(`Tree depth ${depth} exceeds maximum ${this.config.validation.maxDepth}`);
-        }
-        
-        // Проверка количества сущностей
-        if (data.stats?.total > this.config.validation.maxEntities) {
-            throw new Error(`Too many entities: ${data.stats.total}`);
-        }
-        
-        // Проверка обязательных полей
-        this.validateRequiredFields(data);
-    }
-    
-    calculateDepth(node, currentDepth = 0) {
-        if (!node.children || node.children.length === 0) {
-            return currentDepth;
-        }
-        
-        let maxChildDepth = currentDepth;
-        for (const child of node.children) {
-            const childDepth = this.calculateDepth(child, currentDepth + 1);
-            maxChildDepth = Math.max(maxChildDepth, childDepth);
-        }
-        
-        return maxChildDepth;
-    }
-    
-    validateRequiredFields(node, path = '') {
-        const currentPath = path ? `${path}/${node.name}` : node.name;
-        
-        if (!node.name) {
-            throw new Error(`Entity missing name at path: ${currentPath}`);
-        }
-        
-        if (!node.type) {
-            console.warn(`⚠️ Entity missing type: ${currentPath}`);
-            node.type = 'unknown';
-        }
-        
-        if (node.children) {
-            node.children.forEach(child => {
-                this.validateRequiredFields(child, currentPath);
-            });
-        }
     }
 }
 
