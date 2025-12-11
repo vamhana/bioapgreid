@@ -1,5 +1,3 @@
-[file name]: galaxy-renderer.js
-[file content begin]
 // modules/app/core/galaxy-renderer.js
 import { ThreeSceneManager } from './three-scene-manager.js';
 import { SpatialPartitioner } from './spatial-partitioner.js';
@@ -732,4 +730,5 @@ export class GalaxyRenderer {
 }
 
 export default GalaxyRenderer;
-[file content end]
+
+
