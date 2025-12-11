@@ -1,3 +1,4 @@
+
 // modules/app/core/galaxy-renderer.js
 import { ThreeSceneManager } from './three-scene-manager.js';
 import { SpatialPartitioner } from './spatial-partitioner.js';
@@ -13,6 +14,7 @@ export class GalaxyRenderer {
             throw new Error(`Canvas element with id '${canvasId}' not found`);
         }
 
+        // Конфигурация
         this.config = {
             showOrbits: true,
             showLabels: false,
@@ -22,19 +24,24 @@ export class GalaxyRenderer {
             ...config
         };
         
+        // Менеджеры
         this.sceneManager = null;
         this.spatialPartitioner = new SpatialPartitioner();
         this.lodManager = new LODManager();
         this.memoryManager = new MemoryManager();
         
+        // Коллекции объектов
         this.entityMeshes = new Map();
         this.visibleEntities = new Set();
+        
+        // Состояние анимаций
         this.animationState = {
             entranceComplete: false,
             currentOpacity: 0,
             animations: new Map()
         };
         
+        // Статистика
         this.stats = {
             totalMeshes: 0,
             renderedMeshes: 0,
@@ -44,6 +51,7 @@ export class GalaxyRenderer {
             lastFrameTime: performance.now()
         };
 
+        // Состояние рендеринга
         this.renderLoopId = null;
         this.isRendering = false;
         
@@ -67,9 +75,6 @@ export class GalaxyRenderer {
             // Запускаем мониторинг памяти
             this.memoryManager.startMonitoring();
             
-            // Начинаем рендеринг
-            this.startRendering();
-            
             console.log('✅ GalaxyRenderer инициализирован');
             
         } catch (error) {
@@ -79,20 +84,8 @@ export class GalaxyRenderer {
     }
 
     async setupGalaxyScene() {
-        // Ждем создания звездного поля (метод в ThreeSceneManager)
-        const starfieldPromise = new Promise((resolve) => {
-            this.sceneManager.on('initialized', () => {
-                console.log('⭐ Звездное поле создано');
-                resolve();
-            });
-        });
-        
-        await starfieldPromise;
-        
-        // Создаем туманность если нужно
-        if (this.sceneManager.scene.getObjectByName('nebula')) {
-            console.log('🌌 Туманность создана');
-        }
+        // Ждем создания звездного поля через ThreeSceneManager
+        // Он создает его автоматически при инициализации
         
         // Создаем контейнер для орбит если нужно
         if (this.config.showOrbits) {
@@ -103,6 +96,8 @@ export class GalaxyRenderer {
         if (this.config.showGrid) {
             this.createCoordinateGrid();
         }
+        
+        console.log('🌌 Сцена Galaxy настроена');
     }
 
     createOrbitLines() {
@@ -127,6 +122,27 @@ export class GalaxyRenderer {
             size: 2000,
             divisions: 20
         });
+    }
+
+    // Метод для вызова из основного цикла приложения
+    render(galaxyData, camera) {
+        if (!this.sceneManager || !galaxyData) {
+            return;
+        }
+
+        const frameStartTime = performance.now();
+        
+        // Обновляем анимации
+        this.updateAnimations(frameStartTime);
+        
+        // Обновляем видимые объекты если камера существует
+        if (this.sceneManager?.camera) {
+            this.updateVisibleEntities();
+            this.updateLODs();
+        }
+        
+        // Обновляем статистику
+        this.updateStats(frameStartTime);
     }
 
     startRendering() {
@@ -171,7 +187,7 @@ export class GalaxyRenderer {
         if (!this.sceneManager?.camera) return;
         
         const cameraPosition = this.sceneManager.camera.position;
-        const zoom = 1; // Базовое значение, может быть получено из камеры
+        const zoom = 1; // Базовое значение
         
         // Получаем видимые объекты через spatial partitioner
         const visibleObjects = this.spatialPartitioner.getVisibleEntities(
@@ -318,7 +334,9 @@ export class GalaxyRenderer {
         });
 
         // Регистрируем в LOD менеджере
-        this.lodManager.registerEntity(entityId, entityData.type, radius);
+        if (this.lodManager.registerEntity) {
+            this.lodManager.registerEntity(entityId, entityData.type, radius);
+        }
 
         // Добавляем анимацию
         this.addEntityAnimation(entityId, entityData.type);
@@ -583,7 +601,7 @@ export class GalaxyRenderer {
                 total: this.entityMeshes.size,
                 visible: this.visibleEntities.size
             },
-            renderConfig: this.config,
+            config: this.config,
             stats: this.stats,
             memory: this.memoryManager ? this.memoryManager.getMemoryStats() : null
         };
@@ -597,7 +615,7 @@ export class GalaxyRenderer {
             renderedMeshes: this.stats.renderedMeshes,
             totalMeshes: this.stats.totalMeshes,
             spatialPartitioning: this.spatialPartitioner.getStats(),
-            lod: this.lodManager.getLODStats(),
+            lod: this.lodManager ? this.lodManager.getLODStats() : null,
             memory: this.memoryManager ? this.memoryManager.getMemoryStats() : null
         };
     }
@@ -662,6 +680,14 @@ export class GalaxyRenderer {
         return false;
     }
 
+    resize() {
+        // ThreeSceneManager сам обрабатывает resize
+        if (this.sceneManager && this.sceneManager.handleResize) {
+            this.sceneManager.handleResize();
+        }
+        console.log('🔄 Размер GalaxyRenderer обновлен');
+    }
+
     // Очистка ресурсов
     clearScene() {
         // Удаляем все меши из spatial partitioner
@@ -671,10 +697,12 @@ export class GalaxyRenderer {
         
         // Очищаем группы объектов через scene manager
         if (this.sceneManager) {
-            this.sceneManager.clearGroup('planets');
-            this.sceneManager.clearGroup('moons');
-            this.sceneManager.clearGroup('asteroids');
-            this.sceneManager.clearGroup('stars');
+            if (this.sceneManager.clearGroup) {
+                this.sceneManager.clearGroup('planets');
+                this.sceneManager.clearGroup('moons');
+                this.sceneManager.clearGroup('asteroids');
+                this.sceneManager.clearGroup('stars');
+            }
         }
         
         // Освобождаем ресурсы мешей
@@ -693,14 +721,7 @@ export class GalaxyRenderer {
         this.visibleEntities.clear();
         this.animationState.animations.clear();
         
-        console.log('🧹 Сцена очищена');
-    }
-
-    resize() {
-        if (this.sceneManager) {
-            // ThreeSceneManager сам обрабатывает resize
-            console.log('🔄 Размер сцены обновлен');
-        }
+        console.log('🧹 Сцена GalaxyRenderer очищена');
     }
 
     // Деструктор
@@ -713,7 +734,7 @@ export class GalaxyRenderer {
             this.sceneManager = null;
         }
         
-        if (this.lodManager) {
+        if (this.lodManager && this.lodManager.dispose) {
             this.lodManager.dispose();
         }
         
@@ -730,5 +751,3 @@ export class GalaxyRenderer {
 }
 
 export default GalaxyRenderer;
-
-
