@@ -1,578 +1,561 @@
 // modules/app/core/galaxy-data-loader.js
 import { SecurityValidator } from './security-validator.js';
 import { MemoryManager } from './memory-manager.js';
+import { DataLoaderConfig } from './config/data-loader-config.js';
+import { PositionGenerator } from './utils/position-generator.js';
+import { DataLoaderResult, DataLoadingError } from './errors/data-loader-errors.js';
 
 export class GalaxyDataLoader {
-    constructor() {
-        this.data = null;
-        this.sitemapUrl = '/results/sitemap.json';
-        this.cache = new Map();
-        this.securityValidator = new SecurityValidator();
-        this.memoryManager = new MemoryManager();
-        this.loadingState = {
+    constructor(config = {}) {
+        this.config = { ...DataLoaderConfig.DEFAULT, ...config };
+        this.securityValidator = new SecurityValidator(this.config.security);
+        this.memoryManager = new MemoryManager(this.config.memory);
+        this.positionGenerator = new PositionGenerator(this.config.seed);
+        
+        // Индексы для быстрого поиска
+        this.entityIndex = new Map();      // id → entity
+        this.positionIndex = new Map();    // id → position
+        this.parentIndex = new Map();      // id → parentId
+        
+        // Кэши
+        this.dataCache = new SmartCache(this.config.cache);
+        this.positionCache = new Map();
+        
+        // Состояние
+        this.state = {
+            isInitialized: false,
             isLoading: false,
-            progress: 0,
-            lastError: null
+            lastError: null,
+            stats: {
+                loadTime: 0,
+                entityCount: 0,
+                cacheHits: 0
+            }
         };
         
-        console.log('📊 GalaxyDataLoader создан с SecurityValidator и MemoryManager');
+        console.log('📊 GalaxyDataLoader создан с конфигом:', this.config.name);
     }
-
-    async load() {
-        if (this.loadingState.isLoading) {
-            console.warn('⚠️ Загрузка уже выполняется');
-            return this.data;
-        }
-
-        this.loadingState.isLoading = true;
-        this.loadingState.progress = 0;
-        this.loadingState.lastError = null;
-
+    
+    async load(options = {}) {
+        const startTime = performance.now();
+        
         try {
-            console.log('📥 Загрузка данных галактики...');
+            this.state.isLoading = true;
+            this.state.lastError = null;
             
-            // Проверяем кэш
-            if (this.cache.has('galaxyData')) {
-                console.log('✅ Данные загружены из кэша');
-                this.loadingState.progress = 100;
-                this.data = this.cache.get('galaxyData');
-                return this.data;
-            }
-            
-            this.loadingState.progress = 10;
-            
-            const response = await fetch(this.sitemapUrl);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            this.loadingState.progress = 30;
-            
-            const rawData = await response.json();
-            
-            this.loadingState.progress = 60;
-            
-            // ВАЖНО: Проверяем безопасность данных
-            console.log('🔒 Проверка безопасности данных...');
-            if (this.securityValidator && typeof this.securityValidator.validateGalaxyData === 'function') {
-                this.securityValidator.validateGalaxyData(rawData);
-            } else {
-                console.warn('⚠️ SecurityValidator не доступен, пропускаем проверку безопасности');
-            }
-            
-            this.loadingState.progress = 80;
-            
-            // Обрабатываем данные
-            this.data = this.processGalaxyData(rawData);
-            
-            // Кэшируем данные с отслеживанием памяти
-            const dataSize = new Blob([JSON.stringify(this.data)]).size;
-            this.memoryManager.trackAllocation(this.data, 'galaxyData', dataSize, {
-                entities: this.data.stats?.total || 0,
-                types: Object.keys(this.data.stats?.entities || {})
-            });
-            
-            this.cache.set('galaxyData', this.data);
-            
-            this.loadingState.progress = 100;
-            
-            console.log('✅ Данные галактики загружены и проверены:', {
-                name: this.data.name,
-                entities: this.data.stats?.total,
-                childrenCount: this.data.children?.length || 0,
-                memoryUsage: this.memoryManager.formatBytes(dataSize)
-            });
-            
-            return this.data;
-        } catch (error) {
-            this.loadingState.lastError = error;
-            console.error('❌ Ошибка загрузки sitemap:', error);
-            
-            // Fallback для разработки
-            try {
-                const fallbackData = this.getFallbackData();
-                console.log('✅ Использованы fallback данные');
-                return fallbackData;
-            } catch (fallbackError) {
-                console.error('❌ Ошибка в fallback данных:', fallbackError);
-                throw new Error(`Не удалось загрузить данные: ${error.message}`);
-            }
-        } finally {
-            this.loadingState.isLoading = false;
-        }
-    }
-
-    processGalaxyData(rawData) {
-        // Дополнительная обработка данных для Three.js
-        const processedData = {
-            ...rawData,
-            // Добавляем 3D позиции для объектов
-            threeData: this.generate3DPositions(rawData),
-            // Добавляем метаданные для рендеринга
-            renderConfig: this.generateRenderConfig(rawData),
-            // Временные метки
-            loadedAt: new Date().toISOString(),
-            version: '1.0.0'
-        };
-
-        // Рекурсивно обрабатываем детей
-        if (processedData.children) {
-            processedData.children = processedData.children.map(child => 
-                this.processEntityData(child, 0)
-            );
-        }
-
-        return processedData;
-    }
-
-    processEntityData(entity, depth) {
-        const processedEntity = {
-            ...entity,
-            threeData: {
-                position: this.calculateOrbitalPosition(depth, entity.index || 0),
-                scale: this.calculateEntityScale(entity.type),
-                rotation: this.calculateEntityRotation(entity.type)
-            },
-            renderConfig: {
-                color: entity.config?.color || this.getDefaultColor(entity.type),
-                emissive: entity.type === 'star' ? entity.config?.color || '#FFD700' : '#000000',
-                emissiveIntensity: entity.type === 'star' ? 0.5 : 0,
-                material: this.getMaterialType(entity.type)
-            }
-        };
-
-        // Обрабатываем детей рекурсивно
-        if (processedEntity.children) {
-            processedEntity.children = processedEntity.children.map((child, index) => 
-                this.processEntityData(child, depth + 1, index)
-            );
-        }
-
-        return processedEntity;
-    }
-
-    generate3DPositions(galaxyData, depth = 0) {
-        // Защита от бесконечной рекурсии
-        if (depth > 10) {
-            console.warn('⚠️ Превышена глубина рекурсии в generate3DPositions');
-            return { center: { x: 0, y: 0, z: 0 }, orbitalLayers: [] };
-        }
-
-        const positions = {
-            center: { x: 0, y: 0, z: 0 },
-            orbitalLayers: []
-        };
-
-        if (galaxyData && galaxyData.children) {
-            galaxyData.children.forEach((planet, planetIndex) => {
-                const planetOrbit = {
-                    radius: 200 + planetIndex * 150,
-                    planets: []
-                };
-
-                // Позиция планеты
-                const planetAngle = (planetIndex / galaxyData.children.length) * Math.PI * 2;
-                planetOrbit.planets.push({
-                    entityId: planet.cleanPath || planet.name,
-                    position: {
-                        x: Math.cos(planetAngle) * planetOrbit.radius,
-                        y: Math.sin(planetAngle) * planetOrbit.radius,
-                        z: 0
-                    }
-                });
-
-                // Позиции лун
-                if (planet.children) {
-                    planet.children.forEach((moon, moonIndex) => {
-                        const moonAngle = (moonIndex / planet.children.length) * Math.PI * 2;
-                        planetOrbit.planets.push({
-                            entityId: moon.cleanPath || moon.name,
-                            position: {
-                                x: Math.cos(planetAngle) * planetOrbit.radius + Math.cos(moonAngle) * 60,
-                                y: Math.sin(planetAngle) * planetOrbit.radius + Math.sin(moonAngle) * 60,
-                                z: 0
-                            }
-                        });
-                    });
+            // Пытаемся загрузить из кэша
+            if (options.useCache !== false) {
+                const cached = await this.tryLoadFromCache();
+                if (cached) {
+                    console.log('✅ Данные загружены из кэша');
+                    return DataLoaderResult.success(cached, ['loaded_from_cache']);
                 }
-
-                positions.orbitalLayers.push(planetOrbit);
-            });
+            }
+            
+            // Загружаем свежие данные
+            const result = await this.loadFreshData(options);
+            
+            // Обновляем статистику
+            this.state.stats.loadTime = performance.now() - startTime;
+            this.state.stats.entityCount = this.entityIndex.size;
+            
+            return result;
+            
+        } catch (error) {
+            this.state.lastError = error;
+            
+            // Пробуем загрузить fallback данные
+            if (options.fallback !== false) {
+                console.warn('⚠️ Используем fallback данные');
+                const fallbackResult = await this.loadFallbackData();
+                return DataLoaderResult.success(
+                    fallbackResult.data, 
+                    ['fallback_used', error.message]
+                );
+            }
+            
+            return DataLoaderResult.error(
+                new DataLoadingError('Failed to load galaxy data', { cause: error })
+            );
+            
+        } finally {
+            this.state.isLoading = false;
         }
-
-        return positions;
     }
-
-    generateRenderConfig(galaxyData) {
+    
+    async loadFreshData(options) {
+        const warnings = [];
+        
+        // 1. Загружаем сырые данные
+        const rawData = await this.fetchData(this.config.sitemapUrl);
+        
+        // 2. Валидируем безопасность
+        try {
+            this.securityValidator.validateGalaxyData(rawData);
+        } catch (validationError) {
+            warnings.push(`Security validation: ${validationError.message}`);
+            // Решаем, продолжать или нет в зависимости от конфига
+            if (this.config.security.strictMode) {
+                throw validationError;
+            }
+        }
+        
+        // 3. Обрабатываем данные
+        const processedData = await this.processData(rawData, options.progressCallback);
+        
+        // 4. Строим индексы
+        this.buildIndexes(processedData);
+        
+        // 5. Кэшируем результат
+        await this.cacheData(processedData);
+        
+        return DataLoaderResult.success(processedData, warnings);
+    }
+    
+    async processData(rawData, progressCallback = null) {
+        const processor = new GalaxyDataProcessor(this.config);
+        
+        // Разбиваем обработку на этапы
+        const stages = [
+            { name: 'parsing', weight: 0.1 },
+            { name: 'validation', weight: 0.2 },
+            { name: '3d_generation', weight: 0.5 },
+            { name: 'indexing', weight: 0.2 }
+        ];
+        
+        let progress = 0;
+        
+        for (const stage of stages) {
+            if (progressCallback) {
+                progressCallback({ stage: stage.name, progress });
+            }
+            
+            switch (stage.name) {
+                case 'parsing':
+                    rawData = processor.parseStructure(rawData);
+                    break;
+                case 'validation':
+                    processor.validateData(rawData);
+                    break;
+                case '3d_generation':
+                    rawData.threeData = this.generateComplete3DLayout(rawData);
+                    break;
+                case 'indexing':
+                    this.indexData(rawData);
+                    break;
+            }
+            
+            progress += stage.weight;
+        }
+        
+        // Добавляем метаданные
+        rawData.metadata = {
+            processedAt: new Date().toISOString(),
+            version: this.config.version,
+            processor: 'GalaxyDataLoader',
+            stats: {
+                totalEntities: this.entityIndex.size,
+                depth: this.calculateTreeDepth(rawData),
+                memoryEstimate: this.estimateMemoryUsage(rawData)
+            }
+        };
+        
+        return rawData;
+    }
+    
+    generateComplete3DLayout(data) {
+        const layout = {
+            center: { x: 0, y: 0, z: 0 },
+            orbitalLayers: [],
+            entityPositions: new Map()
+        };
+        
+        if (!data.children) {
+            return layout;
+        }
+        
+        // Генерируем орбитальные слои
+        data.children.forEach((planet, planetIndex) => {
+            const orbitRadius = 200 + planetIndex * 150;
+            const orbit = {
+                radius: orbitRadius,
+                tilt: (Math.random() - 0.5) * 0.2, // Наклон орбиты
+                planets: []
+            };
+            
+            // Позиция планеты
+            const planetAngle = (planetIndex / data.children.length) * Math.PI * 2;
+            const planetPos = {
+                x: Math.cos(planetAngle) * orbitRadius,
+                y: Math.sin(planetAngle) * orbitRadius,
+                z: (Math.random() - 0.5) * 50
+            };
+            
+            layout.entityPositions.set(planet.cleanPath, planetPos);
+            
+            // Позиции лун
+            if (planet.children) {
+                planet.children.forEach((moon, moonIndex) => {
+                    const moonAngle = (moonIndex / planet.children.length) * Math.PI * 2;
+                    const moonOrbitRadius = 60 + moonIndex * 20;
+                    const moonPos = {
+                        x: planetPos.x + Math.cos(moonAngle) * moonOrbitRadius,
+                        y: planetPos.y + Math.sin(moonAngle) * moonOrbitRadius,
+                        z: planetPos.z + (Math.random() - 0.5) * 20
+                    };
+                    
+                    layout.entityPositions.set(moon.cleanPath, moonPos);
+                    orbit.planets.push({
+                        entityId: moon.cleanPath,
+                        position: moonPos,
+                        type: 'moon',
+                        parentId: planet.cleanPath
+                    });
+                });
+            }
+            
+            orbit.planets.unshift({
+                entityId: planet.cleanPath,
+                position: planetPos,
+                type: 'planet',
+                parentId: data.cleanPath || 'galaxy'
+            });
+            
+            layout.orbitalLayers.push(orbit);
+        });
+        
+        return layout;
+    }
+    
+    buildIndexes(data) {
+        this.entityIndex.clear();
+        this.positionIndex.clear();
+        this.parentIndex.clear();
+        
+        const indexEntity = (entity, parentId = null) => {
+            if (!entity || !entity.cleanPath) {
+                console.warn('⚠️ Entity without cleanPath found:', entity);
+                return;
+            }
+            
+            const entityId = entity.cleanPath;
+            
+            // Добавляем в индексы
+            this.entityIndex.set(entityId, entity);
+            
+            if (parentId) {
+                this.parentIndex.set(entityId, parentId);
+            }
+            
+            // Добавляем позицию если есть
+            if (data.threeData?.entityPositions) {
+                const position = data.threeData.entityPositions.get(entityId);
+                if (position) {
+                    this.positionIndex.set(entityId, position);
+                }
+            }
+            
+            // Рекурсивно индексируем детей с защитой от циклов
+            if (entity.children) {
+                const visited = new Set();
+                entity.children.forEach(child => {
+                    if (visited.has(child.cleanPath)) {
+                        console.warn('⚠️ Duplicate child found:', child.cleanPath);
+                        return;
+                    }
+                    visited.add(child.cleanPath);
+                    indexEntity(child, entityId);
+                });
+            }
+        };
+        
+        indexEntity(data);
+        
+        console.log('📊 Индексы построены:', {
+            entities: this.entityIndex.size,
+            positions: this.positionIndex.size,
+            parents: this.parentIndex.size
+        });
+    }
+    
+    // Улучшенные методы поиска
+    getEntityByPath(path) {
+        const entity = this.entityIndex.get(path);
+        if (!entity) {
+            console.warn(`⚠️ Entity not found: ${path}`);
+            // Пробуем найти по частичному совпадению
+            return this.findEntityByPartialPath(path);
+        }
+        return entity;
+    }
+    
+    findEntityByPartialPath(partialPath) {
+        for (const [id, entity] of this.entityIndex.entries()) {
+            if (id.includes(partialPath) || entity.name?.includes(partialPath)) {
+                return entity;
+            }
+        }
+        return null;
+    }
+    
+    getEntity3DPosition(entityId) {
+        // Сначала проверяем кэш позиций
+        if (this.positionCache.has(entityId)) {
+            this.state.stats.cacheHits++;
+            return this.positionCache.get(entityId);
+        }
+        
+        // Пробуем найти в индексе
+        const cachedPos = this.positionIndex.get(entityId);
+        if (cachedPos) {
+            this.positionCache.set(entityId, cachedPos);
+            return cachedPos;
+        }
+        
+        // Генерируем позицию на лету
+        const position = this.positionGenerator.generatePosition(entityId);
+        this.positionCache.set(entityId, position);
+        
+        return position;
+    }
+    
+    // Новые полезные методы
+    getEntityChildren(parentId) {
+        const children = [];
+        for (const [childId, parentIdOfChild] of this.parentIndex.entries()) {
+            if (parentIdOfChild === parentId) {
+                const child = this.entityIndex.get(childId);
+                if (child) children.push(child);
+            }
+        }
+        return children;
+    }
+    
+    getEntityParent(childId) {
+        const parentId = this.parentIndex.get(childId);
+        return parentId ? this.entityIndex.get(parentId) : null;
+    }
+    
+    getEntityDepth(entityId) {
+        let depth = 0;
+        let currentId = entityId;
+        
+        while (this.parentIndex.has(currentId)) {
+            depth++;
+            currentId = this.parentIndex.get(currentId);
+            if (depth > 100) { // Защита от бесконечного цикла
+                console.warn('⚠️ Possible circular reference detected');
+                break;
+            }
+        }
+        
+        return depth;
+    }
+    
+    // Методы для работы с памятью
+    estimateMemoryUsage(data) {
+        const jsonString = JSON.stringify(data);
+        const bytes = new Blob([jsonString]).size;
+        
         return {
-            starfield: {
-                enabled: true,
-                starCount: 5000,
-                nebulaEnabled: true
-            },
-            lighting: {
-                ambientIntensity: 0.6,
-                directionalIntensity: 1.2,
-                enableShadows: true
-            },
-            postProcessing: {
-                antialiasing: true,
-                toneMapping: true
+            bytes,
+            formatted: this.formatBytes(bytes),
+            entities: this.entityIndex.size,
+            positions: this.positionIndex.size
+        };
+    }
+    
+    formatBytes(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    // Очистка памяти
+    clearCache() {
+        this.dataCache.clear();
+        this.positionCache.clear();
+        console.log('🧹 Кэши данных очищены');
+    }
+    
+    dispose() {
+        this.clearCache();
+        this.entityIndex.clear();
+        this.positionIndex.clear();
+        this.parentIndex.clear();
+        this.memoryManager.dispose();
+        this.state.isInitialized = false;
+        
+        console.log('🧹 GalaxyDataLoader уничтожен');
+    }
+    
+    // Статистика и отладка
+    getStats() {
+        return {
+            ...this.state.stats,
+            cache: {
+                entityIndexSize: this.entityIndex.size,
+                positionIndexSize: this.positionIndex.size,
+                parentIndexSize: this.parentIndex.size,
+                positionCacheSize: this.positionCache.size
             },
             performance: {
-                lodEnabled: true,
-                frustumCulling: true,
-                maxVisibleEntities: 1000
+                avgPositionCalculation: this.positionGenerator.getStats()
             }
         };
     }
-
-    calculateOrbitalPosition(depth, index, totalAtDepth = 8) {
-        const baseRadius = 200;
-        const radius = baseRadius + depth * 150;
-        const angle = (index / totalAtDepth) * Math.PI * 2;
+    
+    // Вспомогательные методы
+    async tryLoadFromCache() {
+        if (!this.config.cache.enabled) return null;
         
-        // Добавляем немного случайности для естественного вида
-        const randomOffset = (Math.random() - 0.5) * 20 * depth;
+        try {
+            const cached = await this.dataCache.getOrSet(
+                'galaxy_data',
+                () => Promise.reject(new Error('Cache miss')),
+                { ttl: this.config.cache.ttl }
+            );
+            
+            // Восстанавливаем индексы из кэшированных данных
+            if (cached) {
+                this.buildIndexes(cached);
+                return cached;
+            }
+        } catch (error) {
+            // Кэш не найден или просрочен
+        }
         
-        return {
-            x: Math.cos(angle) * (radius + randomOffset),
-            y: Math.sin(angle) * (radius + randomOffset),
-            z: (Math.random() - 0.5) * 50 // Небольшая вариация по Z
-        };
+        return null;
     }
-
-    calculateEntityScale(entityType) {
-        const scales = {
-            galaxy: 3.0,
-            star: 2.0,
-            planet: 1.0,
-            moon: 0.3,
-            asteroid: 0.1,
-            debris: 0.05
-        };
+    
+    async cacheData(data) {
+        if (!this.config.cache.enabled) return;
         
-        return scales[entityType] || 1.0;
-    }
-
-    calculateEntityRotation(entityType) {
-        // Случайная начальная ротация
-        return {
-            x: Math.random() * Math.PI * 2,
-            y: Math.random() * Math.PI * 2,
-            z: Math.random() * Math.PI * 2
-        };
-    }
-
-    getDefaultColor(entityType) {
-        const colors = {
-            galaxy: '#FFD700',
-            star: '#FFD700',
-            planet: '#4ECDC4',
-            moon: '#CCCCCC',
-            asteroid: '#888888',
-            debris: '#666666'
-        };
-        
-        return colors[entityType] || '#FFFFFF';
-    }
-
-    getMaterialType(entityType) {
-        const materials = {
-            galaxy: 'emissive',
-            star: 'emissive',
-            planet: 'standard',
-            moon: 'standard',
-            asteroid: 'basic',
-            debris: 'basic'
-        };
-        
-        return materials[entityType] || 'standard';
-    }
-
-    getFallbackData() {
-        console.warn('⚠️ Используются тестовые данные');
-        
-        // Создаем базовый объект без рекурсивных вызовов
-        const fallbackData = {
-            name: "Test Galaxy",
-            type: "galaxy",
-            config: { 
-                color: "#FFD700", 
-                title: "Тестовая Галактика",
-                description: "Демонстрационные данные для разработки"
-            },
-            stats: {
-                entities: {
-                    galaxy: 1,
-                    planet: 3,
-                    moon: 2,
-                    asteroid: 1,
-                    debris: 0
-                },
-                total: 7
-            },
-            children: [
-                {
-                    name: "earth",
-                    type: "planet",
-                    cleanPath: "earth",
-                    config: { 
-                        color: "#4ECDC4", 
-                        title: "Земля",
-                        description: "Голубая планета с жизнью"
-                    },
-                    children: [
-                        {
-                            name: "moon",
-                            type: "moon",
-                            cleanPath: "moon",
-                            config: { 
-                                color: "#CCCCCC", 
-                                title: "Луна",
-                                description: "Естественный спутник Земли"
-                            }
-                        }
-                    ]
-                },
-                {
-                    name: "mars", 
-                    type: "planet",
-                    cleanPath: "mars",
-                    config: { 
-                        color: "#FF6B6B", 
-                        title: "Марс",
-                        description: "Красная планета"
-                    },
-                    children: [
-                        {
-                            name: "phobos",
-                            type: "moon",
-                            cleanPath: "phobos",
-                            config: { 
-                                color: "#888888", 
-                                title: "Фобос",
-                                description: "Большой спутник Марса"
-                            }
-                        },
-                        {
-                            name: "deimos", 
-                            type: "moon",
-                            cleanPath: "deimos",
-                            config: { 
-                                color: "#666666", 
-                                title: "Деймос",
-                                description: "Малый спутник Марса"
-                            }
-                        }
-                    ]
-                },
-                {
-                    name: "jupiter",
-                    type: "planet",
-                    cleanPath: "jupiter", 
-                    config: { 
-                        color: "#FFA500", 
-                        title: "Юпитер",
-                        description: "Газовый гигант"
-                    }
-                }
-            ],
-            // ИСПРАВЛЕНО: убраны рекурсивные вызовы
-            threeData: this.generate3DPositions({
-                children: [
-                    { cleanPath: "earth", name: "earth" },
-                    { 
-                        cleanPath: "mars", 
-                        name: "mars",
-                        children: [
-                            { cleanPath: "phobos", name: "phobos" }, 
-                            { cleanPath: "deimos", name: "deimos" }
-                        ] 
-                    },
-                    { cleanPath: "jupiter", name: "jupiter" }
-                ]
-            }),
-            renderConfig: this.generateRenderConfig({
-                name: "Test Galaxy",
-                stats: { total: 7 }
-            }),
-            loadedAt: new Date().toISOString(),
-            version: '1.0.0-fallback'
-        };
-
-        // Обрабатываем fallback данные
-        const processedFallback = this.processGalaxyData(fallbackData);
-        
-        // Кэшируем fallback данные
-        const dataSize = new Blob([JSON.stringify(processedFallback)]).size;
-        this.memoryManager.trackAllocation(processedFallback, 'galaxyData_fallback', dataSize, {
-            entities: 7,
-            types: ['galaxy', 'planet', 'moon'],
-            isFallback: true
+        await this.dataCache.set('galaxy_data', data, {
+            ttl: this.config.cache.ttl,
+            size: this.estimateMemoryUsage(data).bytes
         });
-        
-        this.cache.set('galaxyData', processedFallback);
-        this.data = processedFallback;
-        
-        return processedFallback;
     }
-
-    getEntityByPath(path) {
-        if (!this.data) {
-            console.warn('⚠️ Данные не загружены');
-            return null;
-        }
-
-        function search(entity, targetPath) {
-            if (entity.cleanPath === targetPath) return entity;
-            if (entity.children) {
-                for (let child of entity.children) {
-                    const result = search(child, targetPath);
-                    if (result) return result;
-                }
+    
+    calculateTreeDepth(data) {
+        let maxDepth = 0;
+        
+        const calculateDepth = (node, currentDepth) => {
+            maxDepth = Math.max(maxDepth, currentDepth);
+            
+            if (node.children) {
+                node.children.forEach(child => {
+                    calculateDepth(child, currentDepth + 1);
+                });
             }
-            return null;
-        }
-        
-        const result = search(this.data, path);
-        if (!result) {
-            console.warn(`⚠️ Объект по пути '${path}' не найден`);
-        }
-        return result;
-    }
-
-    // Новые методы для работы с Three.js данными
-    getEntity3DPosition(entityId) {
-        if (!this.data?.threeData) {
-            return { x: 0, y: 0, z: 0 };
-        }
-
-        // Ищем позицию в сгенерированных данных
-        for (const orbit of this.data.threeData.orbitalLayers || []) {
-            for (const entity of orbit.planets || []) {
-                if (entity.entityId === entityId) {
-                    return entity.position;
-                }
-            }
-        }
-
-        // Fallback: вычисляем позицию на лету
-        return this.calculateFallbackPosition(entityId);
-    }
-
-    calculateFallbackPosition(entityId) {
-        // Простой алгоритм для вычисления позиции на основе entityId
-        const hash = this.hashString(entityId);
-        const angle = (hash % 100) / 100 * Math.PI * 2;
-        const radius = 200 + ((hash % 1000) / 1000) * 800;
-        
-        return {
-            x: Math.cos(angle) * radius,
-            y: Math.sin(angle) * radius,
-            z: (Math.random() - 0.5) * 100
         };
-    }
-
-    hashString(str) {
-        let hash = 0;
-        for (let i = 0; i < str.length; i++) {
-            const char = str.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash = hash & hash; // Convert to 32bit integer
-        }
-        return Math.abs(hash);
-    }
-
-    // Методы для работы с прогрессом загрузки
-    getLoadingState() {
-        return { ...this.loadingState };
-    }
-
-    getLoadingProgress() {
-        return this.loadingState.progress;
-    }
-
-    isLoading() {
-        return this.loadingState.isLoading;
-    }
-
-    getLastError() {
-        return this.loadingState.lastError;
-    }
-
-    // Расширенные методы для работы с данными
-    getAllEntities() {
-        if (!this.data) return [];
         
-        const entities = [];
-        
-        function collectEntities(entity) {
-            entities.push(entity);
-            if (entity.children) {
-                entity.children.forEach(child => collectEntities(child));
-            }
-        }
-        
-        collectEntities(this.data);
-        return entities;
+        calculateDepth(data, 0);
+        return maxDepth;
     }
+}
 
-    getEntitiesByType(type) {
-        const allEntities = this.getAllEntities();
-        return allEntities.filter(entity => entity.type === type);
+// Вспомогательные классы
+class GalaxyDataProcessor {
+    constructor(config) {
+        this.config = config;
     }
-
-    getGalaxyStats() {
-        if (!this.data) return null;
-        
-        const memoryStats = this.memoryManager.getMemoryStats();
-        
-        return {
-            name: this.data.name,
-            totalEntities: this.getAllEntities().length,
-            byType: this.data.stats?.entities || {},
-            memoryUsage: memoryStats.formattedAllocated,
-            lastUpdated: new Date().toISOString(),
-            version: this.data.version || '1.0.0',
-            has3DData: !!this.data.threeData
+    
+    parseStructure(rawData) {
+        // Нормализуем структуру данных
+        const normalized = {
+            ...rawData,
+            children: rawData.children || [],
+            config: rawData.config || {},
+            stats: rawData.stats || this.calculateStats(rawData)
         };
-    }
-
-    // Методы для управления памятью
-    getMemoryUsage() {
-        return this.memoryManager.getMemoryStats();
-    }
-
-    // Очистка кэша с учетом менеджера памяти
-    clearCache() {
-        // Удаляем из менеджера памяти
-        this.cache.forEach((data, key) => {
-            this.memoryManager.decrementReference(this.getCacheKey(key));
-        });
         
-        this.cache.clear();
-        console.log('🧹 Кэш данных очищен');
+        // Обеспечиваем наличие cleanPath
+        this.ensureCleanPaths(normalized);
+        
+        return normalized;
     }
-
-    getCacheKey(key) {
-        return `galaxy_data_${key}`;
+    
+    ensureCleanPaths(node, parentPath = '') {
+        if (!node.cleanPath) {
+            node.cleanPath = parentPath ? `${parentPath}/${node.name}` : node.name;
+        }
+        
+        if (node.children) {
+            node.children.forEach(child => {
+                this.ensureCleanPaths(child, node.cleanPath);
+            });
+        }
     }
-
-    // Перезагрузка данных
-    async reload() {
-        this.clearCache();
-        this.loadingState.progress = 0;
-        return this.load();
+    
+    calculateStats(data) {
+        const stats = {
+            entities: {},
+            total: 0
+        };
+        
+        const countEntities = (node) => {
+            stats.total++;
+            stats.entities[node.type] = (stats.entities[node.type] || 0) + 1;
+            
+            if (node.children) {
+                node.children.forEach(countEntities);
+            }
+        };
+        
+        countEntities(data);
+        return stats;
     }
-
-    // Деструктор с очисткой памяти
-    destroy() {
-        this.clearCache();
-        this.data = null;
-        this.memoryManager.dispose();
-        console.log('🧹 GalaxyDataLoader уничтожен');
+    
+    validateData(data) {
+        // Проверка максимальной глубины
+        const depth = this.calculateDepth(data);
+        if (depth > this.config.validation.maxDepth) {
+            throw new Error(`Tree depth ${depth} exceeds maximum ${this.config.validation.maxDepth}`);
+        }
+        
+        // Проверка количества сущностей
+        if (data.stats?.total > this.config.validation.maxEntities) {
+            throw new Error(`Too many entities: ${data.stats.total}`);
+        }
+        
+        // Проверка обязательных полей
+        this.validateRequiredFields(data);
+    }
+    
+    calculateDepth(node, currentDepth = 0) {
+        if (!node.children || node.children.length === 0) {
+            return currentDepth;
+        }
+        
+        let maxChildDepth = currentDepth;
+        for (const child of node.children) {
+            const childDepth = this.calculateDepth(child, currentDepth + 1);
+            maxChildDepth = Math.max(maxChildDepth, childDepth);
+        }
+        
+        return maxChildDepth;
+    }
+    
+    validateRequiredFields(node, path = '') {
+        const currentPath = path ? `${path}/${node.name}` : node.name;
+        
+        if (!node.name) {
+            throw new Error(`Entity missing name at path: ${currentPath}`);
+        }
+        
+        if (!node.type) {
+            console.warn(`⚠️ Entity missing type: ${currentPath}`);
+            node.type = 'unknown';
+        }
+        
+        if (node.children) {
+            node.children.forEach(child => {
+                this.validateRequiredFields(child, currentPath);
+            });
+        }
     }
 }
 
