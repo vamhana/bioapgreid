@@ -8,7 +8,6 @@ import UserPanel from '../ui/user-panel.js';
 import MinimapNavigation from '../ui/minimap-navigation.js';
 import AssetManager from '../utils/asset-manager.js';
 import PerformanceOptimizer from '../utils/performance-optimizer.js';
-import { APP_CONFIG } from '../constants/config.js';
 
 export class GalaxyApp {
     constructor() {
@@ -26,7 +25,6 @@ export class GalaxyApp {
         this.isInitialized = false;
         this.galaxyData = null;
         this.animationFrameId = null;
-        this.threeSceneManager = null;
         
         // Состояние приложения
         this.appState = {
@@ -49,8 +47,7 @@ export class GalaxyApp {
             memory: navigator.deviceMemory || 'unknown',
             webGL: this.detectWebGLSupport(),
             language: navigator.language,
-            cookieEnabled: navigator.cookieEnabled,
-            threeJSVersion: this.getThreeJSVersion()
+            cookieEnabled: navigator.cookieEnabled
         };
         
         console.log('📱 GalaxyApp создан с диагностикой:', this.diagnostics);
@@ -63,7 +60,6 @@ export class GalaxyApp {
         console.log('🔧 Поддержка ES6:', this.diagnostics.supportsES6);
         console.log('🌐 Онлайн статус:', this.diagnostics.isOnline);
         console.log('🎨 WebGL поддержка:', this.diagnostics.webGL);
-        console.log('🔄 Three.js версия:', this.diagnostics.threeJSVersion);
         
         const loadingElement = document.getElementById('loading');
         
@@ -76,8 +72,7 @@ export class GalaxyApp {
                     <div style="font-size: 12px; margin-top: 10px; opacity: 0.7;">
                         Платформа: ${this.diagnostics.platform}<br>
                         Экран: ${this.diagnostics.screenSize}<br>
-                        WebGL: ${this.diagnostics.webGL ? '✅' : '❌'}<br>
-                        Three.js: ${this.diagnostics.threeJSVersion}
+                        WebGL: ${this.diagnostics.webGL ? '✅' : '❌'}
                     </div>
                 `;
             }
@@ -104,15 +99,17 @@ export class GalaxyApp {
             // 1. Загружаем данные галактики
             this.updateLoadingStatus('Загрузка данных галактики...');
             this.dataLoader = new GalaxyDataLoader();
-            this.galaxyData = await this.dataLoader.load();
+            const result = await this.dataLoader.load();
             
-            if (!this.galaxyData) {
+            if (!result || !result.success) {
                 throw new Error('Не удалось загрузить данные галактики. Проверьте подключение к интернету.');
             }
-
+            
+            this.galaxyData = result.data;
+            
             console.log('✅ Данные галактики загружены:', {
                 name: this.galaxyData.name,
-                entities: this.galaxyData.stats?.total,
+                entities: this.dataLoader.getGalaxyStats().totalEntities,
                 has3DData: !!this.galaxyData.threeData
             });
 
@@ -202,16 +199,20 @@ export class GalaxyApp {
         if (this.galaxyData.children) {
             this.galaxyData.children.forEach((planet, planetIndex) => {
                 // Используем позиции из threeData если есть, иначе генерируем
-                const planetPosition = this.galaxyData.threeData?.orbitalLayers?.[planetIndex]?.planets?.[0]?.position || 
-                                    this.dataLoader.getEntity3DPosition(planet.cleanPath);
+                const planetPosition = this.dataLoader.getEntity3DPosition(planet.cleanPath) || 
+                                    { x: (planetIndex - 2) * 200, y: 0, z: 0 };
                 
                 const planetMesh = this.renderer.createEntityMesh(planet, planetPosition);
 
                 // Создаем спутники
                 if (planet.children) {
                     planet.children.forEach((moon, moonIndex) => {
-                        const moonPosition = this.galaxyData.threeData?.orbitalLayers?.[planetIndex]?.planets?.[moonIndex + 1]?.position || 
-                                           this.dataLoader.getEntity3DPosition(moon.cleanPath);
+                        const moonPosition = this.dataLoader.getEntity3DPosition(moon.cleanPath) || 
+                                           { 
+                                               x: planetPosition.x + (moonIndex - 1) * 60, 
+                                               y: 0, 
+                                               z: planetPosition.z + 20 
+                                           };
                         
                         this.renderer.createEntityMesh(moon, moonPosition);
                     });
@@ -257,25 +258,34 @@ export class GalaxyApp {
 
         // Обработчики колеса мыши для зума
         this.handleWheel = this.handleWheel.bind(this);
-        this.renderer.canvas.addEventListener('wheel', this.handleWheel, { passive: false });
+        if (this.renderer && this.renderer.canvas) {
+            this.renderer.canvas.addEventListener('wheel', this.handleWheel, { passive: false });
+        }
 
         // Обработчики кликов по 3D объектам
         this.handleCanvasClick = this.handleCanvasClick.bind(this);
-        this.renderer.canvas.addEventListener('click', this.handleCanvasClick);
+        if (this.renderer && this.renderer.canvas) {
+            this.renderer.canvas.addEventListener('click', this.handleCanvasClick);
+        }
 
         // Обработчики движения мыши для ховера
         this.handleMouseMove = this.handleMouseMove.bind(this);
-        this.renderer.canvas.addEventListener('mousemove', this.handleMouseMove);
+        if (this.renderer && this.renderer.canvas) {
+            this.renderer.canvas.addEventListener('mousemove', this.handleMouseMove);
+        }
 
         // Обработчики контекстного меню (блокировка)
         this.handleContextMenu = this.handleContextMenu.bind(this);
-        this.renderer.canvas.addEventListener('contextmenu', this.handleContextMenu);
+        if (this.renderer && this.renderer.canvas) {
+            this.renderer.canvas.addEventListener('contextmenu', this.handleContextMenu);
+        }
 
         console.log('🎮 Обработчики событий Three.js установлены');
     }
 
     setupTouchEvents() {
-        const canvas = this.renderer.canvas;
+        const canvas = this.renderer?.canvas;
+        if (!canvas) return;
         
         canvas.addEventListener('touchstart', (event) => {
             event.preventDefault();
@@ -307,10 +317,10 @@ export class GalaxyApp {
         switch (event.key) {
             case '+':
             case '=':
-                this.camera.zoom(0.1);
+                this.camera?.zoom(0.1);
                 break;
             case '-':
-                this.camera.zoom(-0.1);
+                this.camera?.zoom(-0.1);
                 break;
             case '0':
                 this.resetView();
@@ -351,15 +361,17 @@ export class GalaxyApp {
 
     handleWheel(event) {
         event.preventDefault();
-        this.camera.handleWheel(event);
+        this.camera?.handleWheel(event);
     }
 
     handleCanvasClick(event) {
+        if (!this.renderer || !this.camera) return;
+        
         const rect = this.renderer.canvas.getBoundingClientRect();
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
         
-        const entityData = this.renderer.getEntityAtScreenPoint(x, y, this.camera);
+        const entityData = this.renderer.getEntityAtScreenPoint(x, y);
         if (entityData && this.entityInteraction && this.entityInteraction.handleEntityClick) {
             this.entityInteraction.handleEntityClick(entityData);
             this.appState.selectedEntity = entityData;
@@ -367,11 +379,13 @@ export class GalaxyApp {
     }
 
     handleMouseMove(event) {
+        if (!this.renderer || !this.camera) return;
+        
         const rect = this.renderer.canvas.getBoundingClientRect();
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
         
-        const entityData = this.renderer.getEntityAtScreenPoint(x, y, this.camera);
+        const entityData = this.renderer.getEntityAtScreenPoint(x, y);
         if (this.entityInteraction && this.entityInteraction.handleMouseOver) {
             this.entityInteraction.handleMouseOver(entityData);
         }
@@ -385,11 +399,11 @@ export class GalaxyApp {
         this.diagnostics.screenSize = `${window.innerWidth}x${window.innerHeight}`;
         console.log('🔄 Изменение размера экрана:', this.diagnostics.screenSize);
         
-        if (this.renderer && this.renderer.sceneManager) {
-            this.renderer.sceneManager.resize();
+        if (this.renderer && this.renderer.resize) {
+            this.renderer.resize();
         }
         
-        if (this.camera) {
+        if (this.camera && this.camera.handleResize) {
             this.camera.handleResize();
         }
         
@@ -414,40 +428,34 @@ export class GalaxyApp {
             this.stopRendering();
         }
 
-        const renderLoop = (timestamp) => {
-            if (this.isInitialized) {
-                // Обновляем оптимизатор производительности
-                if (this.performanceOptimizer && this.performanceOptimizer.update) {
-                    this.performanceOptimizer.update();
-                }
-                
-                // Рендерим 3D сцену
-                this.renderer.render(this.galaxyData, this.camera);
-                
-                // Обновляем миникарту если нужно
-                if (this.minimap && this.minimap.isVisible) {
-                    this.minimap.render();
-                }
-                
-                // Обновляем статистику производительности
-                this.updatePerformanceStats();
-                
-                // Проверяем необходимость троттлинга
-                const shouldThrottle = this.performanceOptimizer && 
-                                     this.performanceOptimizer.shouldThrottle && 
-                                     this.performanceOptimizer.shouldThrottle();
-                
-                if (!shouldThrottle) {
-                    this.animationFrameId = requestAnimationFrame(renderLoop);
-                } else {
-                    console.warn('⚠️ Снижение FPS, активирован троттлинг');
-                    const delay = this.performanceOptimizer.getThrottleDelay ? 
-                                this.performanceOptimizer.getThrottleDelay() : 33;
-                    setTimeout(() => {
-                        this.animationFrameId = requestAnimationFrame(renderLoop);
-                    }, delay);
-                }
+        const renderLoop = () => {
+            if (!this.isInitialized || !this.isRenderingActive()) return;
+            
+            // Обновляем оптимизатор производительности
+            if (this.performanceOptimizer && this.performanceOptimizer.update) {
+                this.performanceOptimizer.update();
             }
+            
+            // Обновляем анимации если включены
+            if (this.appState.isAnimating) {
+                this.updateAnimations();
+            }
+            
+            // Обновляем камеру если нужно
+            if (this.camera && this.camera.update) {
+                this.camera.update();
+            }
+            
+            // Обновляем миникарту если нужно
+            if (this.minimap && this.minimap.isVisible && this.minimap.render) {
+                this.minimap.render();
+            }
+            
+            // Обновляем статистику производительности
+            this.updatePerformanceStats();
+            
+            // Запускаем следующий кадр
+            this.animationFrameId = requestAnimationFrame(renderLoop);
         };
         
         this.animationFrameId = requestAnimationFrame(renderLoop);
@@ -462,13 +470,22 @@ export class GalaxyApp {
         }
     }
 
+    isRenderingActive() {
+        return this.isInitialized && !document.hidden;
+    }
+
+    updateAnimations() {
+        // Анимации объектов обновляются внутри GalaxyRenderer
+        // Здесь можем добавить общие анимации если нужно
+    }
+
     updatePerformanceStats() {
         if (this.performanceOptimizer && this.performanceOptimizer.updateStats && this.renderer) {
             const rendererStats = this.renderer.getPerformanceInfo();
             this.performanceOptimizer.updateStats({
                 fps: rendererStats.fps,
                 frameTime: parseFloat(rendererStats.frameTime) || 0,
-                memory: this.dataLoader?.getMemoryUsage?.() || {}
+                memory: this.dataLoader?.getStats?.()?.cache || {}
             });
         }
     }
@@ -588,14 +605,6 @@ export class GalaxyApp {
         }
     }
 
-    getThreeJSVersion() {
-        try {
-            return THREE?.REVISION || 'Unknown';
-        } catch (e) {
-            return 'Not loaded';
-        }
-    }
-
     getRequiredAssets() {
         return [
             // Можно добавить пути к текстурам или другим ресурсам
@@ -618,7 +627,6 @@ export class GalaxyApp {
                     Онлайн: ${this.diagnostics.isOnline ? '✅' : '❌'}<br>
                     ES6 модули: ${this.diagnostics.supportsES6 ? '✅' : '❌'}<br>
                     WebGL: ${this.diagnostics.webGL ? '✅' : '❌'}<br>
-                    Three.js: ${this.diagnostics.threeJSVersion}<br>
                     Касания: ${this.diagnostics.touchSupport ? '✅' : '❌'}
                 </div>
                 <button class="retry-btn" onclick="window.location.reload()" style="
@@ -655,8 +663,8 @@ export class GalaxyApp {
 
     toggleOrbits() {
         if (this.isInitialized && this.renderer && this.renderer.setOrbitDisplay) {
-            this.renderer.setOrbitDisplay(!this.renderer.renderConfig.showOrbits);
-            const orbitsVisible = this.renderer.renderConfig.showOrbits;
+            this.renderer.setOrbitDisplay(!this.renderer.config.showOrbits);
+            const orbitsVisible = this.renderer.config.showOrbits;
             console.log('🔄 Отображение орбит:', orbitsVisible ? 'вкл' : 'выкл');
             
             this.showNotification(`Орбиты: ${orbitsVisible ? 'включены' : 'выключены'}`);
@@ -665,8 +673,8 @@ export class GalaxyApp {
 
     toggleLabels() {
         if (this.isInitialized && this.renderer && this.renderer.setLabelDisplay) {
-            this.renderer.setLabelDisplay(!this.renderer.renderConfig.showLabels);
-            const labelsVisible = this.renderer.renderConfig.showLabels;
+            this.renderer.setLabelDisplay(!this.renderer.config.showLabels);
+            const labelsVisible = this.renderer.config.showLabels;
             console.log('🏷️ Отображение меток:', labelsVisible ? 'вкл' : 'выкл');
             
             this.showNotification(`Метки: ${labelsVisible ? 'включены' : 'выключены'}`);
@@ -675,8 +683,8 @@ export class GalaxyApp {
 
     toggleGrid() {
         if (this.isInitialized && this.renderer && this.renderer.setGridDisplay) {
-            this.renderer.setGridDisplay(!this.renderer.renderConfig.showGrid);
-            const gridVisible = this.renderer.renderConfig.showGrid;
+            this.renderer.setGridDisplay(!this.renderer.config.showGrid);
+            const gridVisible = this.renderer.config.showGrid;
             console.log('📐 Отображение сетки:', gridVisible ? 'вкл' : 'выкл');
             
             this.showNotification(`Сетка: ${gridVisible ? 'включена' : 'выключена'}`);
@@ -716,17 +724,16 @@ export class GalaxyApp {
         
         const rendererInfo = this.renderer.getRendererInfo ? this.renderer.getRendererInfo() : {};
         const performanceInfo = this.renderer.getPerformanceInfo ? this.renderer.getPerformanceInfo() : {};
-        const memoryInfo = this.dataLoader.getMemoryUsage ? this.dataLoader.getMemoryUsage() : {};
+        const dataLoaderStats = this.dataLoader.getStats ? this.dataLoader.getStats() : {};
         
         console.group('🐛 Debug Information');
         console.log('🎨 Renderer:', rendererInfo);
         console.log('⚡ Performance:', performanceInfo);
-        console.log('🧠 Memory:', memoryInfo);
+        console.log('📊 Data Loader:', dataLoaderStats);
         console.log('🎥 Camera:', this.camera ? this.camera.getCameraInfo() : {});
         console.log('🌌 Galaxy Data:', {
-            entities: this.galaxyData?.stats?.total,
-            has3DData: !!this.galaxyData?.threeData,
-            loadedAt: this.galaxyData?.loadedAt
+            entities: this.dataLoader.getGalaxyStats()?.totalEntities,
+            has3DData: !!this.galaxyData?.threeData
         });
         console.groupEnd();
     }
@@ -800,7 +807,7 @@ export class GalaxyApp {
             font-size: 10px;
             z-index: 999;
         `;
-        platformInfo.textContent = `${this.diagnostics.platform} | ${this.diagnostics.screenSize} | WebGL+Three.js`;
+        platformInfo.textContent = `${this.diagnostics.platform} | ${this.diagnostics.screenSize} | WebGL`;
         platformInfo.title = `User Agent: ${this.diagnostics.userAgent}`;
         
         document.body.appendChild(platformInfo);
@@ -823,8 +830,7 @@ export class GalaxyApp {
             memory: this.diagnostics.memory,
             drawCalls: rendererStats.drawCalls || 0,
             renderedMeshes: rendererStats.renderedMeshes || 0,
-            totalMeshes: rendererStats.totalMeshes || 0,
-            threeJSVersion: this.diagnostics.threeJSVersion
+            totalMeshes: rendererStats.totalMeshes || 0
         };
     }
 
@@ -838,8 +844,9 @@ export class GalaxyApp {
 
     forceRedraw() {
         if (this.isInitialized && this.renderer && this.renderer.render) {
-            this.renderer.render(this.galaxyData, this.camera);
-            console.log('🔄 Принудительная перерисовка 3D сцены');
+            // В нашем GalaxyRenderer рендеринг происходит в цикле
+            // Этот метод может быть использован для принудительной проверки видимости
+            console.log('🔄 Запрос на обновление визуализации');
         }
     }
 
