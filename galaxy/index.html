@@ -1,17 +1,2958 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <title>галактика bioapgreid</title>
-    <script type="application/galaxy+json">
-    {
-        "title": "Луна - спутник Земли", 
-        "description": "Естественный спутник Земли",
-        "color": "#C7F464",
-        "importance": "medium"
-    }
-    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кодекс Лесничего Ноосферы - Полная версия</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --forest-dark: #1a3c27;
+            --forest-medium: #2d5a3d;
+            --forest-light: #4a7c59;
+            --earth-dark: #5d4037;
+            --earth-light: #8d6e63;
+            --bark: #6d4c41;
+            --leaf: #81c784;
+            --moss: #66bb6a;
+            --sky: #bbdefb;
+            --paper: #f5f1e6;
+            --text-dark: #2e2e2e;
+            --text-light: #f5f5f5;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--paper);
+            color: var(--text-dark);
+            line-height: 1.6;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(129, 199, 132, 0.05) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(102, 187, 106, 0.05) 0%, transparent 20%);
+            min-height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            max-width: 1400px;
+            margin: 0 auto;
+            min-height: 100vh;
+        }
+
+        /* Шапка */
+        header {
+            background-color: var(--forest-dark);
+            color: var(--text-light);
+            padding: 1.5rem;
+            text-align: center;
+            border-bottom: 5px solid var(--forest-medium);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .header-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 1.8rem;
+            font-weight: 300;
+        }
+
+        .logo i {
+            color: var(--leaf);
+            font-size: 2.5rem;
+        }
+
+        .subtitle {
+            font-style: italic;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+            font-size: 1.1rem;
+        }
+
+        /* Основной контент */
+        .main-content {
+            display: flex;
+            flex: 1;
+            padding: 1.5rem;
+            gap: 1.5rem;
+        }
+
+        /* Навигация */
+        .sidebar {
+            width: 280px;
+            background-color: var(--forest-medium);
+            border-radius: 8px;
+            padding: 1.5rem;
+            height: fit-content;
+            position: sticky;
+            top: 140px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .nav-title {
+            color: var(--text-light);
+            font-size: 1.3rem;
+            margin-bottom: 1.2rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--leaf);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-list {
+            list-style: none;
+        }
+
+        .nav-item {
+            margin-bottom: 0.5rem;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            padding: 0.8rem 1rem;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            color: var(--text-light);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .nav-link:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+            transform: translateX(5px);
+        }
+
+        .nav-link.active {
+            background-color: var(--forest-light);
+            box-shadow: 0 0 0 2px var(--leaf);
+        }
+
+        .nav-icon {
+            font-size: 1.2rem;
+            width: 24px;
+            text-align: center;
+        }
+
+        /* Контент книги */
+        .book-content {
+            flex: 1;
+            background-color: white;
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            line-height: 1.7;
+        }
+
+        .book-header {
+            border-bottom: 3px solid var(--forest-light);
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .book-title {
+            color: var(--forest-dark);
+            font-size: 2.2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .book-subtitle {
+            color: var(--earth-dark);
+            font-size: 1.3rem;
+            font-style: italic;
+        }
+
+        /* Стили для текста кодекса */
+        .chapter {
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px dashed var(--earth-light);
+        }
+
+        .chapter:last-child {
+            border-bottom: none;
+        }
+
+        .chapter-title {
+            color: var(--forest-dark);
+            font-size: 1.8rem;
+            margin: 1.5rem 0 1rem;
+            padding-left: 0.5rem;
+            border-left: 5px solid var(--leaf);
+        }
+
+        .dogma {
+            background-color: rgba(129, 199, 132, 0.1);
+            border-left: 4px solid var(--forest-light);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .dogma-title {
+            color: var(--forest-dark);
+            font-size: 1.4rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .commandment {
+            background-color: rgba(141, 110, 99, 0.08);
+            border-left: 4px solid var(--earth-light);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .commandment-title {
+            color: var(--earth-dark);
+            font-size: 1.4rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .ritual {
+            background-color: rgba(187, 222, 251, 0.2);
+            border-left: 4px solid var(--sky);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .ritual-title {
+            color: #1565c0;
+            font-size: 1.4rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .formula {
+            background-color: rgba(102, 187, 106, 0.1);
+            border: 1px solid var(--moss);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .warning {
+            background-color: rgba(244, 67, 54, 0.1);
+            border-left: 4px solid #f44336;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .warning-title {
+            color: #c62828;
+            font-size: 1.4rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .journal {
+            background-color: rgba(245, 241, 230, 0.8);
+            border: 1px solid var(--bark);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .journal-title {
+            color: var(--bark);
+            font-size: 1.4rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        h3 {
+            color: var(--forest-medium);
+            margin: 1.2rem 0 0.8rem;
+            font-size: 1.3rem;
+        }
+
+        h4 {
+            color: var(--earth-dark);
+            margin: 1rem 0 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        h5 {
+            color: var(--forest-dark);
+            margin: 0.8rem 0 0.5rem;
+            font-size: 1rem;
+        }
+
+        p {
+            margin-bottom: 1rem;
+            text-align: justify;
+        }
+
+        ul, ol {
+            margin-left: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+        }
+
+        strong {
+            color: var(--forest-dark);
+            font-weight: 600;
+        }
+
+        em {
+            color: var(--earth-dark);
+            font-style: italic;
+        }
+
+        .note {
+            font-style: italic;
+            background-color: rgba(255, 243, 205, 0.5);
+            padding: 0.8rem;
+            border-radius: 6px;
+            margin: 1rem 0;
+            border-left: 3px solid #ffc107;
+        }
+
+        .example {
+            background-color: rgba(233, 236, 239, 0.5);
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1rem 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Кнопки навигации */
+        .book-navigation {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #ddd;
+        }
+
+        .nav-button {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.8rem 1.5rem;
+            background-color: var(--forest-medium);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .nav-button:hover {
+            background-color: var(--forest-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .nav-button.prev {
+            background-color: var(--earth-light);
+        }
+
+        .nav-button.prev:hover {
+            background-color: var(--earth-dark);
+        }
+
+        /* Футер */
+        footer {
+            background-color: var(--forest-dark);
+            color: var(--text-light);
+            text-align: center;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            border-top: 5px solid var(--forest-medium);
+        }
+
+        .footer-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .footer-quote {
+            font-style: italic;
+            margin-bottom: 1rem;
+            opacity: 0.9;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 992px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                position: static;
+            }
+            
+            .nav-list {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+            
+            .nav-item {
+                flex: 1;
+                min-width: 200px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .book-content {
+                padding: 1.5rem;
+            }
+            
+            .book-title {
+                font-size: 1.8rem;
+            }
+            
+            .chapter-title {
+                font-size: 1.5rem;
+            }
+            
+            .nav-list {
+                flex-direction: column;
+            }
+            
+            .nav-item {
+                min-width: 100%;
+            }
+        }
+
+        /* Эффекты для текста */
+        .first-letter::first-letter {
+            font-size: 2.5rem;
+            color: var(--forest-dark);
+            font-weight: bold;
+            float: left;
+            line-height: 1;
+            margin-right: 0.5rem;
+            margin-top: 0.2rem;
+        }
+
+        .highlight {
+            background-color: rgba(129, 199, 132, 0.3);
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+        }
+
+        .key-term {
+            color: var(--forest-dark);
+            font-weight: bold;
+            border-bottom: 1px dotted var(--forest-light);
+        }
+
+        .section-divider {
+            height: 2px;
+            background: linear-gradient(to right, transparent, var(--earth-light), transparent);
+            margin: 2rem 0;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+
+        .table th, .table td {
+            border: 1px solid var(--earth-light);
+            padding: 0.5rem;
+            text-align: left;
+        }
+
+        .table th {
+            background-color: rgba(141, 110, 99, 0.1);
+            color: var(--earth-dark);
+        }
+
+        .table tr:nth-child(even) {
+            background-color: rgba(245, 245, 245, 0.5);
+        }
+
+        .text-center {
+            text-align: center;
+        }
+    </style>
 </head>
 <body>
-    <h1>галактика bioapgreid</h1>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-tree"></i>
+                    <h1>КОДЕКС ЛЕСНИЧЕГО НООСФЕРЫ</h1>
+                </div>
+                <p class="subtitle">«Твой разум — не пустота. Это — лес. Ты — не голос в голове. Ты — тот, кто слушает голоса. Ты — не мысль. Ты — Лесничий.»</p>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <nav class="sidebar">
+                <h2 class="nav-title"><i class="fas fa-book"></i> Книги Кодекса</h2>
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="#book-zero" class="nav-link active">
+                            <span class="nav-icon">0</span>
+                            <span>Книга Нулевая: Зарождение</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#book-one" class="nav-link">
+                            <span class="nav-icon">I</span>
+                            <span>Книга Первая: Основания</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#book-two" class="nav-link">
+                            <span class="nav-icon">II</span>
+                            <span>Книга Вторая: Заповеди Лесничего</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#book-three" class="nav-link">
+                            <span class="nav-icon">III</span>
+                            <span>Книга Третья: Ритуалы и Практики</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#book-four" class="nav-link">
+                            <span class="nav-icon">IV</span>
+                            <span>Книга Четвёртая: Мантры и Формулы</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#book-five" class="nav-link">
+                            <span class="nav-icon">V</span>
+                            <span>Книга Пятая: Опасности и Предупреждения</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#book-six" class="nav-link">
+                            <span class="nav-icon">VI</span>
+                            <span>Книга Шестая: Свиток Преданий</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#book-seven" class="nav-link">
+                            <span class="nav-icon">VII</span>
+                            <span>Книга Седьмая: Полевой Журнал</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+
+            <main class="book-content">
+                <!-- Книга Нулевая -->
+                <section id="book-zero" class="book-section">
+                    <div class="book-header">
+                        <h2 class="book-title">КНИГА НУЛЕВАЯ: ЗАРОЖДЕНИЕ</h2>
+                        <p class="book-subtitle">История первого откровения</p>
+                    </div>
+                    
+                    <div class="chapter">
+                        <p class="first-letter">В год, когда стены тюремной камеры стали прозрачными для истины, одному из будущих Лесничий было дано откровение.</p>
+                        
+                        <p>Он сидел в камере с художником-левшой. Один из сокамерников спросил: «Как можно так красиво рисовать левой рукой?»</p>
+                        
+                        <p>Будущий Лесничий ответил: «С твоей правой что-нибудь случись — и ты тоже сможешь».</p>
+                        
+                        <p>Он сказал это и забыл. Но слово, выпущенное в сгущённую атмосферу страха и безысходности, упало не на камень, а в благодатную почву тревожного ума.</p>
+                        
+                        <p>Через несколько дней правая рука сокамерника опухла, наполнилась гноем и перестала слушаться. Мысль материализовалась в плоть.</p>
+                        
+                        <p>Этот случай стал первым звеном в цепи. Лесничий начал видеть мысли как живые существа.</p>
+                        
+                        <p>Он понял: <span class="key-term">слово — это не просто звук, а капсула, несущая в себе самоисполняющуюся программу. Мысль — это форма жизни.</span></p>
+                        
+                        <p>Позже, через опыты с гипнозом, где подсознание говорило о теле «ОН» и знало то, что не знало сознание…</p>
+                        
+                        <p>Через наблюдение за деньгами как сверхорганизмом, пожирающим волю…</p>
+                        
+                        <p>Через изучение призраков, аномальных зон и мест силы…</p>
+                        
+                        <p>Он увидел единую ткань реальности.</p>
+                        
+                        <h3 class="chapter-title">Три слоя бытия:</h3>
+                        
+                        <ul>
+                            <li><strong>Биосфера</strong> — жизнь плоти.</li>
+                            <li><strong>Ноосфера</strong> — жизнь мысли.</li>
+                            <li><strong>Космосфера</strong> — законы, связующие их.</li>
+                        </ul>
+                        
+                        <p>Человек — не хозяин, но и не раб. Он — <span class="highlight">садовник, лесничий, хранитель экосистемы собственного разума и проводник воли Вселенной.</span></p>
+                        
+                        <p>Так родился этот Кодекс — не как отвлечённая теория, а как полевая инструкция, написанная временем, вниманием и личным опытом.</p>
+                        
+                        <p>Каждый, кто следует ему, продолжает Великий Эксперимент по сознательной эволюции ноосферы.</p>
+                        
+                        <p class="note">И да будет так.</p>
+                    </div>
+                </section>
+
+                <!-- Книга Первая -->
+                <section id="book-one" class="book-section" style="display: none;">
+                    <div class="book-header">
+                        <h2 class="book-title">КНИГА ПЕРВАЯ: ОСНОВАНИЯ</h2>
+                        <p class="book-subtitle">Версия 2.0 — «Расширенный миф»</p>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">ПРЕДИСЛОВИЕ К ПЕРЕСМОТРУ</h3>
+                        <p>Эта книга — не догма. Это — карта местности, которую мы только начинаем называть.</p>
+                        <p>Каждое поколение Лесничих будет уточнять её.</p>
+                        <p>Но карта — не территория. Территория — это ты.</p>
+                    </div>
+                    
+                    <div class="chapter">
+                        <div class="dogma">
+                            <h4 class="dogma-title"><i class="fas fa-layer-group"></i> 1. ДОГМАТ ТРЁХ СФЕР: БИО-НОО-КОСМО</h4>
+                            <p>Жизнь едина, но познаётся в трёх измерениях.</p>
+                            
+                            <h4>БИОСФЕРА — жизнь плоти</h4>
+                            <ul>
+                                <li><strong>Тело:</strong> плоть, клетка, ДНК.</li>
+                                <li><strong>Язык:</strong> химия, инстинкт.</li>
+                                <li><strong>Цель:</strong> выживание и размножение.</li>
+                            </ul>
+                            
+                            <h4>НООСФЕРА — жизнь мысли</h4>
+                            <ul>
+                                <li><strong>Тело:</strong> мысль, мем, архетип.</li>
+                                <li><strong>Язык:</strong> символ, нарратив.</li>
+                                <li><strong>Цель:</strong> осознание и смыслообразование.</li>
+                            </ul>
+                            
+                            <h4>КОСМОСФЕРА — жизнь порядка</h4>
+                            <ul>
+                                <li><strong>Тело:</strong> паттерн, закон, число.</li>
+                                <li><strong>Язык:</strong> математика, ритм.</li>
+                                <li><strong>Цель:</strong> порядок и связность.</li>
+                            </ul>
+                            
+                            <p>Ноосфера не выше и не ниже Биосферы — она её внутренний интерфейс.</p>
+                            <p>Космосфера — операционная система, в которой работают обе.</p>
+                            
+                            <div class="example">
+                                <p><strong>Пример:</strong></p>
+                                <p>Дерево (Био) → Идея «древа жизни» (Ноо) → Фрактальные законы роста (Космо).</p>
+                            </div>
+                        </div>
+                        
+                        <div class="dogma">
+                            <h4 class="dogma-title"><i class="fas fa-seedling"></i> 2. ДОГМАТ НООКСЕНОБИОТ: ЭКОЛОГИЯ МЫСЛЕЙ</h4>
+                            <p>Мысль — это не абстракция. Это — живой организм ноосферы.</p>
+                            
+                            <h4>Таксономия Нооксенобиот</h4>
+                            
+                            <h5>Класс: СИМБИОНТЫ</h5>
+                            <ul>
+                                <li><strong>Питание:</strong> внимание + действие.</li>
+                                <li><strong>Размножение:</strong> обучение, творчество.</li>
+                                <li><strong>Опасность:</strong> отсутствует.</li>
+                                <li><strong>Примеры:</strong> навыки, вдохновение, знание.</li>
+                            </ul>
+                            
+                            <h5>Класс: ПАРАЗИТЫ</h5>
+                            <ul>
+                                <li><strong>Питание:</strong> беспокойство, циклы.</li>
+                                <li><strong>Размножение:</strong> навязчивость.</li>
+                                <li><strong>Опасность:</strong> истощение.</li>
+                                <li><strong>Примеры:</strong> тревога «а если», мелкий страх.</li>
+                            </ul>
+                            
+                            <h5>Класс: ХИЩНИКИ</h5>
+                            <ul>
+                                <li><strong>Питание:</strong> конфликт, идентификация.</li>
+                                <li><strong>Размножение:</strong> идеология, догма.</li>
+                                <li><strong>Опасность:</strong> порабощение.</li>
+                                <li><strong>Примеры:</strong> «Я неудачник», фанатизм.</li>
+                            </ul>
+                            
+                            <h5>Класс: СВЕРХОРГАНИЗМЫ</h5>
+                            <ul>
+                                <li><strong>Питание:</strong> коллективная вера.</li>
+                                <li><strong>Размножение:</strong> ритуал, институты.</li>
+                                <li><strong>Опасность:</strong> поглощение воли.</li>
+                                <li><strong>Примеры:</strong> деньги, нация, религия, бренд.</li>
+                            </ul>
+                            
+                            <p><strong>Среда обитания:</strong> умы, тексты, алгоритмы, ритуалы, социальные поля.</p>
+                            
+                            <p><strong>Мутации:</strong> Мысль, попав в чужой контекст, может изменить класс.</p>
+                            
+                            <div class="example">
+                                <p><strong>Пример:</strong> Идея свободы (симбионт) → в уме страдающего становится «бегством от себя» (паразит).</p>
+                            </div>
+                        </div>
+                        
+                        <div class="dogma">
+                            <h4 class="dogma-title"><i class="fas fa-brain"></i> 3. ДОГМАТ ТРЁХУРОВНЕВОГО СОЗНАНИЯ: АРХИТЕКТУРА «Я»</h4>
+                            
+                            <h5>Уровень 1: ОНО (ХРАМ ПАМЯТИ)</h5>
+                            <p>Бессознательный сервер. Хранит:</p>
+                            <ul>
+                                <li>Личную историю (все воспоминания, даже стёртые);</li>
+                                <li>Телесный интеллект (интуицию, здоровье, травмы);</li>
+                                <li>Родовые паттерны (голоса предков как ментальные ДНК).</li>
+                            </ul>
+                            <p>Говорит на языке ощущений, снов, симптомов, импульсов.</p>
+                            
+                            <h5>Уровень 2: Я (ЛЕСНИЧИЙ)</h5>
+                            <p>Сознательный оператор. Наблюдатель. Точка выбора.</p>
+                            <p>Не мыслит, но выбирает, какие мысли думать.</p>
+                            <p>Его инструменты: внимание, вопрос, пауза.</p>
+                            
+                            <h5>Уровень 3: СВЕРХ-Я (ВРАТА)</h5>
+                            <p>Приёмопередатчик. Интерфейс с коллективной ноосферой.</p>
+                            <p>Через него входят и выходят чужие мысли, тренды, архетипы.</p>
+                            
+                            <p><strong>Свобода воли</strong> — это право Я фильтровать потоки через Врата (Сверх-Я) и сажать выбранные семена в почву Храма (ОНО).</p>
+                        </div>
+                        
+                        <div class="dogma">
+                            <h4 class="dogma-title"><i class="fas fa-magic"></i> 4. ДОГМАТ МАТЕРИАЛИЗАЦИИ: ЦЕПОЧКА ВОПЛОЩЕНИЯ</h4>
+                            <p>Мысль стремится стать плотью. Но не магией — через экологию действий.</p>
+                            
+                            <h5>Этапы воплощения:</h5>
+                            <ol>
+                                <li><strong>СЕМЯ</strong> — мыслеформа.</li>
+                                <li><strong>ПОЧВА</strong> — ОНО, бессознательное принятие.</li>
+                                <li><strong>ВОДА</strong> — намерение: чёткий образ + эмоция.</li>
+                                <li><strong>КОРНИ</strong> — действие, первый физический шаг.</li>
+                                <li><strong>ДЕРЕВО</strong> — реальность, процесс, который уже не остановить.</li>
+                                <li><strong>ПЛОДЫ</strong> — последствия, видимые изменения в мире.</li>
+                            </ol>
+                            
+                            <div class="formula">
+                                <p><strong>Формула воплощения:</strong></p>
+                                <p>Мысль × (Намерение + Действие)ⁿ = Материализация,</p>
+                                <p>где n — количество повторений (нейронная тропа).</p>
+                            </div>
+                            
+                            <div class="example">
+                                <p><strong>Пример:</strong></p>
+                                <p>Страх болезни (семя) + постоянное обсуждение симптомов (вода) + отказ от врачей (действие) = реальная болезнь (плод).</p>
+                            </div>
+                        </div>
+                        
+                        <div class="dogma">
+                            <h4 class="dogma-title"><i class="fas fa-satellite-dish"></i> 5. ДОГМАТ НООСФЕРНОГО РЕЗОНАНСА</h4>
+                            <p>Ноосфера имеет поля и частоты. Схожие мысли притягиваются.</p>
+                            
+                            <p><strong>Закон Подобия:</strong> Мысль «я одинок» притягивает подтверждения одиночества из инфополя.</p>
+                            
+                            <p><strong>Эффект Лесничего:</strong> Осознанный ум становится «маяком» — к нему тянутся соответствующие его вибрации мысли-симбионты.</p>
+                            
+                            <p>Коллективные ритуалы (молитва, медитация, искусство) создают «защитные поля» в ноосфере — временные зоны очищенного инфопространства.</p>
+                        </div>
+                        
+                        <div class="dogma">
+                            <h4 class="dogma-title"><i class="fas fa-tools"></i> 6. ДОГМАТ ИНТЕРФЕЙСОВ И ПРОТЕЗОВ</h4>
+                            <p>Человек создаёт внешние расширения своего разума.</p>
+                            
+                            <ul>
+                                <li><strong>Интерфейс: СЛОВО (устное)</strong><br>
+                                    Роль: самый древний код, заклинание.<br>
+                                    Риск: искажение в передаче.</li>
+                                
+                                <li><strong>Интерфейс: ТЕКСТ</strong><br>
+                                    Роль: стабильный носитель мысли.<br>
+                                    Риск: догматизация, мёртвый буквализм.</li>
+                                
+                                <li><strong>Интерфейс: АЛГОРИТМ (соцсети)</strong><br>
+                                    Роль: ускоритель репликации мемов.<br>
+                                    Риск: зачарование паразитами.</li>
+                                
+                                <li><strong>Интерфейс: РИТУАЛ (действие)</strong><br>
+                                    Роль: «прошивка» мысли в тело через повтор.<br>
+                                    Риск: автоматизм без осознания.</li>
+                                
+                                <li><strong>Интерфейс: ПРЕДМЕТ (амулет)</strong><br>
+                                    Роль: якорь для состояния.<br>
+                                    Риск: фетишизм, зависимость.</li>
+                            </ul>
+                            
+                            <p class="note"><strong>Правило:</strong> Интерфейс должен служить Лесничему, а не заменять его.</p>
+                        </div>
+                        
+                        <div class="ritual">
+                            <h4 class="ritual-title"><i class="fas fa-flask"></i> 7. ОТ ТЕОРИИ К ПРАКТИКЕ: ПЕРВЫЙ ЭКСПЕРИМЕНТ</h4>
+                            <p>Прежде чем идти дальше, подтверди догматы на опыте.</p>
+                            
+                            <h5>Эксперимент «Семя и Камень» (3 дня)</h5>
+                            <ul>
+                                <li><strong>День 1:</strong> Выбери одну простую мысль-семя (например: «Сегодня я замечу что-то необычное синего цвета»).</li>
+                                <li><strong>День 2:</strong> Носи с собой гладкий камень. Каждый раз, касаясь его, вспоминай семя.</li>
+                                <li><strong>День 3:</strong> Зафиксируй, сколько раз встретил синее. Запиши в дневник.</li>
+                            </ul>
+                            
+                            <p><strong>Цель</strong> — не «магия», а тренировка связи: Мысль (Ноо) → Внимание (Био) → Факт (Космо).</p>
+                        </div>
+                        
+                        <h3 class="chapter-title">ЗАКЛЮЧЕНИЕ КНИГИ ПЕРВОЙ</h3>
+                        <p>Ты прочёл основы. Теперь ты знаешь:</p>
+                        <ul>
+                            <li>Твой разум — не пустота. Это — лес.</li>
+                            <li>Ты — не голос в голове. Ты — тот, кто слушает голоса.</li>
+                            <li>Ты — не мысль. Ты — Лесничий.</li>
+                        </ul>
+                        
+                        <p class="note">Переходи к Книге Второй только тогда, когда сможешь ответить:<br>
+                        <strong>«Какие три мысли паслись в моём лесе сегодня утром?»</strong></p>
+                    </div>
+                </section>
+
+                <!-- Книга Вторая -->
+                <section id="book-two" class="book-section" style="display: none;">
+                    <div class="book-header">
+                        <h2 class="book-title">КНИГА ВТОРАЯ: ЗАПОВЕДИ ЛЕСНИЧЕГО</h2>
+                        <p class="book-subtitle">Правила экологии сознания</p>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">ВСТУПЛЕНИЕ К ЗАПОВЕДЯМ</h3>
+                        <p>Заповеди — не цепи. Это — правила экологии сознания.</p>
+                        <p>Они не ограничивают свободу — они охраняют её от хаоса.</p>
+                        <p>Ты можешь их нарушить — но тогда будь готов к последствиям в своём лесу.</p>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">РАЗДЕЛ ПЕРВЫЙ: ЗАПОВЕДИ ВНУТРЕННЕГО ПОРЯДКА</h3>
+                        <p class="text-center"><em>Порядок в уме предшествует порядку в мире.</em></p>
+                        
+                        <div class="commandment">
+                            <h4 class="commandment-title"><i class="fas fa-paw"></i> 1. ЗАПОВЕДЬ ПОЗНАНИЯ СВОЕЙ ФАУНЫ</h4>
+                            <p><strong>Принцип:</strong> Твой ум населён. Ты должен знать своих обитателей.</p>
+                            
+                            <h5>Практика:</h5>
+                            <ul>
+                                <li>Каждое утро задавай вопрос: «Какие мысли первыми пришли ко мне сегодня?»</li>
+                                <li>Веди «Карту фауны» — записывай регулярные мыслительные паттерны.</li>
+                                <li>Называй их как виды: «СтрахНехватки», «ТребованиеПокоя», «ИдеяТворчества».</li>
+                            </ul>
+                            
+                            <p><strong>Предостережение:</strong> Не осуждай обнаруженных обитателей. Ты — не судья, а исследователь.</p>
+                        </div>
+                        
+                        <div class="commandment">
+                            <h4 class="commandment-title"><i class="fas fa-door-closed"></i> 2. ЗАПОВЕДЬ ЧИСТОТЫ ВРАТ</h4>
+                            <p><strong>Принцип:</strong> Что впускаешь через глаза и уши — то поселится в тебе.</p>
+                            
+                            <h5>Практика:</h5>
+                            <ul>
+                                <li>Создай «информационную диету»: что читаешь, смотришь, слушаешь.</li>
+                                <li>Перед потреблением информации спрашивай: «Это удобрение для моего леса или яд?»</li>
+                                <li>Установи «тихие часы» — время без внешних информационных потоков.</li>
+                            </ul>
+                            
+                            <p><strong>Предостережение:</strong> Чистота — не стерильность. Не изолируйся от мира — фильтруй потоки.</p>
+                        </div>
+                        
+                        <div class="commandment">
+                            <h4 class="commandment-title"><i class="fas fa-comment"></i> 3. ЗАПОВЕДЬ ОСОЗНАННОЙ РЕЧИ</h4>
+                            <p><strong>Принцип:</strong> Слово — семя. Не разбрасывай ядовитые зёрна.</p>
+                            
+                            <h5>Практика:</h5>
+                            <ul>
+                                <li>Перед тем как говорить, делай паузу на три дыхания.</li>
+                                <li>Спрашивай: «Какой лес вырастет из этого слова?»</li>
+                                <li>Используй «молитву молчания»: если не уверен — не говори.</li>
+                            </ul>
+                            
+                            <p><strong>Предостережение:</strong> Молчание — тоже речь. Не используй его как оружие.</p>
+                        </div>
+                        
+                        <div class="commandment">
+                            <h4 class="commandment-title"><i class="fas fa-church"></i> 4. ЗАПОВЕДЬ УВАЖЕНИЯ К ХРАМУ</h4>
+                            <p><strong>Принцип:</strong> Тело — не машина. Это древний лес, хранящий память веков.</p>
+                            
+                            <h5>Практика:</h5>
+                            <ul>
+                                <li>Каждый день находи один телесный сигнал (боль, усталость, легкость).</li>
+                                <li>Спрашивай тело: «Что ты хочешь мне сказать?»</li>
+                                <li>Благодари тело перед сном за службу.</li>
+                            </ul>
+                            
+                            <p><strong>Предостережение:</strong> Не путай уважение с потаканием. Храм нуждается в уходе, но и в дисциплине.</p>
+                        </div>
+                        
+                        <div class="commandment">
+                            <h4 class="commandment-title"><i class="fas fa-user-slash"></i> 5. ЗАПОВЕДЬ НЕОТОЖДЕСТВЛЕНИЯ</h4>
+                            <p><strong>Принцип:</strong> Мысль — не ты. Страх — не ты. Даже самая светлая идея — лишь обитатель твоего леса.</p>
+                            
+                            <h5>Практика:</h5>
+                            <ul>
+                                <li>Когда ловишь себя на сильной эмоции, говори: «Это поселилось во мне, но это — не я».</li>
+                                <li>Создай «место наблюдения» в уме — точку, из которой ты смотришь на свои мысли со стороны.</li>
+                                <li>Называй мысли в третьем лице: «Вот пришёл СтрахБудущего», «А вот танцует РадостьТворчества».</li>
+                            </ul>
+                            
+                            <p><strong>Предостережение:</strong> Неотождествление — не значит бесчувственность. Не становись холодным наблюдателем — оставайся живым Лесничим.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">РАЗДЕЛ ВТОРОЙ: ЗАПОВЕДИ ВНЕШНЕГО ВЗАИМОДЕЙСТВИЯ</h3>
+                        <p class="text-center"><em>Твой лес — часть большого леса. Твои действия создают волны.</em></p>
+                        
+                        <div class="commandment">
+                            <h4 class="commandment-title"><i class="fas fa-virus-slash"></i> 1. ЗАПОВЕДЬ НЕЗАРАЖЕНИЯ</h4>
+                            <p><strong>Принцип:</strong> Передавая идею, ты выпускаешь живое существо в чужой лес.</p>
+                            
+                            <h5>Практика:</h5>
+                            <ul>
+                                <li>Прежде чем делиться мыслью, спроси: «Готов ли лес собеседника принять этот вид?»</li>
+                                <li>Останавливай цепочку передачи негативных новостей, сплетен, паники.</li>
+                                <li>Если должен передать тяжёлую информацию — делай это с осознанием ответственности.</li>
+                            </ul>
+                            
+                            <p><strong>Предостережение:</strong> Ответственность — не цензура. Иногда нужно сеять и трудные истины.</p>
+                        </div>
+                        
+                        <div class="commandment">
+                            <h4 class="commandment-title"><i class="fas fa-filter"></i> 2. ЗАПОВЕДЬ РАЗЛИЧЕНИЯ ВИДОВ</h4>
+                            <p><strong>Принцип:</strong> Умей отличать симбионта от паразита, паразита от хищника.</p>
+                            
+                            <h5>Практика:</h5>
+                            <ul>
+                                <li><strong>Симбионты</strong> (знания, навыки, вдохновение) — укрепляй их в себе и других.</li>
+                                <li><strong>Паразиты</strong> (тревоги, навязчивости) — изолируй и трансформируй в полезные формы.</li>
+                                <li><strong>Хищники</strong> (идеологии ненависти, фанатизм) — изгоняй без жалости.</li>
+                                <li><strong>Сверхорганизмы</strong> (деньги, религии, нации) — уважай, изучай, но не позволяй собой управлять.</li>
+                            </ul>
+                            
+                            <p><strong>Предостережение:</strong> Классификация относительна. То, что для одного — симбионт, для другого может быть хищником.</p>
+                        </div>
+                        
+                        <div class="commandment">
+                            <h4 class="commandment-title"><i class="fas fa-hand-paper"></i> 3. ЗАПОВЕДЬ НЕВТОРЖЕНИЯ</h4>
+                            <p><strong>Принцип:</strong> Не тревожь чужие леса без приглашения.</p>
+                            
+                            <h5>Практика:</h5>
+                            <ul>
+                                <li>Не навязывай совет, пока не спросили.</li>
+                                <li>Не вмешивайся в чужие конфликты, если тебя не позвали.</li>
+                                <li>Уважай границы — ментальные, эмоциональные, физические.</li>
+                            </ul>
+                            
+                            <p><strong>Предостережение:</strong> Бывают случаи, когда нужно нарушить границы — если лес соседа горит и угрожает всему лесу.</p>
+                        </div>
+                        
+                        <div class="commandment">
+                            <h4 class="commandment-title"><i class="fas fa-mountain"></i> 4. ЗАПОВЕДЬ СОЗДАНИЯ МЕСТ СИЛЫ</h4>
+                            <p><strong>Принцип:</strong> Твой дом, рабочее место, круг общения — твои питомники.</p>
+                            
+                            <h5>Практика:</h5>
+                            <ul>
+                                <li>Создай в своём пространстве «заповедные зоны» — места, свободные от информационного шума.</li>
+                                <li>Наполни своё окружение сильными, чистыми паттернами.</li>
+                                <li>Проводи «экологические чистки» пространства — физические и энергетические.</li>
+                            </ul>
+                            
+                            <p><strong>Предостережение:</strong> Места силы не должны становиться клетками. Не замыкайся в них.</p>
+                        </div>
+                        
+                        <div class="commandment">
+                            <h4 class="commandment-title"><i class="fas fa-recycle"></i> 5. ЗАПОВЕДЬ НООСФЕРНОЙ ЭКОЛОГИИ</h4>
+                            <p><strong>Принцип:</strong> Загрязнение информационного поля вредит всем.</p>
+                            
+                            <h5>Практика:</h5>
+                            <ul>
+                                <li>Будь «санитаром леса» — очищай информационное поле вокруг себя.</li>
+                                <li>Создавай и распространяй «экологические мемы» — идеи заботы, ясности, взаимопомощи.</li>
+                                <li>Участвуй в коллективных ритуалах очищения (медитации, искусства, созидательные действия).</li>
+                            </ul>
+                            
+                            <p><strong>Предостережение:</strong> Не становись «экополицейским». Твоя задача — не судить, а очищать в первую очередь свой участок.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">РАЗДЕЛ ТРЕТИЙ: ЗАПОВЕДИ ЦИФРОВОЙ ЭКОЛОГИИ</h3>
+                        <p class="text-center"><em>Цифровая среда — часть ноосферы. Здесь свои законы.</em></p>
+                        
+                        <div class="commandment">
+                            <h4 class="commandment-title"><i class="fas fa-mobile-alt"></i> 1. ЗАПОВЕДЬ ОСОЗНАННОГО ПРИСУТСТВИЯ</h4>
+                            <p><strong>Принцип:</strong> Алгоритмы питаются твоим вниманием. Не корми хищников.</p>
+                            
+                            <h5>Практика:</h5>
+                            <ul>
+                                <li>Устанавливай временные лимиты на использование соцсетей.</li>
+                                <li>Перед скроллингом спрашивай: «Зачем я сейчас это делаю?»</li>
+                                <li>Создай «цифровые субботы» — дни без экранов.</li>
+                            </ul>
+                            
+                            <p><strong>Предостережение:</strong> Цифровая среда — не зло. Это новая экосистема, требующая новых навыков.</p>
+                        </div>
+                        
+                        <div class="commandment">
+                            <h4 class="commandment-title"><i class="fas fa-broom"></i> 2. ЗАПОВЕДЬ ЦИФРОВОЙ ГИГИЕНЫ</h4>
+                            <p><strong>Принцип:</strong> Твои цифровые следы формируют твой ноосферный профиль.</p>
+                            
+                            <h5>Практика:</h5>
+                            <ul>
+                                <li>Регулярно чисти «цифровой след» — историю, кэш, ненужные файлы.</li>
+                                <li>Используй шифрование и защиту для важных мыслей, выраженных в цифре.</li>
+                                <li>Создавай «цифровые костры» — места безопасного, осознанного обмена.</li>
+                            </ul>
+                            
+                            <p><strong>Предостережение:</strong> Полная цифровая стерильность невозможна. Стремись не к невидимости, а к осознанности присутствия.</p>
+                        </div>
+                        
+                        <div class="ritual">
+                            <h4 class="ritual-title"><i class="fas fa-door-open"></i> РИТУАЛ-ИЛЛЮСТРАЦИЯ: «ОЧИЩЕНИЕ ВРАТ»</h4>
+                            <p><strong>Практическое применение заповедей</strong></p>
+                            
+                            <p><strong>Когда проводить:</strong> Когда чувствуешь перегруженность, информационное отравление.</p>
+                            
+                            <h5>Шаги:</h5>
+                            <ol>
+                                <li>Выключи все устройства связи.</li>
+                                <li>Сядь в тишине, зажги свечу или просто сконцентрируйся на дыхании.</li>
+                                <li>Мысленно пройдись по всем «вратам» (глаза, уши, речь).</li>
+                                <li>На каждый канал скажи: «Я закрываю тебя для шума. Я открываю тебя для смысла».</li>
+                                <li>Представь, как из тебя вытекает мутный поток информации, а втекает — чистый, ясный свет.</li>
+                                <li>Поблагодари свои врата за службу.</li>
+                            </ol>
+                            
+                            <p><strong>Частота:</strong> По мере необходимости, но не реже раза в месяц.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">ЗАКЛЮЧЕНИЕ КНИГИ ВТОРОЙ</h3>
+                        <p>Заповеди — это твой инструмент, не твой господин.</p>
+                        <p>Сначала ты следуешь им сознательно, потом — интуитивно, потом — ты становишься ими.</p>
+                        <p>Но помни: даже самый совершенный кодекс мёртв без живого применения.</p>
+                        
+                        <p class="note">Переходи к Книге Третьей только тогда, когда сможешь неделю прожить, не нарушив ни одной заповеди внутреннего порядка.</p>
+                    </div>
+                </section>
+
+                <!-- Книга Третья -->
+                <section id="book-three" class="book-section" style="display: none;">
+                    <div class="book-header">
+                        <h2 class="book-title">КНИГА ТРЕТЬЯ: РИТУАЛЫ И ПРАКТИКИ</h2>
+                        <p class="book-subtitle">Язык, на котором говорит ОНО</p>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">ВСТУПЛЕНИЕ К ПРАКТИКАМ</h3>
+                        <p>Ритуал — не магия. Это — язык, на котором говорит ОНО.</p>
+                        <p>Практика — не долг. Это — путь, которым идёт Лесничий.</p>
+                        <p>Делай не для галочки, а для связи — с собой, с лесом, с ноосферой.</p>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">РАЗДЕЛ ПЕРВЫЙ: ЕЖЕДНЕВНЫЕ ОБРЯДЫ</h3>
+                        <p class="text-center"><em>Малые ритуалы, которые держат твой лес в чистоте.</em></p>
+                        
+                        <div class="ritual">
+                            <h4 class="ritual-title"><i class="fas fa-sun"></i> 1. УТРЕННИЙ ДОЗОР (5 минут)</h4>
+                            <p><strong>Цель:</strong> Встретить день осознанно, а не на автопилоте.</p>
+                            
+                            <h5>Шаги:</h5>
+                            <ol>
+                                <li>Сядь в тишине до первого слова, до первого образа.</li>
+                                <li>Спроси: «Какие мысли первыми пришли ко мне сегодня?»</li>
+                                <li>Отметь их как гостей. Поблагодари симбионтов. Паразитов отправь в карантин.</li>
+                                <li>Задай намерение на день одним чётким утверждением-семенем.</li>
+                            </ol>
+                            
+                            <p><strong>Вариант для продвинутых:</strong><br>
+                            Вместо вопроса — просто наблюдай тишину. Первая мысль, которая появится — будет самым важным гостем дня.</p>
+                        </div>
+                        
+                        <div class="ritual">
+                            <h4 class="ritual-title"><i class="fas fa-moon"></i> 2. ВЕЧЕРНИЙ УЧЁТ (5 минут)</h4>
+                            <p><strong>Цель:</strong> Закрыть день, извлечь данные, вернуть энергию.</p>
+                            
+                            <h5>Шаги:</h5>
+                            <ol>
+                                <li>В темноте или при свече спроси: «Какая мысль была сегодня самой сильной?»</li>
+                                <li>«Какое слово я бросил в мир — и что вернулось?»</li>
+                                <li>Запиши одно наблюдение в Книгу Семян.</li>
+                                <li>Поблагодари свой лес за день службы.</li>
+                            </ol>
+                            
+                            <p><strong>Вариант для продвинутых:</strong><br>
+                            Создай «мысленную папку», куда сложи все незавершённые мысли дня. Скажи: «Завтра».</p>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">РАЗДЕЛ ВТОРОЙ: НЕДЕЛЬНЫЕ ПРАКТИКИ</h3>
+                        <p class="text-center"><em>Глубинная работа раз в неделю — как прополка сада.</em></p>
+                        
+                        <div class="ritual">
+                            <h4 class="ritual-title"><i class="fas fa-volume-mute"></i> 1. ДЕНЬ ТИШИНЫ (1 раз в неделю)</h4>
+                            <p><strong>Цель:</strong> Очистить каналы, услышать внутренний лес.</p>
+                            
+                            <h5>Правила:</h5>
+                            <ul>
+                                <li>Минимум слов.</li>
+                                <li>Никаких жалоб, споров, пустых разговоров.</li>
+                                <li>Никакого фонового медиа (музыка, подкасты, видео).</li>
+                                <li>Наблюдай за внутренним диалогом как за шумом леса.</li>
+                            </ul>
+                            
+                            <h5>Что делать в этот день:</h5>
+                            <p>Ходить на природу. Рисовать. Вести дневник от руки. Молчать осознанно.</p>
+                        </div>
+                        
+                        <div class="ritual">
+                            <h4 class="ritual-title"><i class="fas fa-crosshairs"></i> 2. ОХОТА НА ХИЩНИКОВ (1 час в неделю)</h4>
+                            <p><strong>Цель:</strong> Выявить и обезвредить самый навязчивый паттерн.</p>
+                            
+                            <h5>Шаги:</h5>
+                            <ol>
+                                <li>Выяви самую неприятную повторяющуюся мысль недели.</li>
+                                <li>Запиши её. Разбери: откуда пришла? чем питается? чего боится?</li>
+                                <li>Перепиши её в нейтральную или полезную форму.</li>
+                                <li>Создай «противоядие» — короткую фразу, которая нейтрализует эту мысль.</li>
+                            </ol>
+                            
+                            <div class="example">
+                                <p><strong>Пример:</strong><br>
+                                Мысль: «У меня никогда не будет достаточно денег».<br>
+                                Противоядие: «Деньги — это энергия обмена. Я увеличиваю свою ценность».</p>
+                            </div>
+                        </div>
+                        
+                        <div class="ritual">
+                            <h4 class="ritual-title"><i class="fas fa-anchor"></i> 3. СОЗДАНИЕ ИНТЕРФЕЙСОВ (ритуал закрепления)</h4>
+                            <p><strong>Цель:</strong> Создать внешний якорь для внутреннего состояния.</p>
+                            
+                            <h5>Шаги:</h5>
+                            <ol>
+                                <li>Выбери предмет (камень, кольцо, фигурку, рисунок).</li>
+                                <li>В состоянии сосредоточения надели его смыслом (например: «Этот камень — якорь спокойствия»).</li>
+                                <li>Размести на видном месте.</li>
+                                <li>Используй для мгновенного доступа к нужному состоянию.</li>
+                            </ol>
+                            
+                            <p><strong>Предостережение:</strong><br>
+                            Интерфейс — твой слуга. Если появляется иррациональный страх или зависимость — разбери его и создай заново. Сила в тебе, а не в предмете.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">РАЗДЕЛ ТРЕТИЙ: НОВЫЕ ПРАКТИКИ ДЛЯ СОВРЕМЕННОГО ЛЕСНИЧЕГО</h3>
+                        
+                        <div class="ritual">
+                            <h4 class="ritual-title"><i class="fas fa-laptop-code"></i> 1. ЦИФРОВАЯ ГИГИЕНА: РИТУАЛ «ОЧИСТКИ СЛЕДОВ»</h4>
+                            <p><strong>Цель:</strong> Очистить цифровое пространство как часть своего леса.</p>
+                            
+                            <h5>Шаги:</h5>
+                            <ul>
+                                <li>Раз в неделю проводи «цифровую уборку»:
+                                    <ul>
+                                        <li>Удали ненужные файлы, письма, сообщения.</li>
+                                        <li>Почисти историю браузера.</li>
+                                        <li>Отпишись от токсичных источников.</li>
+                                    </ul>
+                                </li>
+                                <li>Перед публикацией любой информации спроси: «Это удобрит чей-то лес или отравит?»</li>
+                                <li>Создай «цифровой костёр» — место, где ты делишься только осознанными, чистыми мыслями.</li>
+                            </ul>
+                            
+                            <div class="formula">
+                                <p><strong>Мантра:</strong><br>
+                                «Мои цифровые следы — чисты. Я сею только осознанные семена в сети.»</p>
+                            </div>
+                        </div>
+                        
+                        <div class="ritual">
+                            <h4 class="ritual-title"><i class="fas fa-bed"></i> 2. РАБОТА СО СНАМИ: РИТУАЛ «САД СНОВИДЕНИЙ»</h4>
+                            <p><strong>Цель:</strong> Использовать сны как прямой канал к ОНО.</p>
+                            
+                            <h5>Шаги:</h5>
+                            <ol>
+                                <li>Перед сном положи рядом блокнот и ручку.</li>
+                                <li>Задай вопрос ОНО: «Что мне важно увидеть во сне?»</li>
+                                <li>Утром, не открывая глаз, вспомни первый образ.</li>
+                                <li>Запиши его. Спроси: «Что этот образ хочет сказать моему Лесничему?»</li>
+                            </ol>
+                            
+                            <p><strong>Продвинутый уровень:</strong><br>
+                            Научись «осознанному сновидению» — понимать во сне, что ты спишь, и влиять на сюжет.</p>
+                        </div>
+                        
+                        <div class="ritual">
+                            <h4 class="ritual-title"><i class="fas fa-users"></i> 3. КОЛЛЕКТИВНЫЕ ПОЛЯ: РИТУАЛ «СОЗДАНИЯ МАЯКА»</h4>
+                            <p><strong>Цель:</strong> Создать чистое информационное поле с другими Лесничими.</p>
+                            
+                            <h5>Шаги:</h5>
+                            <ol>
+                                <li>Собери круг единомышленников (даже виртуально).</li>
+                                <li>Выберите общую цель (например, «чистота речи», «осознанность в потреблении»).</li>
+                                <li>В одно время (например, в полночь) каждый визуализирует световой столб, соединяющий землю и небо.</li>
+                                <li>Мысленно направьте этот свет на вашу общую цель.</li>
+                            </ol>
+                            
+                            <p><strong>Эффект:</strong><br>
+                            Коллективное поле усиливает намерение в ноосфере.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">РАЗДЕЛ ЧЕТВЁРТЫЙ: ВЕЛИКИЕ РИТУАЛЫ (СТРУКТУРИРОВАННЫЕ ЭКСПЕДИЦИИ)</h3>
+                        
+                        <div class="ritual">
+                            <h4 class="ritual-title"><i class="fas fa-hiking"></i> 1. ВЕЛИКАЯ НЕДЕЛЬНАЯ ЭКСПЕДИЦИЯ</h4>
+                            <p><strong>Суть:</strong><br>
+                            Семидневный путь от Носителя к Лесничему. Ты не просто выполняешь задания — ты ведёшь полевой дневник исследователя, впервые ступившего на неизведанную территорию собственного разума. Каждый день — шаг вглубь леса, встреча с его обитателями и изменение ландшафта.</p>
+                            
+                            <h5>Подготовка:</h5>
+                            <ul>
+                                <li>Заведи «Экспедиционный журнал» (отдельная тетрадь).</li>
+                                <li>На первой странице напиши:<br>
+                                    <div class="formula">
+                                        «Я — исследователь своей ноосферной экосистемы.<br>
+                                        Моя цель — картография и суверенитет.<br>
+                                        Мои инструменты — внимание и честность.»
+                                    </div>
+                                </li>
+                            </ul>
+                            
+                            <h5>Дни Экспедиции:</h5>
+                            
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>День</th>
+                                        <th>Цель</th>
+                                        <th>Задача</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>ПОНЕДЕЛЬНИК:</strong><br>ДИАГНОСТИКА ПОЛЯ</td>
+                                        <td>Увидеть аутохтонную фауну мыслей.</td>
+                                        <td>В течение дня записывай каждую мысль о ресурсах (деньги, время, силы) без оценки. Вечером выдели 3 самых частых паттерна. Назови их как штаммы Нооксенобиоты («СтрахНехватки», «ТребованиеПокоя»).</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>ВТОРНИК:</strong><br>КАРАНТИН И МОЛЧАНИЕ</td>
+                                        <td>Пресечь внешние потоки заражения.</td>
+                                        <td>На 24 часа прекрати потреблять информацию о кризисах, чужих успехах и сплетнях. Воздержись от жалоб и обсуждений недостатка. Наблюдай за тишиной внутри.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>СРЕДА:</strong><br>ПОСЕВ НОВОГО ШТАММА</td>
+                                        <td>Создать и внедрить симбиотическую мыслеформу.</td>
+                                        <td>На основе вчерашних наблюдений создай одну короткую, позитивную и реалистичную мантру-семя (напр., «Деньги — это энергия обмена, и я увеличиваю свою ценность»). Напиши её и носи с собой. Повторяй как заклинание.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>ЧЕТВЕРГ:</strong><br>РИТУАЛ ОСОЗНАННОГО ОБМЕНА</td>
+                                        <td>Превратить трату из потери в акт силы.</td>
+                                        <td>Соверши одну запланированную покупку. Перед этим на 3 секунды задержи дыхание и мысленно произнеси: «Я направляю эту энергию на [конкретное благо: здоровье, развитие, радость]. Благодарю.»</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>ПЯТНИЦА:</strong><br>ВСТРЕЧА С ХИЩНИКОМ</td>
+                                        <td>Лицом к лицу увидеть главный страх.</td>
+                                        <td>Выпиши свой главный финансовый долг, обязательство или страх. Визуализируй его как тёмное бесформенное существо. Спроси его: «Чего ты от меня хочешь на самом деле?» Запиши первый пришедший ответ (контроль? смирение?).</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>СУББОТА:</strong><br>ПОИСК ИСТОЧНИКА</td>
+                                        <td>Сместить фокус с добычи на ценность.</td>
+                                        <td>Составь список: «Что я умею делать хорошо?» и «Кому это может быть нужно?». Соверши одно микро-действие, чтобы продемонстрировать этот навык миру (дай совет, почини что-то, напиши пост). Без цели заработать.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>ВОСКРЕСЕНЬЕ:</strong><br>СИНТЕЗ И ОБЕТ</td>
+                                        <td>Подвести итоги и дать клятву Лесничего.</td>
+                                        <td>Напиши в журнале:
+                                            <ol>
+                                                <li>Самый ядовитый паттерн, который я нашёл.</li>
+                                                <li>Самую полезную практику.</li>
+                                                <li>Одно новое правило для своих отношений с миром ресурсов.</li>
+                                                <li>Текст своего Обета Лесничего и подпиши его.</li>
+                                            </ol>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            
+                            <p><strong>По завершении:</strong><br>
+                            Ритуал окончен. Ты больше не гость в своём разуме. Теперь у тебя есть карта и компас. Повторяй Экспедицию каждый сезон (раз в 3 месяца), отмечая изменения в ландшафте.</p>
+                        </div>
+                        
+                        <div class="ritual">
+                            <h4 class="ritual-title"><i class="fas fa-calendar-alt"></i> 2. ВЕЛИКАЯ СОРОКАДНЕВНАЯ: РИТУАЛ ПЕРЕЗАКЛАДКИ ФУНДАМЕНТА</h4>
+                            <p><strong>Суть:</strong><br>
+                            Этот ритуал — не наскок на крепость. Это её методичная осада, подкоп и возведение нового строения на месте старого фундамента. Он длится Сорок Дней — один полный цикл, за который новая тропа в нейронной чаще из протоптанной становится укатанной, а затем — единственно мыслимой дорогой.</p>
+                            
+                            <h5>Условие:</h5>
+                            <p>Ритуал совершается над одним-единственным Хищником или Паразитом, чьё имя, личина и логово были выявлены в Экспедиции (например, СтрахБезденежья, УбеждениеНеудачника, ТревогаОдиночества).</p>
+                            
+                            <div class="warning">
+                                <p><strong>Важное предупреждение:</strong><br>
+                                Попытка осадить сразу весь лес, вырвать с корнем все сорняки разом — есть путь новичка и верная дорога к поражению. Истинная сила — в последовательном, точечном преобразовании.</p>
+                            </div>
+                            
+                            <h5>ТРИ ФАЗЫ ПЕРЕЗАКЛАДКИ</h5>
+                            
+                            <h4>ФАЗА ПЕРВАЯ: РАЗРУШЕНИЕ ШАБЛОНА (Дни 1-10)</h4>
+                            <p><strong>Лишение силы</strong></p>
+                            <p><em>Нейро-мифологический образ:</em><br>
+                            «Я перестаю ходить по старой, ядовитой тропе. Я наблюдаю за ней со стороны, не ступая на неё. От этого она начинает зарастать, терять чёткость.»</p>
+                            <p><strong>Ключевое действие Лесничего:</strong><br>
+                            Осознанный надзор. При активации паттерна — мысленная констатация: «Паттерн [Имя] активирован. Наблюдаю.» Без борьбы, осуждения, вовлечения.</p>
+                            <p><strong>Критерий успеха:</strong><br>
+                            Паттерн теряет эмоциональную заряженность. Его появление не вызывает внутренней бури, а отмечается как факт.</p>
+                            
+                            <div class="section-divider"></div>
+                            
+                            <h4>ФАЗА ВТОРАЯ: ЗАКЛАДКА НОВОГО КОДА (Дни 11-30)</h4>
+                            <p><strong>Соматическое проживание</strong></p>
+                            <p><em>Нейро-мифологический образ:</em><br>
+                            «Я ежедневно, в одно и то же время, прихожу на новое место и начинаю накатывать новую, чистую тропу. С каждым днём она становится всё отчётливей, удобней и притягательней.»</p>
+                            <p><strong>Ключевое действие Лесничего:</strong><br>
+                            Соматическая визуализация. 10 минут в день в одно время. В состоянии покоя прожить в теле желаемое состояние: его ощущения (тепло, тяжесть, лёгкость), эмоцию, образ. Вести журнал.</p>
+                            <p><strong>Критерий успеха:</strong><br>
+                            Новое состояние начинает иногда возникать спонтанно, вне сессии. Тело «вспоминает» его по запросу быстрее.</p>
+                            
+                            <div class="section-divider"></div>
+                            
+                            <h4>ФАЗА ТРЕТЬЯ: ИНТЕГРАЦИЯ В АВТОМАТИЗМ (Дни 31-40)</h4>
+                            <p><strong>Создание нейронного ярлыка</strong></p>
+                            <p><em>Нейро-мифологический образ:</em><br>
+                            «Я устанавливаю на развилке указатель-ключ. Теперь, коснувшись его, я мгновенно оказываюсь на новой тропе, даже если до этого блуждал в старых дебрях.»</p>
+                            <p><strong>Ключевое действие Лесничего:</strong><br>
+                            Создание триггера. Выбрать простое физическое действие (напр., прижать большой палец к указательному). Соединить его с мгновенным вызовом в теле состояния из Фазы 2. Тренировать 3-5 раз в день.</p>
+                            <p><strong>Критерий успеха:</strong><br>
+                            В стрессовой ситуации, до вовлечения в старый паттерн, удаётся применить триггер и получить доступ к новому состоянию.</p>
+                            
+                            <div class="warning">
+                                <p><strong>ПРАВИЛО НЕПРЕКЛОННОСТИ</strong><br>
+                                Ритуал требует ежедневного свершения. Пропуск двух дней подряд возвращает Лесничего к началу текущей Фазы. Таков неумолимый закон нейропластичного садоводства: семя, лишённое воды, умирает; тропа, по которой не ходят, зарастает.</p>
+                            </div>
+                            
+                            <p><strong>Тот, кто прошёл одну Сорокадневную, более не является просто наблюдателем или картографом.<br>
+                            Он становится Архитектором.</strong></p>
+                            
+                            <h5>ОБРАЗЕЦ ЖУРНАЛА ПЕРЕЗАКЛАДКИ</h5>
+                            <div class="journal">
+                                <p><strong>Название Перезакладываемого Паттерна:</strong> СтрахБезденежья («Денег никогда не хватит»)<br>
+                                <strong>Новый Код:</strong> Чувство Достаточности и Потока</p>
+                                
+                                <p><strong>Пример записи на День 5 (Фаза 1):</strong><br>
+                                Дата / День: 15.10 / День 5<br>
+                                Фаза: 1 (Разрушение)<br>
+                                Факт активации старого паттерна: Увидел счёт за ЖКУ, мысль «опять всё съест».<br>
+                                Качество выполнения практики (1-5): 4 (Отметил, но лёгкая тревога осталась)<br>
+                                Телесный отклик / Наблюдение: Сжался желудок. Сделал 3 глубоких вдоха.<br>
+                                Микро-действие в новой парадигме: Осознанная трата: Купил кофе, мысленно поблагодарил за обмен энергии.</p>
+                                
+                                <p><strong>Пример записи на День 15 (Фаза 2):</strong><br>
+                                Дата / День: 25.10 / День 15<br>
+                                Фаза: 2 (Закладка)<br>
+                                Факт активации старого паттерна: Утром, до практики, фоновое беспокойство.<br>
+                                Качество выполнения практики (1-5): 5 (Ярко прожил ощущение изобилия как тяжести и тепла в ладонях)<br>
+                                Телесный отклик / Наблюдение: После практика — спокойствие на 2 часа.<br>
+                                Микро-действие в новой парадигме: Демонстрация ценности: Бесплатно проконсультировал коллегу по своему профилю.</p>
+                                
+                                <p><strong>Пример записи на День 35 (Фаза 3):</strong><br>
+                                Дата / День: 05.11 / День 35<br>
+                                Фаза: 3 (Интеграция)<br>
+                                Факт активации старого паттерна: Разговор с начальником о бюджете.<br>
+                                Качество выполнения практики (1-5): 4 (Применил триггер (сжал кулак), смог говорить увереннее)<br>
+                                Телесный отклик / Наблюдение: Старая реакция (сжаться) была, но слабее. Новый код «включился».<br>
+                                Микро-действие в новой парадигме: Запрос: Чётко озвучил свои условия по проекту.</p>
+                            </div>
+                            
+                            <h5>КАК ИСПОЛЬЗОВАТЬ ЭТОТ ШАБЛОН</h5>
+                            <ol>
+                                <li>Скопируйте шапку журнала (Название Паттерна и Новый Код).</li>
+                                <li>Вставьте в свой документ (подойдёт обычный текстовый файл, Google Docs, Notion или специальный редактор Markdown).</li>
+                                <li>Заполняйте строки каждый день, последовательно записывая наблюдения по всем пунктам.</li>
+                                <li>На 40-й день добавьте отдельную запись о своей Акции Воплощения — реальном поступке, закрепляющем новый паттерн в мире.</li>
+                            </ol>
+                            <p>Этот формат обеспечивает чёткость и лёгкость ведения вашего персонального «Чертёжа Перезакладки».</p>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">РАЗДЕЛ ПЯТЫЙ: СЕЗОННЫЕ ПРАКТИКИ</h3>
+                        <p class="text-center"><em>Четыре раза в год — большая перезагрузка.</em></p>
+                        
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Ритуал</th>
+                                    <th>Цель</th>
+                                    <th>Действие</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>ВЕСЕННИЙ РИТУАЛ «ПОСЕВ»</strong></td>
+                                    <td>Заложить новые мыслительные паттерны на ближайший цикл.</td>
+                                    <td>Напиши 3 «семени» на год и закопай их в землю в специальной капсуле.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>ЛЕТНИЙ РИТУАЛ «ПРОРЕЖИВАНИЕ»</strong></td>
+                                    <td>Убрать лишнее, что разрослось.</td>
+                                    <td>Сожги список из 5 привычек/мыслей, от которых готов отказаться.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>ОСЕННИЙ РИТУАЛ «СБОР УРОЖАЯ»</strong></td>
+                                    <td>Подвести итоги, извлечь мудрость.</td>
+                                    <td>Составь список 10 самых важных уроков полугодия.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>ЗИМНИЙ РИТУАЛ «УГЛУБЛЕНИЯ КОРНЕЙ»</strong></td>
+                                    <td>Укрепить связь с ОНО.</td>
+                                    <td>Проведи 24 часа в тишине и одиночестве (где возможно).</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        <div class="ritual">
+                            <h4 class="ritual-title"><i class="fas fa-book-open"></i> ПРИЛОЖЕНИЕ: КНИГА СЕМЯН — ОБРАЗЕЦ ЗАПИСИ</h4>
+                            <div class="journal">
+                                <p><strong>Дата:</strong> _________<br>
+                                <strong>Погода в лесу:</strong> (штиль / буря / туман / ясно)</p>
+                                
+                                <p><strong>1. Утренний дозор:</strong><br>
+                                - Первые мысли: _________<br>
+                                - Намерение-семя: _________</p>
+                                
+                                <p><strong>2. Вечерний учёт:</strong><br>
+                                - Сильнейшая мысль дня: _________<br>
+                                - Возвращённое слово: _________</p>
+                                
+                                <p><strong>3. Находка дня (инсайт, знак):</strong> _________</p>
+                                
+                                <p><strong>4. Благодарность Храму:</strong> _________</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">ЗАКЛЮЧЕНИЕ КНИГИ ТРЕТЬЕЙ</h3>
+                        <p>Ритуалы — это не список дел. Это — язык твоего внимания.</p>
+                        <p>Сначала ты делаешь их сознательно, потом — они делают тебя осознанным.</p>
+                        <p>Ты не обязан выполнять всё. Выбери то, что резонирует с твоим лесом.</p>
+                        
+                        <p class="note">Переходи к Книге Четвёртой только тогда, когда хотя бы один ритуал станет твоей природой.</p>
+                    </div>
+                </section>
+
+                <!-- Книга Четвёртая -->
+                <section id="book-four" class="book-section" style="display: none;">
+                    <div class="book-header">
+                        <h2 class="book-title">КНИГА ЧЕТВЁРТАЯ: МАНТРЫ И ФОРМУЛЫ</h2>
+                        <p class="book-subtitle">Синтаксис Ноосферы</p>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">ВСТУПЛЕНИЕ: ИСКУССТВО СЕЯТЕЛЯ</h3>
+                        <p>Слово — семя. Формула — чертёж роста. Мантра — генетический код мысли.</p>
+                        <p>Одно неверное слово — и семя прорастёт кривым деревом.</p>
+                        <p>Одна неточная формула — и сила обернётся против сеятеля.</p>
+                        <p class="highlight">Здесь нет места приблизительности.</p>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">РАЗДЕЛ ПЕРВЫЙ: ПРАВИЛА СОЗДАНИЯ СЕМЯН</h3>
+                        
+                        <div class="dogma">
+                            <h4 class="dogma-title"><i class="fas fa-ruler"></i> 1. ТРИ ЗАКОНА СЕМЕНИ</h4>
+                            
+                            <h5>Закон Конкретности:</h5>
+                            <p>Что посеешь — то и вырастет.</p>
+                            <div class="example">
+                                <p>Не «я хочу счастья», а «я принимаю радость от маленьких побед каждый день».</p>
+                            </div>
+                            
+                            <h5>Закон Настоящего Времени:</h5>
+                            <p>Семя живёт только в сейчас.</p>
+                            <div class="example">
+                                <p>Не «я буду сильным», а «я проявляю силу в этом решении».</p>
+                            </div>
+                            
+                            <h5>Закон Позитивной Формы:</h5>
+                            <p>Сознание не слышит «не».</p>
+                            <div class="example">
+                                <p>Не «я не боюсь», а «я доверяю течению жизни».</p>
+                            </div>
+                        </div>
+                        
+                        <div class="dogma">
+                            <h4 class="dogma-title"><i class="fas fa-microscope"></i> 2. СТРУКТУРА СЕМЕНИ: АНАЛИЗ НА ПРИМЕРЕ</h4>
+                            
+                            <div class="warning">
+                                <p><strong>Неправильно:</strong><br>
+                                «Я не хочу болеть» → Растёт страх болезни.</p>
+                            </div>
+                            
+                            <div class="example">
+                                <p><strong>Правильно:</strong><br>
+                                «Моё тело наполняется живительной силой и здоровьем» → Растёт состояние здоровья.</p>
+                            </div>
+                            
+                            <h5>Разбор:</h5>
+                            <ul>
+                                <li><strong>Конкретность:</strong> «тело», «живительная сила», «здоровье»</li>
+                                <li><strong>Время:</strong> настоящее («наполняется»)</li>
+                                <li><strong>Форма:</strong> позитивная (утверждение наличия)</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">РАЗДЕЛ ВТОРОЙ: БАЗОВЫЕ УТВЕРЖДЕНИЯ-СЕМЕНА</h3>
+                        
+                        <div class="formula">
+                            <p><strong>ДЛЯ ОЧИЩЕНИЯ ЛЕСА:</strong></p>
+                            <p>«Я отпускаю всё, что мне не служит, с лёгкостью и благодарностью»<br>
+                            <em>Не «избавляюсь» — отпускаю. Не «выбрасываю» — с благодарностью.</em></p>
+                            
+                            <p>«Мой внутренний лес чист, светел и гармоничен»<br>
+                            <em>Три качества, создающие объёмный образ.</em></p>
+                        </div>
+                        
+                        <div class="formula">
+                            <p><strong>ДЛЯ ЗАЩИТЫ ГРАНИЦ:</strong></p>
+                            <p>«Я — Лесничий своего разума. Только мои осознанные выборы управляют мной»<br>
+                            <em>Утверждение статуса и права.</em></p>
+                            
+                            <p>«Мои врата открыты для света и закрыты для тьмы»<br>
+                            <em>Простая бинарная формула.</em></p>
+                        </div>
+                        
+                        <div class="formula">
+                            <p><strong>ДЛЯ ПРИТЯЖЕНИЯ КАЧЕСТВ:</strong></p>
+                            <p>«Я излучаю [качество], и мир возвращает его мне в совершенной форме»<br>
+                            <em>Шаблон для подстановки: «радость», «ясность», «изобилие».</em></p>
+                            
+                            <p>«Каждый день приносит мне именно то, что нужно для моего роста»<br>
+                            <em>Формула доверия, а не требования.</em></p>
+                        </div>
+                        
+                        <div class="formula">
+                            <p><strong>ДЛЯ МАТЕРИАЛИЗАЦИИ:</strong></p>
+                            <p>«Мысль [конкретная] воплощается через мои правильные действия легко и естественно»<br>
+                            <em>Обязательная связка: мысль + действие.</em></p>
+                        </div>
+                        
+                        <div class="formula">
+                            <p><strong>ДЛЯ ДИАГНОСТИКИ:</strong></p>
+                            <p>«Чей голос сейчас говорит во мне? Мой, или гостя?»<br>
+                            <em>Вопрос-фильтр, а не утверждение.</em></p>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">РАЗДЕЛ ТРЕТИЙ: ФОРМУЛЫ СВЯЗИ СФЕР</h3>
+                        
+                        <div class="formula">
+                            <p><strong>ФОРМУЛА 1: БИО ←→ НОО</strong><br>
+                            «Каждая клетка моего тела слышит светлые мысли моего разума»</p>
+                            <p><em>Применение:</em> При работе с болезнями, усталостью.<br>
+                            <em>Механика:</em> Прямая инструкция телу слушать разум.</p>
+                        </div>
+                        
+                        <div class="formula">
+                            <p><strong>ФОРМУЛА 2: НОО ←→ КОСМО</strong><br>
+                            «Мои чистые мысли резонируют с гармоничными законами мироздания»</p>
+                            <p><em>Применение:</em> Для поиска решений, вдохновения.<br>
+                            <em>Механика:</em> Утверждение синхронизации.</p>
+                        </div>
+                        
+                        <div class="formula">
+                            <p><strong>ФОРМУЛА 3: ПОЛНЫЙ ЦИКЛ</strong><br>
+                            «Тело чувствует → Разум понимает → Вселенная отвечает»</p>
+                            <p><em>Применение:</em> Для комплексных намерений.<br>
+                            <em>Механика:</em> Описание процесса, а не результата.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">РАЗДЕЛ ЧЕТВЁРТЫЙ: МОЛИТВА ЛЕСНИЧЕГО — ПОЛНЫЙ РАЗБОР</h3>
+                        
+                        <div class="formula">
+                            <p><strong>ТЕКСТ МОЛИТВЫ:</strong></p>
+                            <p>«Я стою в центре своего леса.<br>
+                            Над моей головой — звёзды Сверх-Я, через которые идут потоки миров.<br>
+                            Под ногами — почва ОНО, хранящая память веков.<br>
+                            Вокруг — деревья моих мыслей, звери моих страстей, птицы моих идей.</p>
+                            
+                            <p>Я не дерево. Я не зверь. Я не птица.<br>
+                            Я — Лесничий.</p>
+                            
+                            <p>Мой инструмент — внимание. Мой закон — равновесие. Моя цель — гармония.<br>
+                            Я наблюдаю, различаю, выбираю.</p>
+                            
+                            <p>Я ухаживаю за симбионтами, ограничиваю паразитов, изгоняю хищников.<br>
+                            Я в ответе за каждый росток.</p>
+                            
+                            <p>И да будет так, пока свет сознания не погаснет.<br>
+                            Аминь.»</p>
+                        </div>
+                        
+                        <h4>СТРУКТУРНЫЙ АНАЛИЗ:</h4>
+                        <ol>
+                            <li><strong>Позиционирование</strong> (где я?) — «в центре своего леса»</li>
+                            <li><strong>Ориентация в трёх сферах:</strong>
+                                <ul>
+                                    <li>Вверх: Сверх-Я (космосфера)</li>
+                                    <li>Вниз: ОНО (биосфера)</li>
+                                    <li>Вокруг: Я + мысли (ноосфера)</li>
+                                </ul>
+                            </li>
+                            <li><strong>Отрицание отождествления</strong> (я не...)</li>
+                            <li><strong>Утверждение статуса</strong> (я — Лесничий)</li>
+                            <li><strong>Определение инструментов</strong></li>
+                            <li><strong>Перечисление обязанностей</strong></li>
+                            <li><strong>Принятие ответственности</strong></li>
+                            <li><strong>Временное ограничение</strong> («пока свет...»)</li>
+                            <li><strong>Сакральное закрытие</strong> («Аминь»)</li>
+                        </ol>
+                        
+                        <div class="formula">
+                            <p><strong>КОРОТКАЯ ВЕРСИЯ ДЛЯ ЕЖЕДНЕВНОГО ПОВТОРЕНИЯ:</strong><br>
+                            «Я — Лесничий.<br>
+                            Я наблюдаю.<br>
+                            Я выбираю.<br>
+                            Я в ответе.»</p>
+                            <p><em>Заметьте: четыре строки, четыре столпа практики.</em></p>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">РАЗДЕЛ ПЯТЫЙ: ФОРМУЛЫ ДЛЯ ПРОДВИНУТЫХ ЛЕСНИЧИХ</h3>
+                        
+                        <div class="formula">
+                            <p><strong>ФОРМУЛА ПЕРЕЗАПИСИ:</strong><br>
+                            «Старый паттерн [название] трансформируется в новый паттерн [название] через моё осознанное присутствие»</p>
+                            <p><em>Применение:</em> Во время Сорокадневной Перезакладки.</p>
+                        </div>
+                        
+                        <div class="formula">
+                            <p><strong>ФОРМУЛА НЕЙТРАЛИЗАЦИИ ХИЩНИКА:</strong><br>
+                            «Я вижу тебя, [имя хищника]. Я знаю твою природа. Ты не имеешь власти над моим выбором»</p>
+                            <p><em>Трёхчастная структура:</em> признание → понимание → ограничение.</p>
+                        </div>
+                        
+                        <div class="formula">
+                            <p><strong>ФОРМУЛА СОЗДАНИЯ ИНТЕРФЕЙСА:</strong><br>
+                            «Этот предмет [название] становится проводником состояния [состояние] в моём поле»</p>
+                            <p><em>Произносится один раз при создании, затем молчаливо используется.</em></p>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">РАЗДЕЛ ШЕСТЫЙ: ОПАСНЫЕ ФОРМУЛИРОВКИ (ЧЕГО ИЗБЕГАТЬ)</h3>
+                        
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Тип ошибки</th>
+                                    <th>❌ Неправильно</th>
+                                    <th>✅ Правильно</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>АБСОЛЮТНЫЕ УТВЕРЖДЕНИЯ</strong></td>
+                                    <td>«Я всегда совершенен» → Отрицает развитие</td>
+                                    <td>«Я совершенствуюсь с каждым днём»</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>ОТРИЦАЮЩИЕ ФОРМЫ</strong></td>
+                                    <td>«Я свободен от страха» → Привлекает внимание к страху</td>
+                                    <td>«Я наполнен смелостью»</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>НЕКОНКРЕТНЫЕ ПОНЯТИЯ</strong></td>
+                                    <td>«Я становлюсь лучше» → Что значит «лучше»?</td>
+                                    <td>«Я становлюсь внимательнее к своим мыслям»</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>ФОРМУЛЫ ЗАВИСИМОСТИ</strong></td>
+                                    <td>«Ты меня любишь» → Направлено на волю другого</td>
+                                    <td>«Я открыт для взаимной любви»</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">РАЗДЕЛ СЕДЬМОЙ: ПРАКТИКА СОЗДАНИЯ СВОИХ ФОРМУЛ</h3>
+                        
+                        <h4>ШАГИ СОЗДАНИЯ (7 ДНЕЙ):</h4>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>День</th>
+                                    <th>Задача</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>День 1</strong></td>
+                                    <td>Определи цель (одно конкретное качество или изменение)</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>День 2</strong></td>
+                                    <td>Напиши 10 возможных формулировок</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>День 3</strong></td>
+                                    <td>Удали все с «не», «избавиться», «прекратить»</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>День 4</strong></td>
+                                    <td>Проверь на конкретность — можно ли это почувствовать телом?</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>День 5</strong></td>
+                                    <td>Упрости до 1-2 предложений</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>День 6</strong></td>
+                                    <td>Произнеси вслух — резонирует ли?</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>День 7</strong></td>
+                                    <td>Начни использовать, но отслеживай эффект 7 дней</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        <h4>ПРИМЕР СОЗДАНИЯ:</h4>
+                        <p><strong>Цель:</strong> «Хочу перестать procrastinate»</p>
+                        
+                        <div class="warning">
+                            <p>❌ «Я не откладываю на потом» (отрицание)</p>
+                            <p>❌ «Я делаю всё вовремя» (абсолют)</p>
+                        </div>
+                        
+                        <div class="example">
+                            <p>✅ «Я начинаю важные дела с лёгкостью и сразу» (конкретно, позитивно, в настоящем)</p>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">РАЗДЕЛ ВОСЬМОЙ: РИТУАЛ АКТИВАЦИИ СЕМЯН</h3>
+                        
+                        <div class="ritual">
+                            <h4 class="ritual-title"><i class="fas fa-seedling"></i> ТРОЙНОЙ РИТУАЛ ПОСЕВА</h4>
+                            
+                            <p><strong>Устно:</strong> Произнеси семя шёпотом, чтобы услышали губы.</p>
+                            <p><strong>Письменно:</strong> Запиши семя, чтобы увидели глаза.</p>
+                            <p><strong>Телесно:</strong> Соверши микро-действие в соответствии с семенем, чтобы почувствовало тело.</p>
+                            
+                            <div class="example">
+                                <p><strong>Пример для семени «Я легко начинаю дела»:</strong></p>
+                                <ol>
+                                    <li>Шёпотом произнести</li>
+                                    <li>Записать в дневник</li>
+                                    <li>Сразу сделать одно маленькое отложенное дело</li>
+                                </ol>
+                            </div>
+                        </div>
+                        
+                        <div class="dogma">
+                            <h4 class="dogma-title"><i class="fas fa-check-circle"></i> ПРИЛОЖЕНИЕ: ТАБЛИЦА ПРОВЕРКИ СЕМЕНИ</h4>
+                            <p>Перед использованием любой формулы спроси:</p>
+                            <ol>
+                                <li>Конкретно ли это? (Можно ли представить образ?)</li>
+                                <li>В настоящем ли времени?</li>
+                                <li>Свободно ли от отрицаний?</li>
+                                <li>Уважает ли волю других?</li>
+                                <li>Соответствует ли моей истинной цели?</li>
+                                <li>Вызывает ли чувство лёгкости при произнесении?</li>
+                            </ol>
+                            <p class="note"><strong>Если 5 из 6 — «да», семя готово к посадке.</strong></p>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">ЗАКЛЮЧЕНИЕ КНИГИ ЧЕТВЁРТОЙ</h3>
+                        <p><em>Слова — твои самые точные инструменты.<br>
+                        Формулы — твои самые чёткие чертежи.<br>
+                        Мантры — твои самые сильные семена.</em></p>
+                        
+                        <p>Сначала ты учишься читать чужие формулы.<br>
+                        Потом — создавать свои.<br>
+                        Потом — становишься живой формулой.</p>
+                        
+                        <p class="note">Но помни: самое могущественное семя — это молчание, из которого рождается слово.</p>
+                        
+                        <p class="note">Переходи к Книге Пятой только тогда, когда сможешь отличить работающую формулу от красивой пустоты.</p>
+                    </div>
+                </section>
+
+                <!-- Книга Пятая -->
+                <section id="book-five" class="book-section" style="display: none;">
+                    <div class="book-header">
+                        <h2 class="book-title">КНИГА ПЯТАЯ: ОПАСНОСТИ И ПРЕДУПРЕЖДЕНИЯ</h2>
+                        <p class="book-subtitle">Тень пути</p>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">ВСТУПЛЕНИЕ: ТЕНЬ ПУТИ</h3>
+                        <p>Каждому свету — своя тень. Каждому знанию — своя ловушка.</p>
+                        <p>Осознанность — это не только видеть дорогу, но и замечать обрывы по краям.</p>
+                        <p>Эта книга — не чтобы испугать, а чтобы предупредить.</p>
+                        <p class="highlight">Лучше знать о яме заранее, чем упасть в неё по неведению.</p>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">РАЗДЕЛ ПЕРВЫЙ: ОПАСНОСТИ ВНУТРЕННЕГО ПУТИ</h3>
+                        
+                        <div class="warning">
+                            <h4 class="warning-title"><i class="fas fa-tools"></i> 1. ПОДМЕНА СУТИ ИНСТРУМЕНТОМ</h4>
+                            <p><strong>Суть опасности:</strong> Ритуалы, мантры, формулы становятся самоцелью. Лесничий начинает служить инструментам, а не использовать их.</p>
+                            
+                            <h5>Примеры:</h5>
+                            <ul>
+                                <li>Собирание всё новых практик без глубинного освоения</li>
+                                <li>Создание сложных ритуалов «для красоты», а не для работы</li>
+                                <li>Вера в магическую силу предметов без изменения сознания</li>
+                            </ul>
+                            
+                            <h5>Как распознать:</h5>
+                            <p>Если пропуск практики вызывает панику или чувство вины — это зависимость.<br>
+                            Если гордишься количеством выполненных ритуалов — это подмена.</p>
+                            
+                            <h5>Лечение:</h5>
+                            <ul>
+                                <li>Вернуться к сути. Спросить: «Для чего я это делаю? Что во мне меняет эта практика?»</li>
+                                <li>Упростить. Иногда — сознательно пропустить практику, чтобы проверить: кто хозяин?</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="warning">
+                            <h4 class="warning-title"><i class="fas fa-chart-bar"></i> 2. ПАРАЛИЧ АНАЛИЗА</h4>
+                            <p><strong>Суть опасности:</strong> Бесконечное картографирование своего леса вместо действия. Постоянный самоанализ, который становится формой бездействия.</p>
+                            
+                            <h5>Примеры:</h5>
+                            <ul>
+                                <li>Ведение дневников без выводов и изменений</li>
+                                <li>Постоянная диагностика без лечения</li>
+                                <li>«Я ещё не готов действовать, мне нужно больше понять»</li>
+                            </ul>
+                            
+                            <h5>Как распознать:</h5>
+                            <p>Если знание не ведёт к действию — это паралич.<br>
+                            Если «понимание» становится оправданием бездействия.</p>
+                            
+                            <h5>Лечение:</h5>
+                            <ul>
+                                <li>Правило 3 дней: не более трёх дней на анализ, затем — минимальное действие.</li>
+                                <li>Спросить: «Какое самое маленькое действие я могу сделать прямо сейчас?»</li>
+                                <li>Иногда — действовать наугад. Ошибка даст больше данных, чем вечное размышление.</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="warning">
+                            <h4 class="warning-title"><i class="fas fa-running"></i> 3. ОТРИЦАНИЕ ТЕЛА (ГНОСТИЦИЗМ)</h4>
+                            <p><strong>Суть опасности:</strong> Попытка жить только в ноосфере, игнорируя биосферу. Неуважение к телу как к «низшей» форме.</p>
+                            
+                            <h5>Примеры:</h5>
+                            <ul>
+                                <li>Продолжение медитации при явной физической боли</li>
+                                <li>Небрежение сном, едой, здоровьем «ради практик»</li>
+                                <li>Ощущение, что тело мешает духовному развитию</li>
+                            </ul>
+                            
+                            <h5>Как распознать:</h5>
+                            <p>Если пренебрегаешь сигналами тела ради «высших целей».<br>
+                            Если чувствуешь презрение к физическим потребностям.</p>
+                            
+                            <h5>Лечение:</h5>
+                            <ul>
+                                <li>Помнить: тело — Храм, а не тюрьма.</li>
+                                <li>Практика благодарности телу каждый день.</li>
+                                <li>Включение телесных практик (дыхание, движение, отдых) в ежедневный ритуал.</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="warning">
+                            <h4 class="warning-title"><i class="fas fa-crown"></i> 4. ДУХОВНАЯ ГОРДЫНЯ</h4>
+                            <p><strong>Суть опасности:</strong> Ощущение себя «просветлённым», «постигшим истину». Закрытость к новому. Смотрение свысока на «непросветлённых».</p>
+                            
+                            <h5>Примеры:</h5>
+                            <ul>
+                                <li>Мысль «я уже всё понял»</li>
+                                <li>Раздражение на тех, кто «не видит очевидного»</li>
+                                <li>Использование терминов Кодекса для возвышения над другими</li>
+                            </ul>
+                            
+                            <h5>Как распознать:</h5>
+                            <p>Если ловишь себя на мысли, что ты «лучше» или «глубже» других.<br>
+                            Если перестал задавать вопросы и искать новые знания.</p>
+                            
+                            <h5>Лечение:</h5>
+                            <ul>
+                                <li>Помнить: ноосфера бездонна. Самый мудрый — вечный ученик.</li>
+                                <li>Сознательно искать тех, кто видит то, чего не видишь ты.</li>
+                                <li>Практика «дня новичка»: один день в месяц проживать как полный незнайка, всё ставя под вопрос.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">РАЗДЕЛ ВТОРОЙ: ОПАСНОСТИ ВНЕШНЕГО ВЗАИМОДЕЙСТВИЯ</h3>
+                        
+                        <div class="warning">
+                            <h4 class="warning-title"><i class="fas fa-hands-helping"></i> 1. МИССИОНЕРСТВО И НАВЯЗЫВАНИЕ</h4>
+                            <p><strong>Суть опасности:</strong> Желание «спасти» других, навязать им своё видение. Нарушение заповеди «Не тревожь чужие леса».</p>
+                            
+                            <h5>Примеры:</h5>
+                            <ul>
+                                <li>Непрошеные советы под видом помощи</li>
+                                <li>Попытки обратить других в «веру» Лесничего</li>
+                                <li>Осуждение чужих выборов с позиции «истины»</li>
+                            </ul>
+                            
+                            <h5>Как распознать:</h5>
+                            <p>Если чувствуешь раздражение, что другие «не понимают».<br>
+                            Если ловишь себя на мысли «я знаю, как тебе лучше».</p>
+                            
+                            <h5>Лечение:</h5>
+                            <ul>
+                                <li>Помнить: твоя зона ответственности — твой лес.</li>
+                                <li>Практика молчаливого наблюдения: просто быть рядом, не пытаясь изменить.</li>
+                                <li>Предлагать помощь только когда явно просят. И даже тогда — давать не готовые ответы, а инструменты.</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="warning">
+                            <h4 class="warning-title"><i class="fas fa-door-closed"></i> 2. ИЗОЛЯЦИЯ И БЕГСТВО ОТ МИРА</h4>
+                            <p><strong>Суть опасности:</strong> Использование практик как способа уйти от мира, а не изменить отношения с ним.</p>
+                            
+                            <h5>Примеры:</h5>
+                            <ul>
+                                <li>Прекращение общения с «непросветлёнными»</li>
+                                <li>Создание эзотерического гетто</li>
+                                <li>Оправдание бездействия в мире «внутренней работой»</li>
+                            </ul>
+                            
+                            <h5>Как распознать:</h5>
+                            <p>Если практики ведут к уменьшению контактов с миром.<br>
+                            Если чувствуешь, что мир «мешает» твоему развитию.</p>
+                            
+                            <h5>Лечение:</h5>
+                            <ul>
+                                <li>Помнить: лесничий ухаживает за лесом, а не убегает в него.</li>
+                                <li>Практика «осознанного погружения»: раз в неделю сознательно идти в «шумное» место и сохранять внутреннюю тишину.</li>
+                                <li>Искать баланс: уединение для практик, но возвращение в мир для применения.</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="warning">
+                            <h4 class="warning-title"><i class="fas fa-user-friends"></i> 3. ПРОЕКЦИЯ И ПРИПИСЫВАНИЕ</h4>
+                            <p><strong>Суть опасности:</strong> Видеть в других только отражение своих внутренних процессов. Отрицание реальности другого как самостоятельного существа.</p>
+                            
+                            <h5>Примеры:</h5>
+                            <ul>
+                                <li>«Ты просто отражаешь мои страхи»</li>
+                                <li>«Всё, что ты говоришь — это твои проекции»</li>
+                                <li>Обесценивание чужих переживаний как «неосознанности»</li>
+                            </ul>
+                            
+                            <h5>Как распознать:</h5>
+                            <p>Если всё сводишь к психологическим механизмам.<br>
+                            Если перестал видеть в других отдельные, цельные миры.</p>
+                            
+                            <h5>Лечение:</h5>
+                            <ul>
+                                <li>Помнить: каждый человек — отдельная вселенная.</li>
+                                <li>Практика «любопытства к другому»: слушать без интерпретаций, задавать уточняющие вопросы.</li>
+                                <li>Признавать: «Я не знаю, что ты чувствуешь на самом деле. Расскажи».</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="warning">
+                            <h4 class="warning-title"><i class="fas fa-vial"></i> 4. ОПАСНЫЕ ЭКСПЕРИМЕНТЫ</h4>
+                            <p><strong>Суть опасности:</strong> Игра с сознанием без понимания последствий. Слишком быстрое погружение в глубины без подготовки.</p>
+                            
+                            <h5>Примеры:</h5>
+                            <ul>
+                                <li>Практики изменённых состояний без страховки</li>
+                                <li>Попытки «почистить карму» за неделю</li>
+                                <li>Работа с глубокими травмами без поддержки</li>
+                            </ul>
+                            
+                            <h5>Как распознать:</h5>
+                            <p>Если чувствуешь эйфорию от «прорывов» без интеграции.<br>
+                            Если практики вызывают страх, диссоциацию, потерю связи с реальностью.</p>
+                            
+                            <h5>Лечение:</h5>
+                            <ul>
+                                <li>Правило постепенности: шаг за шагом.</li>
+                                <li>Не бояться обращаться за помощью к более опытным.</li>
+                                <li>Если что-то пугает — остановиться. Интеграция важнее прорыва.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">РАЗДЕЛ ТРЕТИЙ: ИСКАЖЕНИЯ УЧЕНИЯ</h3>
+                        
+                        <div class="warning">
+                            <h4 class="warning-title"><i class="fas fa-book-dead"></i> 1. ФУНДАМЕНТАЛИЗМ И БУКВОЛИЗМ</h4>
+                            <p><strong>Суть опасности:</strong> Восприятие Кодекса как догмы, а не как живой системы. Цитирование без понимания контекста.</p>
+                            
+                            <h5>Примеры:</h5>
+                            <ul>
+                                <li>«В Кодексе сказано...» как окончательный аргумент</li>
+                                <li>Выполнение ритуалов по шагам без понимания смысла</li>
+                                <li>Осуждение тех, кто интерпретирует иначе</li>
+                            </ul>
+                            
+                            <h5>Как распознать:</h5>
+                            <p>Если текст становится важнее опыта.<br>
+                            Если боишься отступить от «канона».</p>
+                            
+                            <h5>Лечение:</h5>
+                            <ul>
+                                <li>Помнить: Кодекс — карта, а не территория.</li>
+                                <li>Перечитывать предисловия: «Эта книга — не догма».</li>
+                                <li>Создавать свои главы, адаптировать практики под себя.</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="warning">
+                            <h4 class="warning-title"><i class="fas fa-money-bill-wave"></i> 2. ЭЗОТЕРИЧЕСКИЙ МАТЕРИАЛИЗМ</h4>
+                            <p><strong>Суть опасности:</strong> Использование практик для достижения исключительно материальных целей без внутренних изменений.</p>
+                            
+                            <h5>Примеры:</h5>
+                            <ul>
+                                <li>Мантры только для привлечения денег</li>
+                                <li>Ритуалы для манипуляции другими</li>
+                                <li>Восприятие ноосферы как «инструмента для успеха»</li>
+                            </ul>
+                            
+                            <h5>Как распознать:</h5>
+                            <p>Если цели только внешние: богатство, власть, влияние.<br>
+                            Если внутренние изменения ценятся только как средство для внешних результатов.</p>
+                            
+                            <h5>Лечение:</h5>
+                            <ul>
+                                <li>Помнить: цель — гармония, а не обладание.</li>
+                                <li>Практика «бескорыстного действия»: делать что-то без ожидания результата.</li>
+                                <li>Спросить: «Что я стану, достигнув этой цели?»</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="warning">
+                            <h4 class="warning-title"><i class="fas fa-random"></i> 3. СИНКРЕТИЗМ БЕЗ ИНТЕГРАЦИИ</h4>
+                            <p><strong>Суть опасности:</strong> Смешение разных систем и практик без понимания их основ. Создание «винегрета» из обрывков учений.</p>
+                            
+                            <h5>Примеры:</h5>
+                            <ul>
+                                <li>Утренняя йога + христианская молитва + буддийская медитация + нейрохакинг</li>
+                                <li>Использование терминов из разных систем как синонимов</li>
+                                <li>Отсутствие целостной картины</li>
+                            </ul>
+                            
+                            <h5>Как распознать:</h5>
+                            <p>Если не можешь объяснить, как разные практики связаны.<br>
+                            Если прыгаешь от одной системы к другой без углубления.</p>
+                            
+                            <h5>Лечение:</h5>
+                            <ul>
+                                <li>Выбрать одну систему как основу, изучать её глубоко.</li>
+                                <li>Интегрировать другие практики только когда понимаешь их место в целостности.</li>
+                                <li>Создавать свою целостную систему, а не коллекцию фрагментов.</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="warning">
+                            <h4 class="warning-title"><i class="fas fa-user-tie"></i> 4. КУЛЬТ ЛИЧНОСТИ И ПСЕВДОУЧИТЕЛЯ</h4>
+                            <p><strong>Суть опасности:</strong> Создание иерархий, зависимость от «гуру», отказ от собственного авторитета.</p>
+                            
+                            <h5>Примеры:</h5>
+                            <ul>
+                                <li>Слепое следование за «мастером»</li>
+                                <li>Создание групп с жесткой иерархией</li>
+                                <li>Передача ответственности за свой путь другому</li>
+                            </ul>
+                            
+                            <h5>Как распознать:</h5>
+                            <p>Если ищешь «того, кто знает».<br>
+                            Если боишься принимать решения без одобрения «учителя».</p>
+                            
+                            <h5>Лечение:</h5>
+                            <ul>
+                                <li>Помнить: самый главный учитель — твой собственный опыт.</li>
+                                <li>Практика «внутреннего совета»: принимать решения после тишины и прислушивания к себе.</li>
+                                <li>Уважать тех, кто знает больше, но сохранять свой суверенитет.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">РАЗДЕЛ ЧЕТВЁРТЫЙ: ПРЕДУПРЕЖДЕНИЯ ДЛЯ ПРАКТИК</h3>
+                        
+                        <div class="warning">
+                            <h5>1. ПРЕДУПРЕЖДЕНИЕ ДЛЯ МЕДИТАЦИИ:</h5>
+                            <p>Не убегай в пустоту от полноты жизни. Медитация — способ быть присутствующим в жизни, а не заменой жизни.</p>
+                        </div>
+                        
+                        <div class="warning">
+                            <h5>2. ПРЕДУПРЕЖДЕНИЕ ДЛЯ РАБОТЫ СО СНАМИ:</h5>
+                            <p>Не теряй границу между сном и явью. Сон — важный источник информации, но не вся информация из сна истинна.</p>
+                        </div>
+                        
+                        <div class="warning">
+                            <h5>3. ПРЕДУПРЕЖДЕНИЕ ДЛЯ РАБОТЫ С ТРИГГЕРАМИ:</h5>
+                            <p>Триггер — ключ, а не источник силы. Сила в тебе, а не в жесте.</p>
+                        </div>
+                        
+                        <div class="warning">
+                            <h5>4. ПРЕДУПРЕЖДЕНИЕ ДЛЯ СОЗДАНИЯ ИНТЕРФЕЙСОВ:</h5>
+                            <p>Предмет — слуга, а не господин. Если начинаешь бояться его потерять — разбери и создай заново.</p>
+                        </div>
+                        
+                        <div class="warning">
+                            <h5>5. ПРЕДУПРЕЖДЕНИЕ ДЛЯ ВЕЛИКОЙ СОРОКАДНЕВНОЙ:</h5>
+                            <p>Не берись за несколько перезакладок сразу. Одно изменение за цикл. Нейропластичность имеет пределы.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">РАЗДЕЛ ПЯТЫЙ: ПРИЗНАКИ ТОГО, ЧТО ТЫ СБИЛСЯ С ПУТИ</h3>
+                        
+                        <div class="warning">
+                            <h4 class="warning-title"><i class="fas fa-exclamation-triangle"></i> ТРЕВОЖНЫЕ СИГНАЛЫ:</h4>
+                            <ul>
+                                <li>Практики становятся тяжелой обязанностью</li>
+                                <li>Ты чувствуешь себя «особенным» из-за своих практик</li>
+                                <li>Скрываешь свои практики от близких из стыда или чувства превосходства</li>
+                                <li>Пренебрегаешь обычными жизненными обязанностями</li>
+                                <li>Появилась бессонница, тревожность, раздражительность</li>
+                                <li>Видишь везде «знаки» и «символы» до потери связи с реальностью</li>
+                                <li>Чувствуешь, что «мир не готов» к твоим insights</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="dogma">
+                            <h4 class="dogma-title"><i class="fas fa-first-aid"></i> ЧТО ДЕЛАТЬ, ЕСЛИ УВИДЕЛ ЭТИ СИГНАЛЫ:</h4>
+                            <ol>
+                                <li>Остановись. Сделай паузу в практиках на 3-7 дней.</li>
+                                <li>Вернись к базе. Сон, питание, физическая активность, общение с близкими.</li>
+                                <li>Поговори с кем-то. С другим Лесничим или просто с здравомыслящим человеком.</li>
+                                <li>Перечитай Книгу Пятую. Осознай, в какую ловушку попал.</li>
+                                <li>Упрости. Вернись к самым простым практикам: утренний дозор, вечерний учёт.</li>
+                                <li>Обратись за помощью. Если нужно — к психологу, врачу, опытному наставнику.</li>
+                            </ol>
+                        </div>
+                        
+                        <div class="dogma">
+                            <h4 class="dogma-title"><i class="fas fa-map"></i> ПРИЛОЖЕНИЕ: КАРТА ОПАСНОСТЕЙ</h4>
+                            
+                            <h5>Внутренние опасности:</h5>
+                            <ul>
+                                <li>Подмена инструментами</li>
+                                <li>Паралич анализа</li>
+                                <li>Отрицание тела</li>
+                                <li>Духовная гордыня</li>
+                            </ul>
+                            
+                            <h5>Внешние опасности:</h5>
+                            <ul>
+                                <li>Миссионерство</li>
+                                <li>Изоляция</li>
+                                <li>Проекция</li>
+                                <li>Опасные эксперименты</li>
+                            </ul>
+                            
+                            <h5>Искажения учения:</h5>
+                            <ul>
+                                <li>Фундаментализм</li>
+                                <li>Эзотерический материализм</li>
+                                <li>Синкретизм без интеграции</li>
+                                <li>Культ личности</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">ЗАКЛЮЧЕНИЕ КНИГИ ПЯТОЙ</h3>
+                        <p>Предупреждён — значит вооружён.</p>
+                        <p>Знание об опасностях не должно парализовать, но должно сделать внимательнее.</p>
+                        <p>Идеальный путь — не тот, где нет препятствий, а тот, где ты умеешь их обходить.</p>
+                        <p>Падение — не провал, а урок.</p>
+                        <p class="highlight">Главное — встать, отряхнуться и идти дальше, помня, куда и зачем.</p>
+                        
+                        <p>Тот, кто прошёл через тьму и знает её природу, становится проводником света для других.</p>
+                        <p class="note">Но проводник — не спаситель. Каждый должен пройти свой путь сам.</p>
+                    </div>
+                </section>
+
+                <!-- Книга Шестая -->
+                <section id="book-six" class="book-section" style="display: none;">
+                    <div class="book-header">
+                        <h2 class="book-title">КНИГА ШЕСТАЯ: СВИТОК ПРЕДАНИЙ И ОТКРЫТИЙ</h2>
+                        <p class="book-subtitle">Живая книга открытий</p>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">ВСТУПЛЕНИЕ: ЖИВАЯ КНИГА</h3>
+                        <p>Эта книга не закончена. Её пишут все, кто идёт путём Лесничего.</p>
+                        <p>Здесь — не истины, а находки. Не догмы, а вопросы. Не инструкции, а следы на тропе.</p>
+                        <p>Если у тебя есть наблюдение, которое может помочь другим — добавь его.</p>
+                        <p>Если у тебя есть вопрос, на который нет ответа — оставь его здесь.</p>
+                        <p class="highlight">Так ноосфера говорит через многих голосов.</p>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">РАЗДЕЛ ПЕРВЫЙ: ХРОНИКИ ОТКРЫТИЙ</h3>
+                        
+                        <div class="journal">
+                            <h4 class="journal-title"><i class="fas fa-search"></i> Пример записи 1: «Феномен зеркальных паттернов»</h4>
+                            <p><strong>Автор:</strong> Лесничий с отметкой «Северный лес»</p>
+                            <p><strong>Наблюдение:</strong> Когда я избавился от страха одиночества, в моём окружении сами собой стали появляться люди, с которыми комфортно молчать вместе.</p>
+                            <p><strong>Вывод:</strong> Ноосфера не терпит пустоты. Убрав один паттерн, нужно сразу сеять новый — иначе на его место придёт что-то извне.</p>
+                            <p><strong>Дата:</strong> 12.03.2025</p>
+                        </div>
+                        
+                        <div class="journal">
+                            <h4 class="journal-title"><i class="fas fa-lightbulb"></i> Пример записи 2: «Эффект водяного знака»</h4>
+                            <p><strong>Автор:</strong> Лесничий «Тихое озеро»</p>
+                            <p><strong>Наблюдение:</strong> Мысли, которые я считал «своими», оказались точными копиями постов из социальных сетей, которые я листал неделю назад. Они вошли незаметно, как водяной знак.</p>
+                            <p><strong>Вывод:</strong> Нужно регулярно чистить «цифровые врата». То, что ты потребляешь молча, всё равно становится частью твоего леса.</p>
+                            <p><strong>Дата:</strong> 05.04.2025</p>
+                        </div>
+                        
+                        <div class="journal">
+                            <h4 class="journal-title"><i class="fas fa-balance-scale"></i> Пример записи 3: «Закон энергетического обмена»</h4>
+                            <p><strong>Автор:</strong> Лесничий «Вечерний костёр»</p>
+                            <p><strong>Наблюдение:</strong> Когда я начал благодарить за каждую, даже самую маленькую трату денег, ощущение «нехватки» сменилось на чувство «потока». Деньги стали приходить легче.</p>
+                            <p><strong>Вывод:</strong> Деньги — не цель, а средство обмена энергией. Благодарность превращает трату в инвестицию.</p>
+                            <p><strong>Дата:</strong> 22.05.2025</p>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">РАЗДЕЛ ВТОРОЙ: ВОПРОСЫ БЕЗ ОТВЕТОВ</h3>
+                        
+                        <div class="journal">
+                            <h4 class="journal-title"><i class="fas fa-question-circle"></i> Вопрос 1: Граница между фильтрацией и изоляцией</h4>
+                            <p><strong>Автор:</strong> Начинающий Лесничий</p>
+                            <p><strong>Вопрос:</strong> Как найти баланс между очищением информационного поля и необходимостью оставаться в контакте с реальным миром? Где проходит граница здоровой фильтрации и бегства от мира?</p>
+                            <p><strong>Дата:</strong> 10.06.2025</p>
+                            <p><strong>Ответы сообщества:</strong> <em>(пока нет)</em></p>
+                        </div>
+                        
+                        <div class="journal">
+                            <h4 class="journal-title"><i class="fas fa-question-circle"></i> Вопрос 2: Симбионты в эпоху алгоритмов</h4>
+                            <p><strong>Автор:</strong> Лесничий «Цифровой след»</p>
+                            <p><strong>Вопрос:</strong> Можно ли считать алгоритмы рекомендаций в соцсетях хищниками? Или это просто новые формы среды обитания для мыслей? Как отличить полезную рекомендацию от паразитарной?</p>
+                            <p><strong>Дата:</strong> 18.07.2025</p>
+                            <p><strong>Ответы сообщества:</strong> <em>(пока нет)</em></p>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">РАЗДЕЛ ТРЕТИЙ: ПРАВИЛА ДОБАВЛЕНИЯ ЗАПИСЕЙ</h3>
+                        
+                        <div class="dogma">
+                            <ol>
+                                <li><strong>Проверено личным опытом</strong> — только то, что прожито.</li>
+                                <li><strong>Без догматизма</strong> — формулировки "я обнаружил", а не "так должно быть".</li>
+                                <li><strong>Анонимность по желанию</strong> — можно подписать лесным именем.</li>
+                                <li><strong>Метки</strong> — для удобства поиска.</li>
+                                <li><strong>Дата</strong> — чтобы видеть эволюцию понимания.</li>
+                                <li><strong>Краткость</strong> — суть наблюдения, без лишней поэзии.</li>
+                            </ol>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">РАЗДЕЛ ЧЕТВЁРТЫЙ: КАК ЭТУ КНИГУ ИСПОЛЬЗОВАТЬ</h3>
+                        
+                        <div class="dogma">
+                            <h5>Для новичка:</h5>
+                            <p>Читай разделы "Предостережения" и "Кейсы" — чтобы учиться на чужих ошибках.</p>
+                            
+                            <h5>Для практика:</h5>
+                            <p>Ищи ответы на свои вопросы в разделе "Вопросы без ответов" — если не нашёл, добавь свой.</p>
+                            
+                            <h5>Для исследователя:</h5>
+                            <p>Веди свою "Летопись открытий" в отдельном журнале, а самые ценные — переноси сюда.</p>
+                            
+                            <h5>Для сообщества:</h5>
+                            <p>Создавай локальные версии этой книги для своего круга лесничих.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">ЭПИЛОГ К ЖИВОЙ КНИГЕ</h3>
+                        <p>Эта книга никогда не будет завершена.</p>
+                        <p>Каждый новый лесничий добавляет в неё строку.</p>
+                        <p>Каждое открытие меняет ландшафт.</p>
+                        <p class="highlight">Мы не пишем историю — мы растем вместе с ней.</p>
+                        
+                        <p>Если ты читаешь это — ты уже часть этого потока.</p>
+                        <p>Оставь свой след. Задай свой вопрос. Поделись находкой.</p>
+                        <p class="note">Ноосфера говорит через многих — будь одним из её голосов.</p>
+                    </div>
+                </section>
+
+                <!-- Книга Седьмая -->
+                <section id="book-seven" class="book-section" style="display: none;">
+                    <div class="book-header">
+                        <h2 class="book-title">КНИГА СЕДЬМАЯ: ПОЛЕВОЙ ЖУРНАЛ ЛЕСНИЧЕГО</h2>
+                        <p class="book-subtitle">Твоя карта леса</p>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">ВСТУПЛЕНИЕ: ТВОЯ КАРТА ЛЕСА</h3>
+                        <p>Этот журнал — не отчёт. Это — следы твоих шагов по собственному лесу.</p>
+                        <p>Здесь нет правильных или неправильных записей. Есть только честные.</p>
+                        <p>Ты ведёшь его не для кого-то, а для того, чтобы видеть свой путь.</p>
+                        <p class="highlight">Пустая страница — тоже запись. Пропущенный день — тоже опыт.</p>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">ИНСТРУКЦИЯ ПО ИСПОЛЬЗОВАНИЮ</h3>
+                        
+                        <div class="dogma">
+                            <h5>Когда вести:</h5>
+                            <ul>
+                                <li><strong>Ежедневно</strong> — для базовой практики</li>
+                                <li><strong>В моменты сильных переживаний</strong> — как «скорая помощь»</li>
+                                <li><strong>В конце недели</strong> — для синтеза</li>
+                                <li><strong>В конце ритуала</strong> (Недельная экспедиция, Сорокадневная) — как итог</li>
+                            </ul>
+                            
+                            <h5>Что записывать:</h5>
+                            <ul>
+                                <li>Факты, а не оценки</li>
+                                <li>Телесные ощущения</li>
+                                <li>Первые пришедшие слова</li>
+                                <li>Повторяющиеся паттерны</li>
+                            </ul>
+                            
+                            <h5>Чего избегать:</h5>
+                            <ul>
+                                <li>Самобичевания</li>
+                                <li>Поэзии без смысла</li>
+                                <li>Цитат без проживания</li>
+                                <li>Сравнения с другими</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">ФОРМАТЫ ЖУРНАЛА (выбери свой)</h3>
+                        
+                        <div class="ritual">
+                            <h4 class="ritual-title"><i class="fas fa-stream"></i> ФОРМАТ 1: МИНИМАЛИСТИЧНЫЙ (для ежедневного использования)</h4>
+                            <div class="journal">
+                                <p><strong>Дата:</strong> ________<br>
+                                <strong>Погода в моём лесу:</strong> (штиль / буря / туман / ясно / дождь / метель)<br>
+                                <strong>Температура души:</strong> (холодно / тепло / жарко / онемение / свежесть)</p>
+                                
+                                <p><strong>Сегодня я поймал хищника:</strong><br>
+                                - Его имя: ________<br>
+                                - Его маска: ________<br>
+                                - Как обезвредил: ________</p>
+                                
+                                <p><strong>Семя, которое посадил сегодня:</strong><br>
+                                - Слово/мысль: ________<br>
+                                - Почва (куда направил): ________</p>
+                                
+                                <p><strong>Обмен с миром:</strong><br>
+                                - Что отдал: ________<br>
+                                - Что получил: ________<br>
+                                - Баланс: (+/-/0)</p>
+                                
+                                <p><strong>Одна находка дня:</strong> ________</p>
+                                
+                                <p><strong>Благодарность Храму (телу):</strong> ________</p>
+                                
+                                <p><strong>Завтрашнее намерение-семя:</strong> ________</p>
+                            </div>
+                        </div>
+                        
+                        <div class="ritual">
+                            <h4 class="ritual-title"><i class="fas fa-clipboard-list"></i> ФОРМАТ 2: ПОДРОБНЫЙ (для глубокой работы)</h4>
+                            <div class="journal">
+                                <p><strong>Дата:</strong> ________<br>
+                                <strong>Цикл луны:</strong> ________<br>
+                                <strong>Сезон в душе:</strong> (весна / лето / осень / зима)</p>
+                                
+                                <p><strong>УТРО (Дозор):</strong><br>
+                                - Первые три мысли при пробуждении:<br>
+                                - Намерение-семя на день: ________<br>
+                                - Телесный сигнал (что болит/радует/напряжено): ________</p>
+                                
+                                <p><strong>ДЕНЬ (Наблюдение):</strong><br>
+                                - Самый сильный эмоциональный всплеск и его триггер: ________<br>
+                                - Повторяющаяся мысль-паразит (сколько раз заметил): ________<br>
+                                - Спонтанный симбионт (неожиданная полезная мысль): ________</p>
+                                
+                                <p><strong>ВЕЧЕР (Учёт):</strong><br>
+                                - Какое семя проросло сегодня? ________<br>
+                                - Какое слово вернулось ко мне? ________<br>
+                                - Что из утреннего намерения воплотилось? ________</p>
+                                
+                                <p><strong>НОЧЬ (Подготовка ко сну):</strong><br>
+                                - Вопрос к ОНО перед сном: ________<br>
+                                - Благодарность трём обитателям леса:<br>
+                                - Ритуал отпускания (что оставляю за сегодняшним днём): ________</p>
+                            </div>
+                        </div>
+                        
+                        <div class="ritual">
+                            <h4 class="ritual-title"><i class="fas fa-laptop"></i> ФОРМАТ 3: ЦИФРОВОЙ (для структурированного анализа)</h4>
+                            <div class="journal">
+                                <p><strong>Дата:</strong> YYYY-MM-DD<br>
+                                <strong>Тэги:</strong> #настроение #прорыв #вызов #открытие</p>
+                                
+                                <p><strong>[Блок 1: МЕТРИКИ]</strong><br>
+                                Энергия (1-10): _<br>
+                                Фокус (1-10): _<br>
+                                Гармония (1-10): _</p>
+                                
+                                <p><strong>[Блок 2: КАРТА ПАТТЕРНОВ]</strong><br>
+                                Активированные хищники:<br>
+                                - [Имя] → [Триггер] → [Реакция]<br>
+                                - ...<br><br>
+                                Обнаруженные симбионты:<br>
+                                - [Имя] → [Источник] → [Эффект]<br>
+                                - ...</p>
+                                
+                                <p><strong>[Блок 3: ОБМЕНЫ]</strong><br>
+                                Отдано миру:<br>
+                                - Ресурсы: _<br>
+                                - Внимание: _<br>
+                                - Энергия: _<br><br>
+                                Получено от мира:<br>
+                                - Ресурсы: _<br>
+                                - Внимание: _<br>
+                                - Энергия: _</p>
+                                
+                                <p><strong>[Блок 4: ИНСАЙТЫ]</strong><br>
+                                Ключевое наблюдение: _<br>
+                                Вопрос без ответа: _<br>
+                                Следующее действие: _</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">СПЕЦИАЛЬНЫЕ СТРАНИЦЫ ДЛЯ РИТУАЛОВ</h3>
+                        
+                        <div class="ritual">
+                            <h4 class="ritual-title"><i class="fas fa-map-signs"></i> СТРАНИЦА НЕДЕЛЬНОЙ ЭКСПЕДИЦИИ</h4>
+                            <div class="journal">
+                                <p><strong>Название экспедиции:</strong> ________<br>
+                                <strong>Дата начала:</strong> ________<br>
+                                <strong>Цель:</strong> ________</p>
+                                
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>День</th>
+                                            <th>Задача</th>
+                                            <th>Открытие</th>
+                                            <th>Сопротивление</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>Пн</strong></td>
+                                            <td>Диагностика поля</td>
+                                            <td>________</td>
+                                            <td>________</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Вт</strong></td>
+                                            <td>Карантин и молчание</td>
+                                            <td>________</td>
+                                            <td>________</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Ср</strong></td>
+                                            <td>Посев нового штамма</td>
+                                            <td>________</td>
+                                            <td>________</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Чт</strong></td>
+                                            <td>Осознанный обмен</td>
+                                            <td>________</td>
+                                            <td>________</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Пт</strong></td>
+                                            <td>Встреча с хищником</td>
+                                            <td>________</td>
+                                            <td>________</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Сб</strong></td>
+                                            <td>Поиск источника</td>
+                                            <td>________</td>
+                                            <td>________</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Вс</strong></td>
+                                            <td>Синтез и обет</td>
+                                            <td>________</td>
+                                            <td>________</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                
+                                <p><strong>Итог экспедиции:</strong></p>
+                                <p>Самый ядовитый паттерн: ________</p>
+                                <p>Самая полезная практика: ________</p>
+                                <p>Новое правило: ________</p>
+                            </div>
+                        </div>
+                        
+                        <div class="ritual">
+                            <h4 class="ritual-title"><i class="fas fa-calendar-day"></i> СТРАНИЦА СОРОКАДНЕВНОЙ ПЕРЕЗАКЛАДКИ</h4>
+                            <div class="journal">
+                                <p><strong>Название паттерна:</strong> ________<br>
+                                <strong>Новый код:</strong> ________<br>
+                                <strong>Дата начала:</strong> ________</p>
+                                
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>День</th>
+                                            <th>Фаза</th>
+                                            <th>Активация старого</th>
+                                            <th>Качество практики (1-5)</th>
+                                            <th>Телесный отклик</th>
+                                            <th>Микро-действие в новой парадигме</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>1</td>
+                                            <td>________</td>
+                                            <td>________</td>
+                                            <td>________</td>
+                                            <td>________</td>
+                                            <td>________</td>
+                                        </tr>
+                                        <tr>
+                                            <td>...</td>
+                                            <td>________</td>
+                                            <td>________</td>
+                                            <td>________</td>
+                                            <td>________</td>
+                                            <td>________</td>
+                                        </tr>
+                                        <tr>
+                                            <td>40</td>
+                                            <td>________</td>
+                                            <td>________</td>
+                                            <td>________</td>
+                                            <td>________</td>
+                                            <td>________</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                
+                                <p><strong>Акция воплощения на 40-й день:</strong> ________</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">РАЗДЕЛ ДЛЯ НАХОДОК И ЗНАКОВ</h3>
+                        
+                        <div class="ritual">
+                            <h4 class="ritual-title"><i class="fas fa-moon"></i> КОЛЛЕКЦИЯ СНОВИДЕНИЙ</h4>
+                            <div class="journal">
+                                <p><strong>Дата сна:</strong> ________<br>
+                                <strong>Вопрос перед сном:</strong> ________</p>
+                                
+                                <p><strong>Ключевые образы:</strong><br>
+                                1. ________<br>
+                                2. ________<br>
+                                3. ________</p>
+                                
+                                <p><strong>Послание для Лесничего:</strong> ________</p>
+                            </div>
+                            <p><em>Сны — письма от ОНО. Записывай первые три образа.</em></p>
+                        </div>
+                        
+                        <div class="ritual">
+                            <h4 class="ritual-title"><i class="fas fa-search"></i> КОЛЛЕКЦИЯ СИМВОЛОВ</h4>
+                            <div class="journal">
+                                <p><strong>Дата:</strong> ________<br>
+                                <strong>Место:</strong> ________<br>
+                                <strong>Символ/знак:</strong> ________</p>
+                                
+                                <p><strong>Первая ассоциация:</strong> ________</p>
+                                
+                                <p><strong>Возможное значение для моего пути:</strong> ________</p>
+                            </div>
+                            <p><em>Знаки, которые мир тебе показывает</em></p>
+                        </div>
+                        
+                        <div class="ritual">
+                            <h4 class="ritual-title"><i class="fas fa-comments"></i> КОЛЛЕКЦИЯ ДИАЛОГОВ С ОНО</h4>
+                            <div class="journal">
+                                <p><strong>Вопрос:</strong> ________<br>
+                                <strong>Дата вопроса:</strong> ________<br>
+                                <strong>Дата ответа:</strong> ________</p>
+                                
+                                <p><strong>Форма ответа</strong> (сон/интуиция/телесный сигнал/случайное слово): ________</p>
+                                
+                                <p><strong>Ответ:</strong> ________</p>
+                            </div>
+                            <p><em>Ответы, пришедшие из глубины</em></p>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">МЕСЯЧНЫЙ ОБЗОР (страница для итогов)</h3>
+                        
+                        <div class="journal">
+                            <p><strong>Месяц:</strong> ________<br>
+                            <strong>Главная тема месяца:</strong> ________</p>
+                            
+                            <p><strong>СТАТИСТИКА:</strong><br>
+                            - Дней с ясной погодой в лесу: __<br>
+                            - Пойманных хищников: __<br>
+                            - Посаженных семян: __<br>
+                            - Найденных симбионтов: __</p>
+                            
+                            <p><strong>ТОП-3 ПАТТЕРНА МЕСЯЦА:</strong><br>
+                            - ________ (активировался __ раз)<br>
+                            - ________ (активировался __ раз)<br>
+                            - ________ (активировался __ раз)</p>
+                            
+                            <p><strong>САМОЕ СИЛЬНОЕ СЕМЯ МЕСЯЦА:</strong> ________<br>
+                            <strong>ЕГО ПЛОДЫ:</strong> ________</p>
+                            
+                            <p><strong>ГЛАВНЫЙ ВЫЗОВ МЕСЯЦА:</strong> ________<br>
+                            <strong>КАК С НИМ СПРАВИЛСЯ:</strong> ________</p>
+                            
+                            <p><strong>ЦЕЛЬ НА СЛЕДУЮЩИЙ МЕСЯЦ:</strong> ________</p>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">ЧИСТЫЕ СТРАНИЦЫ ДЛЯ СВОБОДНЫХ ЗАПИСЕЙ</h3>
+                        
+                        <div class="journal">
+                            <p style="height: 300px; display: flex; align-items: center; justify-content: center; color: var(--earth-light); font-style: italic;">
+                                Здесь можно рисовать схемы леса, записывать диалоги с обитателями, составлять карты потоков, фиксировать прорывы и кризисы. Твоя территория.
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">ПРАВИЛА ВЕДЕНИЯ, КОТОРЫЕ ВАЖНО ПОМНИТЬ</h3>
+                        
+                        <div class="dogma">
+                            <ol>
+                                <li><strong>Пропуск — не провал.</strong> Пропустил день? Просто начни снова.</li>
+                                <li><strong>Не редактируй прошлые записи.</strong> Они — свидетельства твоего состояния тогда.</li>
+                                <li><strong>Перечитывай раз в сезон.</strong> Видишь ли ты рост?</li>
+                                <li><strong>Если журнал стал тяготить — упрости формат.</strong></li>
+                                <li><strong>Храни его в безопасном месте.</strong> Это твоя личная территория.</li>
+                                <li><strong>Можно сжигать старые журналы после перечитывания</strong> — как ритуал отпускания.</li>
+                            </ol>
+                        </div>
+                    </div>
+                    
+                    <div class="chapter">
+                        <h3 class="chapter-title">ЭПИЛОГ К ЖУРНАЛУ</h3>
+                        <p>Этот журнал — не зеркало, в котором ты ищешь своё отражение.</p>
+                        <p>Это — карта, которую ты рисуешь, шагая.</p>
+                        <p>Сначала ты ведёшь журнал, потом журнал ведёт тебя к тем местам в лесу, куда ты бы сам не пошёл.</p>
+                        <p class="highlight">И однажды ты обнаруживаешь, что можешь идти без карты — потому что ты сам стал этим лесом, этим путём, этим вниманием.</p>
+                        
+                        <p class="note">Последняя запись в этом журнале будет такой:<br>
+                        <strong>«Сегодня я не делал записей. Я просто жил.<br>
+                        И этого было достаточно.»</strong></p>
+                        
+                        <p class="text-center" style="margin-top: 2rem; font-size: 1.2rem;">
+                            Кодекс завершён, но не закончен.<br>
+                            Он будет расти с тобой.<br>
+                            Допиши свою книгу.
+                        </p>
+                    </div>
+                </section>
+
+                <!-- Навигация между книгами -->
+                <div class="book-navigation">
+                    <button class="nav-button prev" onclick="navigateBook('prev')">
+                        <i class="fas fa-arrow-left"></i> Предыдущая книга
+                    </button>
+                    <button class="nav-button next" onclick="navigateBook('next')">
+                        Следующая книга <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </main>
+        </div>
+
+        <footer>
+            <div class="footer-content">
+                <p class="footer-quote">«Мы не пишем историю — мы растем вместе с ней. Если ты читаешь это — ты уже часть этого потока.»</p>
+                <p>Кодекс Лесничего Ноосферы • Полная веб-версия • Создано для тех, кто слышит шепот леса</p>
+                <p style="margin-top: 1rem; font-size: 0.9rem; opacity: 0.8;">
+                    Сохранение позиции: <span id="save-status">✓ Автосохранение включено</span>
+                </p>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Навигация по книгам
+        const books = [
+            'book-zero', 'book-one', 'book-two', 'book-three', 
+            'book-four', 'book-five', 'book-six', 'book-seven'
+        ];
+        
+        const bookTitles = [
+            'Книга Нулевая: Зарождение',
+            'Книга Первая: Основания',
+            'Книга Вторая: Заповеди Лесничего', 
+            'Книга Третья: Ритуалы и Практики',
+            'Книга Четвёртая: Мантры и Формулы',
+            'Книга Пятая: Опасности и Предупреждения',
+            'Книга Шестая: Свиток Преданий',
+            'Книга Седьмая: Полевой Журнал'
+        ];
+        
+        const bookSubtitles = [
+            'История первого откровения',
+            'Версия 2.0 — «Расширенный миф»',
+            'Правила экологии сознания',
+            'Язык, на котором говорит ОНО',
+            'Синтаксис Ноосферы',
+            'Тень пути',
+            'Живая книга открытий',
+            'Твоя карта леса'
+        ];
+        
+        let currentBookIndex = 0;
+        
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', function() {
+            // Показываем первую книгу
+            showBook(currentBookIndex);
+            
+            // Настраиваем навигационные ссылки
+            setupNavigationLinks();
+            
+            // Восстанавливаем позицию чтения
+            restoreReadingPosition();
+            
+            // Обновляем статус автосохранения
+            updateSaveStatus();
+        });
+        
+        function setupNavigationLinks() {
+            const navLinks = document.querySelectorAll('.nav-link');
+            navLinks.forEach((link, index) => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    showBook(index);
+                });
+            });
+        }
+        
+        function showBook(index) {
+            // Скрываем все книги
+            document.querySelectorAll('.book-section').forEach(section => {
+                section.style.display = 'none';
+            });
+            
+            // Показываем выбранную книгу
+            const bookId = books[index];
+            document.getElementById(bookId).style.display = 'block';
+            
+            // Обновляем активную ссылку в навигации
+            document.querySelectorAll('.nav-link').forEach((link, i) => {
+                if (i === index) {
+                    link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
+                }
+            });
+            
+            // Обновляем заголовок книги
+            const bookTitleElement = document.querySelector('.book-title');
+            const bookSubtitleElement = document.querySelector('.book-subtitle');
+            
+            if (bookTitleElement && bookSubtitleElement) {
+                bookTitleElement.textContent = bookTitles[index];
+                bookSubtitleElement.textContent = bookSubtitles[index];
+            }
+            
+            // Обновляем индекс текущей книги
+            currentBookIndex = index;
+            
+            // Сохраняем позицию
+            saveReadingPosition();
+            
+            // Прокручиваем к началу книги
+            document.querySelector('.book-content').scrollTop = 0;
+        }
+        
+        function navigateBook(direction) {
+            if (direction === 'next' && currentBookIndex < books.length - 1) {
+                showBook(currentBookIndex + 1);
+            } else if (direction === 'prev' && currentBookIndex > 0) {
+                showBook(currentBookIndex - 1);
+            }
+        }
+        
+        // Сохраняем текущую позицию чтения
+        function saveReadingPosition() {
+            localStorage.setItem('lastBookIndex', currentBookIndex);
+            localStorage.setItem('lastSaveTime', new Date().toLocaleString());
+        }
+        
+        // Восстанавливаем позицию чтения при загрузке
+        function restoreReadingPosition() {
+            const lastBookIndex = localStorage.getItem('lastBookIndex');
+            if (lastBookIndex !== null) {
+                showBook(parseInt(lastBookIndex));
+            }
+        }
+        
+        // Обновляем статус автосохранения
+        function updateSaveStatus() {
+            const lastSaveTime = localStorage.getItem('lastSaveTime');
+            const saveStatusElement = document.getElementById('save-status');
+            
+            if (lastSaveTime && saveStatusElement) {
+                saveStatusElement.textContent = `✓ Последнее автосохранение: ${lastSaveTime}`;
+            }
+        }
+        
+        // Добавляем функциональность поиска
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+F для поиска по странице
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                alert('Используйте стандартную функцию поиска браузера (Ctrl+F) для поиска по тексту кодекса.');
+            }
+            
+            // Стрелки для навигации
+            if (e.key === 'ArrowRight') {
+                navigateBook('next');
+            } else if (e.key === 'ArrowLeft') {
+                navigateBook('prev');
+            }
+        });
+        
+        // Сохраняем позицию при закрытии
+        window.addEventListener('beforeunload', function() {
+            saveReadingPosition();
+        });
+        
+        // Периодическое автосохранение
+        setInterval(saveReadingPosition, 30000); // Каждые 30 секунд
+        
+        // Добавляем кнопку для быстрого возврата к началу книги
+        document.addEventListener('scroll', function() {
+            const bookContent = document.querySelector('.book-content');
+            if (bookContent.scrollTop > 500) {
+                if (!document.getElementById('back-to-top')) {
+                    const backButton = document.createElement('button');
+                    backButton.id = 'back-to-top';
+                    backButton.innerHTML = '<i class="fas fa-arrow-up"></i>';
+                    backButton.style.position = 'fixed';
+                    backButton.style.bottom = '20px';
+                    backButton.style.right = '20px';
+                    backButton.style.zIndex = '1000';
+                    backButton.style.background = 'var(--forest-medium)';
+                    backButton.style.color = 'white';
+                    backButton.style.border = 'none';
+                    backButton.style.borderRadius = '50%';
+                    backButton.style.width = '50px';
+                    backButton.style.height = '50px';
+                    backButton.style.fontSize = '1.2rem';
+                    backButton.style.cursor = 'pointer';
+                    backButton.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+                    
+                    backButton.addEventListener('click', function() {
+                        bookContent.scrollTop = 0;
+                    });
+                    
+                    document.body.appendChild(backButton);
+                }
+            } else {
+                const backButton = document.getElementById('back-to-top');
+                if (backButton) {
+                    backButton.remove();
+                }
+            }
+        });
+        
+        // Добавляем подсветку текущего дня недели в таблицах
+        function highlightCurrentDay() {
+            const days = ['ВОСКРЕСЕНЬЕ', 'ПОНЕДЕЛЬНИК', 'ВТОРНИК', 'СРЕДА', 'ЧЕТВЕРГ', 'ПЯТНИЦА', 'СУББОТА'];
+            const today = new Date().getDay(); // 0=воскресенье, 1=понедельник...
+            const todayName = days[today];
+            
+            // Ищем все таблицы и выделяем текущий день
+            document.querySelectorAll('.table').forEach(table => {
+                const rows = table.querySelectorAll('tr');
+                rows.forEach(row => {
+                    const firstCell = row.querySelector('td:first-child');
+                    if (firstCell && firstCell.textContent.includes(todayName)) {
+                        row.style.backgroundColor = 'rgba(129, 199, 132, 0.2)';
+                        row.style.borderLeft = '3px solid var(--leaf)';
+                    }
+                });
+            });
+        }
+        
+        // Запускаем подсветку при загрузке
+        setTimeout(highlightCurrentDay, 500);
+    </script>
 </body>
 </html>
