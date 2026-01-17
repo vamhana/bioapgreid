@@ -1,29 +1,57 @@
 {
-  "headers": [
+
+
+  "version": 2,
+
+  "builds": [
+
     {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "X-Robots-Tag",
-          "value": "index, follow"
-        },
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=3600"
-        }
-      ]
+
+
+      "src": "package.json",
+
+
+      "use": "@vercel/static-build",
+
+
+      "config": {
+
+
+        "distDir": "public"
+
+
+      }
+
+
+      "src": "index.html",
+
+
+      "use": "@vercel/static"
+
     }
+
   ],
-  "rewrites": [
+
+  "routes": [
+
+
     {
-      "source": "/sitemap.xml",
-      "destination": "/sitemap.xml"
-    },
-    {
-      "source": "/robots.txt",
-      "destination": "/robots.txt"
+
+
+      "src": "/(.*)",
+
+
+      "dest": "/public/$1"
+
+
     }
-  ],
-  "cleanUrls": true,
-  "trailingSlash": false
+
+
+    { "handle": "filesystem" },
+
+
+    { "src": ".*", "dest": "index.html" }
+
+  ]
+
 }
