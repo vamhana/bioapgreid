@@ -1,6 +1,13 @@
 User-agent: *
 Allow: /
 Disallow: /admin/
-Disallow: /private/
+Disallow: /cgi-bin/
 
 Sitemap: https://bioapgreid.ru/sitemap.xml
+Host: https://bioapgreid.ru
+
+User-agent: Googlebot
+Allow: /
+User-agent: Yandex
+Allow: /
+Clean-param: ref /index.html
