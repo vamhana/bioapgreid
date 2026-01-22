@@ -915,6 +915,73 @@
         img[loading="lazy"].loaded {
             opacity: 1;
         }
+        
+        /* Компактная навигация */
+        .sidebar {
+            padding: 0.8rem;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: sticky;
+            top: 120px;
+        }
+
+        /* Кастомный скроллбар */
+        .sidebar::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: var(--leaf);
+            border-radius: 2px;
+        }
+
+        .nav-title {
+            font-size: 1rem;
+            margin-bottom: 0.8rem;
+            padding-bottom: 0.3rem;
+            position: sticky;
+            top: 0;
+            background: var(--forest-medium);
+            z-index: 2;
+        }
+
+        .nav-list {
+            margin-top: 0.5rem;
+        }
+
+        .nav-item {
+            margin-bottom: 0.25rem;
+        }
+
+        .nav-link {
+            padding: 0.4rem 0.6rem;
+            font-size: 0.78rem;
+            min-height: 36px; /* минимальная высота для удобства тапа */
+        }
+
+        .nav-icon {
+            font-size: 0.85rem;
+            width: 18px;
+        }
+
+        /* Подсказка о наличии дополнительных книг */
+        .nav-list:after {
+            content: "↓ Ещё";
+            display: block;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.7rem;
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }        
+        
+        
     </style>
 </head>
 <body>
