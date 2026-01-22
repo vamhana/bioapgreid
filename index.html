@@ -10218,439 +10218,504 @@
     </button>
 
     <script>
-        // Навигация по книгам
-        const books = [
-            'book-zero', 'book-one', 'book-two', 'book-three', 
-            'book-four', 'book-five', 'book-six', 'book-seven'
-        ];
-        
-        const bookTitles = [
-            'Книга Нулевая: Зарождение',
-            'Книга Первая: Основания',
-            'Книга Вторая: Заповеди Лесничего', 
-            'Книга Третья: Ритуалы и Практики',
-            'Книга Четвёртая: Мантры и Формулы',
-            'Книга Пятая: Опасности и Предупреждения',
-            'Книга Шестая: Свиток Преданий',
-            'Книга Седьмая: Полевой Журнал'
-        ];
-        
-        const bookSubtitles = [
-            'История первого откровения',
-            'Версия 2.0 — «Расширенный миф»',
-            'Правила экологии сознания',
-            'Язык, на котором говорит ОНО',
-            'Синтаксис Ноосферы',
-            'Тень пути',
-            'Живая книга открытий',
-            'Твоя карта леса'
-        ];
-        
-        let currentBookIndex = 0;
-        // МОБИЛЬНОЕ МЕНЮ - УПРАВЛЕНИЕ
-        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-        const closeMenuBtn = document.getElementById('closeMenu');
-        const menuOverlay = document.getElementById('menuOverlay');
-        const sidebar = document.querySelector('.sidebar');
+    // Навигация по книгам
+    const books = [
+        'book-zero', 'book-one', 'book-two', 'book-three', 
+        'book-four', 'book-five', 'book-six', 'book-seven'
+    ];
 
-        // ФУНКЦИИ ДЛЯ УПРАВЛЕНИЯ МЕНЮ
-        function openMobileMenu() {
-            sidebar.classList.add('active');
-            menuOverlay.style.display = 'block';
-            setTimeout(() => {
-                menuOverlay.style.opacity = '1';
-            }, 10);
-            document.body.style.overflow = 'hidden';
-        }
+    const bookTitles = [
+        'Книга Нулевая: Зарождение',
+        'Книга Первая: Основания',
+        'Книга Вторая: Заповеди Лесничего', 
+        'Книга Третья: Ритуалы и Практики',
+        'Книга Четвёртая: Мантры и Формулы',
+        'Книга Пятая: Опасности и Предупреждения',
+        'Книга Шестая: Свиток Преданий',
+        'Книга Седьмая: Полевой Журнал'
+    ];
 
-        function closeMobileMenu() {
-            sidebar.classList.remove('active');
-            menuOverlay.style.opacity = '0';
-            setTimeout(() => {
-                menuOverlay.style.display = 'none';
-            }, 300);
-            document.body.style.overflow = '';
-        }
+    const bookSubtitles = [
+        'История первого откровения',
+        'Версия 2.0 — «Расширенный миф»',
+        'Правила экологии сознания',
+        'Язык, на котором говорит ОНО',
+        'Синтаксис Ноосферы',
+        'Тень пути',
+        'Живая книга открытий',
+        'Твоя карта леса'
+    ];
 
-        // СОБЫТИЯ ДЛЯ МОБИЛЬНОГО МЕНЮ
-        if (mobileMenuToggle && closeMenuBtn && menuOverlay) {
-            // Открытие меню
-            mobileMenuToggle.addEventListener('click', openMobileMenu);
-            
-            // Закрытие меню
-            closeMenuBtn.addEventListener('click', closeMobileMenu);
-            menuOverlay.addEventListener('click', closeMobileMenu);
-            
-            // Закрытие меню при клике на ссылку
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.addEventListener('click', function() {
-                    setTimeout(closeMobileMenu, 300);
-                });
-            });
-            
-            // Закрытие меню при изменении ориентации экрана
-            window.addEventListener('orientationchange', function() {
-                if (window.innerWidth > 992) {
-                    closeMobileMenu();
-                }
-            });
-            
-            // Автоматическое закрытие при переходе на ПК-размер
-            window.addEventListener('resize', function() {
-                if (window.innerWidth > 992) {
-                    closeMobileMenu();
-                }
-            });
-        }
+    let currentBookIndex = 0;
 
-        // ФУНКЦИЯ ДЛЯ АДАПТИВНОГО UI
-        function updateMobileUI() {
-            const isMobile = window.innerWidth <= 992;
-            const bookContent = document.querySelector('.book-content');
-            const bookNav = document.querySelector('.book-navigation');
-            
-            if (isMobile && bookContent && bookNav) {
-                // АВТОСКРЫТИЕ НАВИГАЦИИ ПРИ ПРОКРУТКЕ (только на мобильных)
-                let lastScrollTop = 0;
-                
-                bookContent.addEventListener('scroll', function() {
-                    const scrollTop = bookContent.scrollTop;
-                    
-                    if (scrollTop > lastScrollTop && scrollTop > 100) {
-                        // Прокрутка вниз - скрываем
-                        bookNav.style.transform = 'translateY(100%)';
-                        bookNav.style.transition = 'transform 0.3s ease';
-                    } else {
-                        // Прокрутка вверх - показываем
-                        bookNav.style.transform = 'translateY(0)';
-                        bookNav.style.transition = 'transform 0.3s ease';
-                    }
-                    
-                    lastScrollTop = scrollTop;
-                });
-                
-                // Более частое автосохранение на мобильных
-                setInterval(saveReadingPosition, 15000);
-            } else if (bookNav) {
-                // На ПК - всегда показываем навигацию
-                bookNav.style.transform = 'translateY(0)';
-                bookNav.style.transition = 'none';
-            }
-        }
-
-        // ИНИЦИАЛИЗАЦИЯ МОБИЛЬНОГО UI
-        document.addEventListener('DOMContentLoaded', function() {
-            updateMobileUI();
-            window.addEventListener('resize', updateMobileUI);
-        });        
-        // Инициализация
-        document.addEventListener('DOMContentLoaded', function() {
-            // Показываем первую книгу
-            showBook(currentBookIndex);
-            
-            // Настраиваем навигационные ссылки
-            setupNavigationLinks();
-            
-            // Восстанавливаем позицию чтения
-            restoreReadingPosition();
-            
-            // Обновляем статус автосохранения
-            updateSaveStatus();
-            
-            // Инициализируем кнопку "Наверх"
-            initBackToTop();
-            
-            // Подсвечиваем текущий день в таблицах
-            highlightCurrentDay();
-            
-            // Отслеживаем прогресс чтения
-            trackReadingProgress();
-            
-            // Инициализируем кнопку печати
-            initPrintButton();
-        });
+    // Инициализация при загрузке
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Кодекс Лесничего: Инициализация...');
         
-        function setupNavigationLinks() {
-            const navLinks = document.querySelectorAll('.nav-link');
-            navLinks.forEach((link, index) => {
-                link.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    showBook(index);
-                    // Обновляем URL без перезагрузки
-                    history.pushState({bookIndex: index}, '', '#' + books[index]);
-                });
-            });
-        }
+        // Показываем первую книгу
+        showBook(currentBookIndex);
         
-        function showBook(index) {
-            // Скрываем все книги
-            document.querySelectorAll('.book-section').forEach(section => {
-                section.style.display = 'none';
-            });
-            
-            // Показываем выбранную книгу
-            const bookId = books[index];
-            document.getElementById(bookId).style.display = 'block';
-            
-            // Обновляем активную ссылку в навигации
-            document.querySelectorAll('.nav-link').forEach((link, i) => {
-                if (i === index) {
-                    link.classList.add('active');
-                    link.setAttribute('aria-current', 'page');
-                } else {
-                    link.classList.remove('active');
-                    link.removeAttribute('aria-current');
-                }
-            });
-            
-            // Обновляем заголовок книги
-            const bookTitleElement = document.querySelector('.book-title');
-            const bookSubtitleElement = document.querySelector('.book-subtitle');
-            
-            if (bookTitleElement && bookSubtitleElement) {
-                bookTitleElement.textContent = bookTitles[index];
-                bookSubtitleElement.textContent = bookSubtitles[index];
-                
-                // Обновляем title страницы для SEO
-                document.title = `${bookTitles[index]} - Кодекс Лесничего Ноосферы`;
-            }
-            
-            // Обновляем индекс текущей книги
-            currentBookIndex = index;
-            
-            // Сохраняем позицию
-            saveReadingPosition();
-            
-            // Прокручиваем к началу книги
-            document.querySelector('.book-content').scrollTop = 0;
-            
-            // Обновляем хлебные крошки
-            updateBreadcrumb(bookTitles[index]);
-        }
+        // Настраиваем навигационные ссылки
+        setupNavigationLinks();
         
-        function navigateBook(direction) {
-            if (direction === 'next' && currentBookIndex < books.length - 1) {
-                showBook(currentBookIndex + 1);
-            } else if (direction === 'prev' && currentBookIndex > 0) {
-                showBook(currentBookIndex - 1);
-            }
-        }
-        
-        // Сохраняем текущую позицию чтения
-        function saveReadingPosition() {
-            localStorage.setItem('lastBookIndex', currentBookIndex);
-            localStorage.setItem('lastSaveTime', new Date().toLocaleString());
-        }
-        
-        // Восстанавливаем позицию чтения при загрузке
-        function restoreReadingPosition() {
-            const lastBookIndex = localStorage.getItem('lastBookIndex');
-            if (lastBookIndex !== null) {
-                // Проверяем, есть ли hash в URL
-                const hash = window.location.hash.substring(1);
-                if (hash && books.includes(hash)) {
-                    const hashIndex = books.indexOf(hash);
-                    showBook(hashIndex);
-                } else {
-                    showBook(parseInt(lastBookIndex));
-                }
-            }
-        }
+        // Восстанавливаем позицию чтения
+        restoreReadingPosition();
         
         // Обновляем статус автосохранения
-        function updateSaveStatus() {
-            const lastSaveTime = localStorage.getItem('lastSaveTime');
-            const saveStatusElement = document.getElementById('save-status');
-            
-            if (lastSaveTime && saveStatusElement) {
-                saveStatusElement.textContent = `✓ Последнее автосохранение: ${lastSaveTime}`;
-            }
-        }
+        updateSaveStatus();
         
-        // Инициализация кнопки "Наверх"
-        function initBackToTop() {
-            const backButton = document.getElementById('back-to-top');
-            const bookContent = document.querySelector('.book-content');
-            
-            bookContent.addEventListener('scroll', function() {
-                if (bookContent.scrollTop > 300) {
-                    backButton.style.display = 'flex';
-                } else {
-                    backButton.style.display = 'none';
-                }
-            });
-            
-            backButton.addEventListener('click', function() {
-                bookContent.scrollTo({
-                    top: 0,
-                    behavior: 'smooth'
-                });
-            });
-        }
+        // Инициализируем кнопку "Наверх"
+        initBackToTop();
         
-        // Подсветка текущего дня в таблицах
-        function highlightCurrentDay() {
-            const days = ['ВОСКРЕСЕНЬЕ', 'ПОНЕДЕЛЬНИК', 'ВТОРНИК', 'СРЕДА', 'ЧЕТВЕРГ', 'ПЯТНИЦА', 'СУББОТА'];
-            const today = new Date().getDay(); // 0=воскресенье, 1=понедельник...
-            const todayName = days[today];
-            
-            document.querySelectorAll('.table').forEach(table => {
-                const rows = table.querySelectorAll('tr');
-                rows.forEach(row => {
-                    const firstCell = row.querySelector('td:first-child');
-                    if (firstCell && firstCell.textContent.includes(todayName)) {
-                        row.style.backgroundColor = 'rgba(129, 199, 132, 0.2)';
-                        row.style.borderLeft = '3px solid var(--leaf)';
-                    }
-                });
-            });
-        }
+        // Подсвечиваем текущий день в таблицах
+        highlightCurrentDay();
         
-        // Отслеживание прогресса чтения
-        function trackReadingProgress() {
-            const bookContent = document.querySelector('.book-content');
-            let maxScroll = 0;
-            
-            bookContent.addEventListener('scroll', function() {
-                const scrollPercentage = (bookContent.scrollTop / (bookContent.scrollHeight - bookContent.clientHeight)) * 100;
-                
-                // Сохраняем максимальный прогресс
-                if (scrollPercentage > maxScroll) {
-                    maxScroll = scrollPercentage;
-                    localStorage.setItem('readingProgress_' + currentBookIndex, maxScroll.toFixed(1));
-                }
-                
-                // Если прочитано более 70% - отмечаем как прочитанное
-                if (scrollPercentage > 70 && maxScroll > 70) {
-                    localStorage.setItem('bookRead_' + currentBookIndex, 'true');
-                }
-            });
-        }
+        // Отслеживаем прогресс чтения
+        trackReadingProgress();
         
-        // Обновление хлебных крошек
-        function updateBreadcrumb(currentBookTitle) {
-            const breadcrumb = document.querySelector('.breadcrumb ol');
-            if (breadcrumb) {
-                breadcrumb.innerHTML = `
-                    <li><a href="/">Главная</a></li>
-                    <li><a href="#" onclick="showBook(0); return false;">Кодекс Лесничего Ноосферы</a></li>
-                    <li><span aria-current="page">${currentBookTitle}</span></li>
-                `;
-            }
-        }
+        // Инициализируем кнопку печати
+        initPrintButton();
         
-        // Инициализация кнопки печати
-        function initPrintButton() {
-            document.getElementById('print-journal').addEventListener('click', function() {
-                // Создаем новое окно для печати
-                const printWindow = window.open('', '_blank');
-                const currentBook = document.querySelector('.book-section[style="display: block;"]');
-                
-                printWindow.document.write(`
-                    <!DOCTYPE html>
-                    <html lang="ru">
-                    <head>
-                        <title>Кодекс Лесничего Ноосферы - ${document.querySelector('.book-title').textContent}</title>
-                        <style>
-                            body { font-family: 'Segoe UI', sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 20px; }
-                            h1 { color: #1a3c27; border-bottom: 2px solid #4a7c59; padding-bottom: 10px; }
-                            h2 { color: #2d5a3d; margin-top: 30px; }
-                            h3 { color: #4a7c59; }
-                            .dogma, .commandment, .ritual, .warning, .journal { 
-                                border-left: 4px solid #ccc; 
-                                padding: 15px; 
-                                margin: 15px 0;
-                                background: #f9f9f9;
-                            }
-                            .dogma { border-color: #4a7c59; }
-                            .commandment { border-color: #8d6e63; }
-                            .ritual { border-color: #bbdefb; }
-                            .warning { border-color: #f44336; }
-                            .journal { border-color: #6d4c41; }
-                            @media print {
-                                body { font-size: 12pt; }
-                                h1 { page-break-after: avoid; }
-                                h2, h3 { page-break-after: avoid; }
-                                .dogma, .commandment, .ritual, .warning, .journal { 
-                                    page-break-inside: avoid;
-                                }
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        <h1>${document.querySelector('.book-title').textContent}</h1>
-                        <p><em>${document.querySelector('.book-subtitle').textContent}</em></p>
-                        <div>${currentBook.innerHTML}</div>
-                        <footer style="margin-top: 50px; padding-top: 20px; border-top: 1px solid #ccc; font-size: 0.9em; color: #666;">
-                            <p>Распечатано с сайта: bioapgreid.ru</p>
-                            <p>Дата: ${new Date().toLocaleDateString('ru-RU')}</p>
-                            <p>Кодекс Лесничего Ноосферы - Экология сознания</p>
-                        </footer>
-                        <script>
-                            window.onload = function() {
-                                window.print();
-                            }
-                        <\/script>
-                    </body>
-                    </html>
-                `);
-                
-                printWindow.document.close();
-            });
-        }
+        // Инициализируем мобильное меню
+        initMobileMenu();
         
-        // Обработка навигации по истории браузера
-        window.addEventListener('popstate', function(event) {
-            if (event.state && event.state.bookIndex !== undefined) {
-                showBook(event.state.bookIndex);
-            }
-        });
-        
-        // Добавляем функциональность поиска
-        document.addEventListener('keydown', function(e) {
-            // Стрелки для навигации
-            if (e.key === 'ArrowRight') {
-                navigateBook('next');
-            } else if (e.key === 'ArrowLeft') {
-                navigateBook('prev');
-            }
-            
-            // Ctrl+S для сохранения
-            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        console.log('Инициализация завершена');
+    });
+
+    // Настраиваем навигационные ссылки
+    function setupNavigationLinks() {
+        const navLinks = document.querySelectorAll('.nav-link');
+        navLinks.forEach((link, index) => {
+            link.addEventListener('click', function(e) {
                 e.preventDefault();
-                saveReadingPosition();
-                updateSaveStatus();
-                alert('Позиция сохранена!');
+                showBook(index);
+                // Обновляем URL без перезагрузки
+                history.pushState({bookIndex: index}, '', '#' + books[index]);
+            });
+        });
+    }
+
+    // Показать книгу по индексу
+    function showBook(index) {
+        // Скрываем все книги
+        document.querySelectorAll('.book-section').forEach(section => {
+            section.style.display = 'none';
+        });
+        
+        // Показываем выбранную книгу
+        const bookId = books[index];
+        const bookElement = document.getElementById(bookId);
+        if (bookElement) {
+            bookElement.style.display = 'block';
+        }
+        
+        // Обновляем активную ссылку в навигации
+        document.querySelectorAll('.nav-link').forEach((link, i) => {
+            if (i === index) {
+                link.classList.add('active');
+                link.setAttribute('aria-current', 'page');
+            } else {
+                link.classList.remove('active');
+                link.removeAttribute('aria-current');
             }
         });
         
-        // Сохраняем позицию при закрытии
-        window.addEventListener('beforeunload', function() {
-            saveReadingPosition();
-        });
+        // Обновляем заголовок книги
+        const bookTitleElement = document.querySelector('.book-title');
+        const bookSubtitleElement = document.querySelector('.book-subtitle');
         
-        // Периодическое автосохранение
-        setInterval(saveReadingPosition, 30000); // Каждые 30 секунд
+        if (bookTitleElement && bookSubtitleElement) {
+            bookTitleElement.textContent = bookTitles[index];
+            bookSubtitleElement.textContent = bookSubtitles[index];
+            
+            // Обновляем title страницы для SEO
+            document.title = `${bookTitles[index]} - Кодекс Лесничего Ноосферы`;
+        }
         
-        // Инициализация при загрузке hash из URL
-        window.addEventListener('load', function() {
+        // Обновляем индекс текущей книги
+        currentBookIndex = index;
+        
+        // Сохраняем позицию
+        saveReadingPosition();
+        
+        // Прокручиваем к началу книги
+        const bookContent = document.querySelector('.book-content');
+        if (bookContent) {
+            bookContent.scrollTop = 0;
+        }
+        
+        // Обновляем хлебные крошки
+        updateBreadcrumb(bookTitles[index]);
+    }
+
+    // Навигация между книгами
+    function navigateBook(direction) {
+        if (direction === 'next' && currentBookIndex < books.length - 1) {
+            showBook(currentBookIndex + 1);
+        } else if (direction === 'prev' && currentBookIndex > 0) {
+            showBook(currentBookIndex - 1);
+        }
+    }
+
+    // Сохраняем текущую позицию чтения
+    function saveReadingPosition() {
+        localStorage.setItem('lastBookIndex', currentBookIndex);
+        localStorage.setItem('lastSaveTime', new Date().toLocaleString('ru-RU'));
+        console.log('Позиция сохранена: книга', currentBookIndex);
+    }
+
+    // Восстанавливаем позицию чтения при загрузке
+    function restoreReadingPosition() {
+        const lastBookIndex = localStorage.getItem('lastBookIndex');
+        if (lastBookIndex !== null) {
+            // Проверяем, есть ли hash в URL
             const hash = window.location.hash.substring(1);
             if (hash && books.includes(hash)) {
                 const hashIndex = books.indexOf(hash);
                 showBook(hashIndex);
+            } else {
+                showBook(parseInt(lastBookIndex));
+            }
+        }
+    }
+
+    // Обновляем статус автосохранения
+    function updateSaveStatus() {
+        const lastSaveTime = localStorage.getItem('lastSaveTime');
+        const saveStatusElement = document.getElementById('save-status');
+        
+        if (lastSaveTime && saveStatusElement) {
+            saveStatusElement.textContent = `✓ Последнее автосохранение: ${lastSaveTime}`;
+        }
+    }
+
+    // Инициализация кнопки "Наверх"
+    function initBackToTop() {
+        const backButton = document.getElementById('back-to-top');
+        const bookContent = document.querySelector('.book-content');
+        
+        if (!backButton || !bookContent) return;
+        
+        bookContent.addEventListener('scroll', function() {
+            if (bookContent.scrollTop > 300) {
+                backButton.style.display = 'flex';
+            } else {
+                backButton.style.display = 'none';
             }
         });
         
-        // Отслеживание событий для аналитики (если добавите позже)
-        document.addEventListener('bookChanged', function(e) {
-            // Событие для Google Analytics
-            if (typeof gtag !== 'undefined') {
-                gtag('event', 'book_view', {
-                    'book_title': bookTitles[currentBookIndex],
-                    'book_index': currentBookIndex
-                });
+        backButton.addEventListener('click', function() {
+            bookContent.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+    }
+
+    // Подсветка текущего дня в таблицах
+    function highlightCurrentDay() {
+        const days = ['ВОСКРЕСЕНЬЕ', 'ПОНЕДЕЛЬНИК', 'ВТОРНИК', 'СРЕДА', 'ЧЕТВЕРГ', 'ПЯТНИЦА', 'СУББОТА'];
+        const today = new Date().getDay(); // 0=воскресенье, 1=понедельник...
+        const todayName = days[today];
+        
+        document.querySelectorAll('.table').forEach(table => {
+            const rows = table.querySelectorAll('tr');
+            rows.forEach(row => {
+                const firstCell = row.querySelector('td:first-child');
+                if (firstCell && firstCell.textContent.includes(todayName)) {
+                    row.style.backgroundColor = 'rgba(129, 199, 132, 0.2)';
+                    row.style.borderLeft = '3px solid var(--leaf)';
+                }
+            });
+        });
+    }
+
+    // Отслеживание прогресса чтения
+    function trackReadingProgress() {
+        const bookContent = document.querySelector('.book-content');
+        if (!bookContent) return;
+        
+        let maxScroll = 0;
+        
+        bookContent.addEventListener('scroll', function() {
+            const scrollPercentage = (bookContent.scrollTop / (bookContent.scrollHeight - bookContent.clientHeight)) * 100;
+            
+            // Сохраняем максимальный прогресс
+            if (scrollPercentage > maxScroll) {
+                maxScroll = scrollPercentage;
+                localStorage.setItem('readingProgress_' + currentBookIndex, maxScroll.toFixed(1));
+            }
+            
+            // Если прочитано более 70% - отмечаем как прочитанное
+            if (scrollPercentage > 70 && maxScroll > 70) {
+                localStorage.setItem('bookRead_' + currentBookIndex, 'true');
             }
         });
+    }
+
+    // Обновление хлебных крошек
+    function updateBreadcrumb(currentBookTitle) {
+        const breadcrumb = document.querySelector('.breadcrumb ol');
+        if (breadcrumb) {
+            breadcrumb.innerHTML = `
+                <li><a href="/">Главная</a></li>
+                <li><a href="#" onclick="showBook(0); return false;">Кодекс Лесничего Ноосферы</a></li>
+                <li><span aria-current="page">${currentBookTitle}</span></li>
+            `;
+        }
+    }
+
+    // Инициализация кнопки печати
+    function initPrintButton() {
+        const printBtn = document.getElementById('print-journal');
+        if (!printBtn) return;
+        
+        printBtn.addEventListener('click', function() {
+            // Создаем новое окно для печати
+            const printWindow = window.open('', '_blank');
+            const currentBook = document.querySelector('.book-section[style*="display: block"], .book-section:not([style])');
+            
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html lang="ru">
+                <head>
+                    <title>Кодекс Лесничего Ноосферы - ${document.querySelector('.book-title').textContent}</title>
+                    <style>
+                        body { font-family: 'Segoe UI', sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 20px; }
+                        h1 { color: #1a3c27; border-bottom: 2px solid #4a7c59; padding-bottom: 10px; }
+                        h2 { color: #2d5a3d; margin-top: 30px; }
+                        h3 { color: #4a7c59; }
+                        .dogma, .commandment, .ritual, .warning, .journal { 
+                            border-left: 4px solid #ccc; 
+                            padding: 15px; 
+                            margin: 15px 0;
+                            background: #f9f9f9;
+                        }
+                        .dogma { border-color: #4a7c59; }
+                        .commandment { border-color: #8d6e63; }
+                        .ritual { border-color: #bbdefb; }
+                        .warning { border-color: #f44336; }
+                        .journal { border-color: #6d4c41; }
+                        @media print {
+                            body { font-size: 12pt; }
+                            h1 { page-break-after: avoid; }
+                            h2, h3 { page-break-after: avoid; }
+                            .dogma, .commandment, .ritual, .warning, .journal { 
+                                page-break-inside: avoid;
+                            }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <h1>${document.querySelector('.book-title').textContent}</h1>
+                    <p><em>${document.querySelector('.book-subtitle').textContent}</em></p>
+                    <div>${currentBook ? currentBook.innerHTML : ''}</div>
+                    <footer style="margin-top: 50px; padding-top: 20px; border-top: 1px solid #ccc; font-size: 0.9em; color: #666;">
+                        <p>Распечатано с сайта: bioapgreid.ru</p>
+                        <p>Дата: ${new Date().toLocaleDateString('ru-RU')}</p>
+                        <p>Кодекс Лесничего Ноосферы - Экология сознания</p>
+                    </footer>
+                    <script>
+                        window.onload = function() {
+                            window.print();
+                        }
+                    <\/script>
+                </body>
+                </html>
+            `);
+            
+            printWindow.document.close();
+        });
+    }
+
+    // ============ МОБИЛЬНОЕ МЕНЮ ============
+    function initMobileMenu() {
+        console.log('Инициализация мобильного меню...');
+        
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const closeMenuBtn = document.getElementById('closeMenu');
+        const menuOverlay = document.getElementById('menuOverlay');
+        const sidebar = document.querySelector('.sidebar');
+        
+        // Проверяем элементы
+        if (!mobileMenuToggle || !closeMenuBtn || !menuOverlay || !sidebar) {
+            console.error('Не найдены элементы мобильного меню!');
+            return;
+        }
+        
+        console.log('Элементы мобильного меню найдены');
+        
+        // Функция открытия меню
+        function openMobileMenu() {
+            console.log('Открытие мобильного меню');
+            sidebar.classList.add('active');
+            menuOverlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        // Функция закрытия меню
+        function closeMobileMenu() {
+            console.log('Закрытие мобильного меню');
+            sidebar.classList.remove('active');
+            menuOverlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+        
+        // Добавляем обработчики событий
+        mobileMenuToggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            openMobileMenu();
+        });
+        
+        closeMenuBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            closeMobileMenu();
+        });
+        
+        menuOverlay.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            closeMobileMenu();
+        });
+        
+        // Закрытие меню при клике на ссылку в меню
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', function() {
+                closeMobileMenu();
+            });
+        });
+        
+        // Закрытие меню при изменении размера окна на ПК-размер
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 992) {
+                closeMobileMenu();
+            }
+        });
+        
+        // Автоскрытие навигации при прокрутке на мобильных
+        const bookContent = document.querySelector('.book-content');
+        const bookNav = document.querySelector('.book-navigation');
+        
+        if (bookContent && bookNav) {
+            let lastScrollTop = 0;
+            let scrollTimeout;
+            
+            bookContent.addEventListener('scroll', function() {
+                const scrollTop = bookContent.scrollTop;
+                const isMobile = window.innerWidth <= 992;
+                
+                if (!isMobile) return;
+                
+                // Автоскрытие/показ навигации
+                if (scrollTop > lastScrollTop && scrollTop > 100) {
+                    // Прокрутка вниз - скрываем
+                    bookNav.style.transform = 'translateY(100%)';
+                    bookNav.style.transition = 'transform 0.3s ease';
+                } else {
+                    // Прокрутка вверх - показываем
+                    bookNav.style.transform = 'translateY(0)';
+                    bookNav.style.transition = 'transform 0.3s ease';
+                }
+                
+                lastScrollTop = scrollTop;
+                
+                // Очищаем таймер
+                clearTimeout(scrollTimeout);
+                
+                // После остановки прокрутки показываем навигацию через 1.5 секунды
+                scrollTimeout = setTimeout(function() {
+                    bookNav.style.transform = 'translateY(0)';
+                }, 1500);
+            });
+        }
+        
+        // Увеличиваем частоту автосохранения на мобильных
+        if (window.innerWidth <= 992) {
+            setInterval(saveReadingPosition, 15000); // Каждые 15 секунд
+        }
+    }
+
+    // ============ ОБРАБОТЧИКИ СОБЫТИЙ ============
+
+    // Обработка навигации по истории браузера
+    window.addEventListener('popstate', function(event) {
+        if (event.state && event.state.bookIndex !== undefined) {
+            showBook(event.state.bookIndex);
+        }
+    });
+
+    // Клавиатурная навигация
+    document.addEventListener('keydown', function(e) {
+        // Стрелки для навигации
+        if (e.key === 'ArrowRight') {
+            navigateBook('next');
+        } else if (e.key === 'ArrowLeft') {
+            navigateBook('prev');
+        }
+        
+        // Ctrl+S для сохранения
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            saveReadingPosition();
+            updateSaveStatus();
+            alert('Позиция сохранена!');
+        }
+    });
+
+    // Сохраняем позицию при закрытии
+    window.addEventListener('beforeunload', function() {
+        saveReadingPosition();
+    });
+
+    // Инициализация при загрузке hash из URL
+    window.addEventListener('load', function() {
+        const hash = window.location.hash.substring(1);
+        if (hash && books.includes(hash)) {
+            const hashIndex = books.indexOf(hash);
+            showBook(hashIndex);
+        }
+    });
+
+    // Периодическое автосохранение
+    setInterval(saveReadingPosition, 30000); // Каждые 30 секунд
+
+    // Отслеживание событий для аналитики
+    document.addEventListener('bookChanged', function(e) {
+        // Событие для Google Analytics (если подключен)
+        if (typeof gtag !== 'undefined') {
+            gtag('event', 'book_view', {
+                'book_title': bookTitles[currentBookIndex],
+                'book_index': currentBookIndex
+            });
+        }
+    });
+
+    // Резервная функция для открытия/закрытия меню (на случай проблем)
+    function toggleMobileMenu() {
+        const sidebar = document.querySelector('.sidebar');
+        const menuOverlay = document.getElementById('menuOverlay');
+        
+        if (!sidebar || !menuOverlay) return;
+        
+        if (sidebar.classList.contains('active')) {
+            sidebar.classList.remove('active');
+            menuOverlay.classList.remove('active');
+            document.body.style.overflow = '';
+        } else {
+            sidebar.classList.add('active');
+            menuOverlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    // Экспортируем функции в глобальную область видимости
+    window.showBook = showBook;
+    window.navigateBook = navigateBook;
+    window.toggleMobileMenu = toggleMobileMenu;
+
+    console.log('Скрипт Кодекса Лесничего загружен');
     </script>
 <div class="menu-overlay" id="menuOverlay"></div>    
 </body>
