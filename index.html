@@ -688,67 +688,9 @@
             opacity: 0.9;
         }
 
-        /* Адаптивность */
-        @media (max-width: 992px) {
-            .main-content {
-                flex-direction: column;
-            }
-            
-            .sidebar {
-                width: 100%;
-                position: static;
-            }
-            
-            .nav-list {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 0.5rem;
-            }
-            
-            .nav-item {
-                flex: 1;
-                min-width: 200px;
-            }
-        }
 
-        @media (max-width: 768px) {
-            .book-content {
-                padding: 1.5rem;
-            }
-            
-            .book-title {
-                font-size: 1.8rem;
-            }
-            
-            .chapter-title {
-                font-size: 1.5rem;
-            }
-            
-            .nav-list {
-                flex-direction: column;
-            }
-            
-            .nav-item {
-                min-width: 100%;
-            }
-            
-            .breadcrumb {
-                padding: 0.4rem 0.8rem;
-                font-size: 0.8rem;
-            }
-            
-            .logo {
-                font-size: 1.1rem;
-            }
-            
-            .logo i {
-                font-size: 1.3rem;
-            }
-            
-            .subtitle {
-                font-size: 0.8rem;
-            }
-        }
+
+
 
         /* Эффекты для текста */
         .first-letter::first-letter {
@@ -866,14 +808,7 @@
             clip: rect(0, 0, 0, 0);
             border: 0;
         }
-        /* Дополнение для мобильной оптимизации */
-        @media (hover: none) and (pointer: coarse) {
-            .nav-link, .nav-button {
-                min-height: 44px;
-                min-width: 44px;
-            }
-        }
-        
+
         /* Для предотвращения зума на iOS при фокусе */
         input, textarea, select {
             font-size: 16px;
@@ -916,14 +851,7 @@
             opacity: 1;
         }
         
-        /* Компактная навигация */
-        .sidebar {
-            padding: 0.8rem;
-            max-height: 80vh;
-            overflow-y: auto;
-            position: sticky;
-            top: 120px;
-        }
+
 
         /* Кастомный скроллбар */
         .sidebar::-webkit-scrollbar {
@@ -968,18 +896,281 @@
             font-size: 0.85rem;
             width: 18px;
         }
+        /* ============ МОБИЛЬНАЯ ОПТИМИЗАЦИЯ - НОВЫЙ ПОДХОД ============ */
 
-        /* Подсказка о наличии дополнительных книг */
-        .nav-list:after {
-            content: "↓ Ещё";
-            display: block;
-            text-align: center;
-            color: rgba(255, 255, 255, 0.6);
-            font-size: 0.7rem;
-            margin-top: 0.5rem;
-            padding-top: 0.5rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }        
+        /* Скрываем кнопку меню по умолчанию (только для ПК) */
+        .mobile-menu-toggle {
+            display: none;
+        }
+
+        /* Оверлей для меню (скрыт по умолчанию) */
+        .menu-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 998;
+        }
+
+        /* Кнопка закрытия меню (в сайдбаре) */
+        .close-menu {
+            display: none;
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            z-index: 1001;
+        }
+
+        /* ============ МОБИЛЬНЫЕ СТИЛИ (до 992px) ============ */
+        @media (max-width: 992px) {
+            /* ПОКАЗЫВАЕМ КНОПКУ МЕНЮ В ШАПКЕ */
+            .mobile-menu-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 44px;
+                height: 44px;
+                background: var(--forest-medium);
+                border: none;
+                border-radius: 6px;
+                color: white;
+                cursor: pointer;
+                font-size: 1.3rem;
+                margin-left: 1rem;
+                flex-shrink: 0;
+            }
+            
+            /* ОБНОВЛЯЕМ ШАПКУ */
+            .header-content {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                flex-wrap: wrap;
+            }
+            
+            .logo-container {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                width: 100%;
+                margin-bottom: 0.5rem;
+            }
+            
+            .logo {
+                font-size: 1rem;
+                flex-grow: 1;
+            }
+            
+            .logo i {
+                font-size: 1.2rem;
+            }
+            
+            .subtitle {
+                display: none; /* Скрываем на мобильных */
+            }
+            
+            /* ХЛЕБНЫЕ КРОШКИ */
+            .breadcrumb {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.8rem;
+            }
+            
+            /* ОСНОВНОЙ КОНТЕНТ - ВЕРТИКАЛЬНЫЙ МАКЕТ */
+            .main-content {
+                flex-direction: column;
+                padding: 0.5rem;
+                gap: 0;
+            }
+            
+            /* САЙДБАР - ПРЕВРАЩАЕМ В ВЫЕЗЖАЮЩЕЕ МЕНЮ */
+            .sidebar {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 85%;
+                max-width: 300px;
+                height: 100vh;
+                z-index: 999;
+                background: var(--forest-dark);
+                padding: 2rem 1rem 1rem;
+                overflow-y: auto;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+                border-radius: 0;
+            }
+            
+            .sidebar.active {
+                display: block;
+                transform: translateX(0);
+            }
+            
+            /* ПОКАЗЫВАЕМ КНОПКУ ЗАКРЫТИЯ В САЙДБАРЕ */
+            .close-menu {
+                display: block;
+            }
+            
+            /* НАВИГАЦИЯ В САЙДБАРЕ */
+            .nav-title {
+                margin-top: 1rem;
+                margin-bottom: 1.5rem;
+                font-size: 1.2rem;
+            }
+            
+            .nav-list {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .nav-item {
+                width: 100%;
+            }
+            
+            .nav-link {
+                min-height: 50px;
+                font-size: 1rem;
+                padding: 0.8rem 1rem;
+            }
+            
+            /* КОНТЕНТ КНИГИ - ЗАНИМАЕТ ВСЮ ШИРИНУ */
+            .book-content {
+                width: 100%;
+                padding: 1rem;
+                border-radius: 0;
+                box-shadow: none;
+                background: white;
+            }
+            
+            .book-title {
+                font-size: 1.5rem;
+            }
+            
+            .book-subtitle {
+                font-size: 0.95rem;
+            }
+            
+            /* КНОПКИ НАВИГАЦИИ МЕЖДУ КНИГАМИ - ФИКСИРУЕМ ВНИЗУ */
+            .book-navigation {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: white;
+                border-top: 2px solid var(--forest-light);
+                padding: 0.8rem;
+                margin: 0;
+                z-index: 997;
+                display: flex;
+                gap: 0.5rem;
+                box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            }
+            
+            .nav-button {
+                flex: 1;
+                justify-content: center;
+                padding: 0.8rem;
+                font-size: 0.9rem;
+                min-height: 44px;
+            }
+            
+            /* ПЛАВАЮЩИЕ КНОПКИ - АДАПТИРУЕМ */
+            #back-to-top {
+                bottom: 80px;
+                right: 15px;
+                width: 44px;
+                height: 44px;
+            }
+            
+            #print-journal {
+                bottom: 140px;
+                right: 15px;
+                width: 44px;
+                height: 44px;
+            }
+        }
+
+        /* ============ МАЛЕНЬКИЕ МОБИЛЬНЫЕ (до 768px) ============ */
+        @media (max-width: 768px) {
+            .book-title {
+                font-size: 1.4rem;
+            }
+            
+            .chapter-title {
+                font-size: 1.3rem;
+                margin: 1.2rem 0 0.8rem;
+            }
+            
+            /* ТАБЛИЦЫ С ГОРИЗОНТАЛЬНЫМ СКРОЛЛОМ */
+            .table {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            /* БЛОКИ КОНТЕНТА */
+            .dogma, .commandment, .ritual, .warning, .journal {
+                padding: 1rem;
+                margin: 1rem 0;
+            }
+            
+            /* ТЕКСТ */
+            p {
+                font-size: 0.95rem;
+                line-height: 1.6;
+                text-align: left;
+            }
+            
+            .logo {
+                font-size: 0.9rem;
+            }
+            
+            .logo i {
+                font-size: 1.1rem;
+            }
+        }
+
+        /* ============ ОЧЕНЬ МАЛЕНЬКИЕ ЭКРАНЫ (до 480px) ============ */
+        @media (max-width: 480px) {
+            .book-title {
+                font-size: 1.3rem;
+            }
+            
+            .book-subtitle {
+                font-size: 0.9rem;
+            }
+            
+            .nav-button {
+                font-size: 0.85rem;
+                padding: 0.7rem;
+            }
+            
+            .sidebar {
+                width: 90%;
+            }
+            
+            .nav-link {
+                font-size: 0.95rem;
+            }
+        }
+
+        /* ============ ТАЧ-ОПТИМИЗАЦИЯ ДЛЯ ВСЕХ УСТРОЙСТВ ============ */
+        @media (hover: none) and (pointer: coarse) {
+            .nav-link, .nav-button, .mobile-menu-toggle {
+                min-height: 44px;
+                min-width: 44px;
+            }
+        }
         
         
     </style>
@@ -988,9 +1179,15 @@
     <div class="container">
         <header role="banner">
             <div class="header-content">
-                <div class="logo">
-                    <i class="fas fa-tree" aria-hidden="true"></i>
-                    <h1>КОДЕКС ЛЕСНИЧЕГО НООСФЕРЫ</h1>
+                <div class="logo-container">
+                    <div class="logo">
+                        <i class="fas fa-tree" aria-hidden="true"></i>
+                        <h1>КОДЕКС ЛЕСНИЧЕГО НООСФЕРЫ</h1>
+                    </div>
+                    <!-- ДОБАВЬТЕ ЭТУ КНОПКУ ПРЯМО ВНУТРИ logo-container -->
+                    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Открыть меню навигации">
+                        <i class="fas fa-bars"></i>
+                    </button>
                 </div>
                 <p class="subtitle">«Твой разум — не пустота. Это — лес. Ты — не голос в голове. Ты — тот, кто слушает голоса. Ты — не мысль. Ты — Лесничий.»</p>
             </div>
@@ -1016,6 +1213,11 @@
 
         <div class="main-content">
             <nav class="sidebar" aria-label="Навигация по книгам кодекса">
+                <!-- ДОБАВЬТЕ КНОПКУ ЗАКРЫТИЯ ПЕРВОЙ СТРОКОЙ ВНУТРИ sidebar -->
+                <button class="close-menu" id="closeMenu" aria-label="Закрыть меню">
+                    <i class="fas fa-times"></i>
+                </button>
+                
                 <h2 class="nav-title"><i class="fas fa-book" aria-hidden="true"></i> Книги Кодекса</h2>
                 <ul class="nav-list" role="navigation">
                     <li class="nav-item">
@@ -10045,7 +10247,102 @@
         ];
         
         let currentBookIndex = 0;
-        
+        // МОБИЛЬНОЕ МЕНЮ - УПРАВЛЕНИЕ
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const closeMenuBtn = document.getElementById('closeMenu');
+        const menuOverlay = document.getElementById('menuOverlay');
+        const sidebar = document.querySelector('.sidebar');
+
+        // ФУНКЦИИ ДЛЯ УПРАВЛЕНИЯ МЕНЮ
+        function openMobileMenu() {
+            sidebar.classList.add('active');
+            menuOverlay.style.display = 'block';
+            setTimeout(() => {
+                menuOverlay.style.opacity = '1';
+            }, 10);
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeMobileMenu() {
+            sidebar.classList.remove('active');
+            menuOverlay.style.opacity = '0';
+            setTimeout(() => {
+                menuOverlay.style.display = 'none';
+            }, 300);
+            document.body.style.overflow = '';
+        }
+
+        // СОБЫТИЯ ДЛЯ МОБИЛЬНОГО МЕНЮ
+        if (mobileMenuToggle && closeMenuBtn && menuOverlay) {
+            // Открытие меню
+            mobileMenuToggle.addEventListener('click', openMobileMenu);
+            
+            // Закрытие меню
+            closeMenuBtn.addEventListener('click', closeMobileMenu);
+            menuOverlay.addEventListener('click', closeMobileMenu);
+            
+            // Закрытие меню при клике на ссылку
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', function() {
+                    setTimeout(closeMobileMenu, 300);
+                });
+            });
+            
+            // Закрытие меню при изменении ориентации экрана
+            window.addEventListener('orientationchange', function() {
+                if (window.innerWidth > 992) {
+                    closeMobileMenu();
+                }
+            });
+            
+            // Автоматическое закрытие при переходе на ПК-размер
+            window.addEventListener('resize', function() {
+                if (window.innerWidth > 992) {
+                    closeMobileMenu();
+                }
+            });
+        }
+
+        // ФУНКЦИЯ ДЛЯ АДАПТИВНОГО UI
+        function updateMobileUI() {
+            const isMobile = window.innerWidth <= 992;
+            const bookContent = document.querySelector('.book-content');
+            const bookNav = document.querySelector('.book-navigation');
+            
+            if (isMobile && bookContent && bookNav) {
+                // АВТОСКРЫТИЕ НАВИГАЦИИ ПРИ ПРОКРУТКЕ (только на мобильных)
+                let lastScrollTop = 0;
+                
+                bookContent.addEventListener('scroll', function() {
+                    const scrollTop = bookContent.scrollTop;
+                    
+                    if (scrollTop > lastScrollTop && scrollTop > 100) {
+                        // Прокрутка вниз - скрываем
+                        bookNav.style.transform = 'translateY(100%)';
+                        bookNav.style.transition = 'transform 0.3s ease';
+                    } else {
+                        // Прокрутка вверх - показываем
+                        bookNav.style.transform = 'translateY(0)';
+                        bookNav.style.transition = 'transform 0.3s ease';
+                    }
+                    
+                    lastScrollTop = scrollTop;
+                });
+                
+                // Более частое автосохранение на мобильных
+                setInterval(saveReadingPosition, 15000);
+            } else if (bookNav) {
+                // На ПК - всегда показываем навигацию
+                bookNav.style.transform = 'translateY(0)';
+                bookNav.style.transition = 'none';
+            }
+        }
+
+        // ИНИЦИАЛИЗАЦИЯ МОБИЛЬНОГО UI
+        document.addEventListener('DOMContentLoaded', function() {
+            updateMobileUI();
+            window.addEventListener('resize', updateMobileUI);
+        });        
         // Инициализация
         document.addEventListener('DOMContentLoaded', function() {
             // Показываем первую книгу
@@ -10355,5 +10652,6 @@
             }
         });
     </script>
+<div class="menu-overlay" id="menuOverlay"></div>    
 </body>
 </html>
