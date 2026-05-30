@@ -7,7 +7,6 @@
     <meta name="description" content="Платформа прямой помощи в жизненных ситуациях: помощь рядом, без комиссий, честная карма. Помощники — подписка, Потребители — разовый взнос." />
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
     
-    <!-- Подключение кастомного шрифта Rurintania -->
     <style>
         @font-face {
             font-family: 'Rurintania';
@@ -17,26 +16,22 @@
             font-display: swap;
         }
 
-        /* Глобальные стили: чёрный фон, золотой текст, красивые рамки */
         body {
             background-color: #000000;
             color: #FFD966;
             font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         }
 
-        /* Золотой акцент для всех заголовков и особых элементов */
         h1, h2, h3, .gold-text, .brand-font {
             font-family: 'Rurintania', 'Georgia', serif;
             color: #FFD700;
             letter-spacing: 0.02em;
         }
 
-        /* Обычный текст — золотистый оттенок, читаемый на чёрном */
         p, li, .text-gray-600, .text-gray-500, .text-gray-700 {
             color: #F5E6B8 !important;
         }
 
-        /* Карточки и блоки: чёрный фон с золотой рамкой, лёгкое свечение */
         .gold-card {
             background-color: #0a0a0a;
             border: 1px solid #FFD966;
@@ -50,7 +45,6 @@
             border-color: #FFD700;
         }
 
-        /* Кнопки: золотой фон с чёрным текстом либо прозрачные с золотой обводкой */
         .btn-gold {
             background-color: #FFD700;
             color: #000000;
@@ -82,21 +76,29 @@
             border-color: #FFD966;
         }
 
-        /* Стили для видео-блока */
-        .video-frame {
+        /* Специальные стили для вертикального видео 9:16 */
+        .video-portrait-container {
+            background: #000000;
             border-radius: 2rem;
             border: 2px solid #FFD966;
-            box-shadow: 0 0 20px rgba(255, 217, 102, 0.3);
+            box-shadow: 0 0 25px rgba(255, 217, 102, 0.4);
+            display: flex;
+            justify-content: center;
+            align-items: center;
             overflow: hidden;
-            background: #000;
+            max-width: 100%;
+            max-height: 75vh;
+            margin: 0 auto;
         }
-        video {
-            display: block;
-            width: 100%;
+        .video-portrait-container video {
             height: auto;
+            max-height: 75vh;
+            width: auto;
+            max-width: 100%;
+            display: block;
+            object-fit: contain;
         }
 
-        /* Список правил с золотыми маркерами */
         .custom-list {
             list-style: none;
             padding-left: 0;
@@ -113,7 +115,6 @@
             color: #FFD966;
         }
 
-        /* Бейджи кармы */
         .karma-badge {
             background: #1f1a0c;
             border: 1px solid #FFD966;
@@ -136,12 +137,8 @@
         section {
             background-color: transparent;
         }
-        /* переопределение теней от tailwind для карточек */
         .shadow, .shadow-lg, .shadow-xl {
             box-shadow: 0 8px 20px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,217,102,0.2);
-        }
-        hr {
-            border-color: #FFD966;
         }
         .hero-bg {
             background: radial-gradient(circle at 10% 30%, #0a0f1f, #000000);
@@ -149,7 +146,6 @@
         }
     </style>
 
-    <!-- Open Graph / соцсети -->
     <meta property="og:title" content="Ангел Помощи — прямая помощь без посредников" />
     <meta property="og:description" content="Честная карма, прямые договорённости, без комиссий. Помощники с подпиской, потребители — разовый взнос." />
     <meta property="og:image" content="https://bioapgreid.store/assets/screen1.png" />
@@ -157,7 +153,6 @@
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="ru_RU" />
     
-    <!-- JSON-LD -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -181,10 +176,9 @@
 </head>
 <body class="font-sans antialiased">
 
-    <!-- Hero-секция с переработанным текстом -->
+    <!-- Hero-секция -->
     <section class="hero-bg py-16 md:py-24 px-4">
         <div class="max-w-5xl mx-auto text-center">
-            <!-- Новый вступительный текст, философия платформы -->
             <div class="gold-card p-6 md:p-8 mb-10 text-left md:text-center">
                 <p class="text-lg md:text-xl leading-relaxed mb-4 italic">
                     «В наше время (как и в предыдущие времена) одни оказывают услуги — <span class="font-bold text-yellow-300">помощники</span>, 
@@ -211,7 +205,7 @@
         </div>
     </section>
 
-    <!-- Преимущества (золотые карточки) -->
+    <!-- Преимущества -->
     <section class="py-16 px-4 max-w-6xl mx-auto">
         <div class="grid md:grid-cols-3 gap-8">
             <div class="gold-card p-8 text-center">
@@ -235,7 +229,7 @@
         </div>
     </section>
 
-    <!-- Как это работает (рамки, золотые цифры) -->
+    <!-- Как это работает -->
     <section class="py-16 px-4">
         <div class="max-w-4xl mx-auto">
             <h2 class="text-4xl font-bold text-center mb-12 brand-font border-b-2 border-yellow-600 inline-block w-full pb-2">Как это работает</h2>
@@ -265,7 +259,7 @@
         </div>
     </section>
 
-    <!-- Правила и карма (с золотыми рамками, адаптивные блоки) -->
+    <!-- Правила и карма -->
     <section class="py-16 px-4 max-w-6xl mx-auto">
         <h2 class="text-4xl font-bold text-center mb-12 brand-font">Правила и карма</h2>
         <div class="grid md:grid-cols-2 gap-8">
@@ -289,7 +283,7 @@
                     <div class="karma-badge bg-gray-700/50">0 … +15</div>
                     <div class="karma-badge bg-green-900/40">+16 … +1000</div>
                 </div>
-                <p class="text-sm italic">Каждая группа видит участников с таким же уровнем кармы. Это создаёт справедливую среду.</p>
+                <p class="text-sm italic">Каждая группа видит участников с таким же уровнем кармы.</p>
                 <div class="mt-4 p-3 border border-yellow-600/50 rounded-lg bg-black/30">
                     <p class="text-sm">✨ <strong>Совет:</strong> Высокая карма открывает доступ к более надёжным помощникам и заказчикам.</p>
                 </div>
@@ -297,22 +291,22 @@
         </div>
     </section>
 
-    <!-- ВИДЕО-БЛОК (вместо PNG-скриншотов) -->
+    <!-- ВИДЕО-БЛОК для вертикального 9:16 -->
     <section id="video-demo" class="py-16 px-4">
         <div class="max-w-5xl mx-auto">
             <h2 class="text-4xl font-bold text-center mb-6 brand-font">Демонстрация приложения</h2>
-            <p class="text-center text-yellow-200/80 mb-8 text-lg">Посмотрите, как работает «Ангел Помощи» — от поиска до завершения помощи</p>
-            <div class="video-frame">
-                <video controls poster="assets/poster-placeholder.jpg" preload="metadata">
+            <p class="text-center text-yellow-200/80 mb-8 text-lg">Смотрите, как работает «Ангел Помощи» — вертикальный формат, все детали на экране</p>
+            <div class="video-portrait-container">
+                <video controls poster="assets/poster-placeholder.jpg" preload="metadata" controlsList="nodownload">
                     <source src="assets/ангел.mp4" type="video/mp4">
                     Ваш браузер не поддерживает видео. <a href="assets/ангел.mp4" class="text-yellow-400">Скачайте демо-ролик</a>
                 </video>
             </div>
-            <p class="text-center text-sm mt-4 opacity-80">🎬 Интерфейс, поиск помощника, договор и рейтинг — всё наглядно</p>
+            <p class="text-center text-sm mt-5 opacity-80">🎬 Интерфейс приложения, поиск помощника, система кармы — всё в демо-ролике (9:16)</p>
         </div>
     </section>
 
-    <!-- Скачать приложение -->
+    <!-- Скачать -->
     <section id="download" class="py-20 px-4 text-center border-t border-yellow-700/50 bg-gradient-to-b from-black to-gray-900">
         <div class="max-w-3xl mx-auto">
             <h2 class="text-4xl md:text-5xl font-bold mb-6 brand-font">Готовы стать Ангелом или найти помощь?</h2>
@@ -326,7 +320,7 @@
         </div>
     </section>
 
-    <!-- Подвал с правилами и контактами -->
+    <!-- Подвал -->
     <footer class="py-10 border-t border-yellow-800/50">
         <div class="max-w-5xl mx-auto text-center px-4">
             <div class="flex flex-wrap justify-center gap-6 text-sm mb-6">
@@ -339,14 +333,12 @@
         </div>
     </footer>
 
-    <!-- небольшой скрипт для улучшения отображения (опционально) -->
     <script>
         (function() {
-            // Проверка, что видео загрузится корректно даже с кириллицей в имени (просто лог)
             const video = document.querySelector('video');
             if(video) {
                 video.addEventListener('error', function(e) {
-                    console.warn('Видео не загрузилось, проверьте путь assets/ангел.mp4');
+                    console.warn('Видео не загрузилось, убедитесь что файл assets/ангел.mp4 существует');
                 });
             }
         })();
