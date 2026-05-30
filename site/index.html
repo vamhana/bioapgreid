@@ -16,13 +16,13 @@
     <link rel="canonical" href="https://bioapgreid.ru/site/">
     
     <!-- Favicon – исправлен путь на абсолютный от корня сайта -->
-    <link rel="icon" type="image/png" href="/assets/a.png">
-    <link rel="shortcut icon" href="/assets/a.png">
+    <link rel="icon" type="image/png" href="assets/a.png">
+    <link rel="shortcut icon" href="assets/a.png">
     
     <!-- Open Graph / Social -->
     <meta property="og:title" content="Ангел Помощи – помощь в Казани: такси, разнорабочие и другие услуги">
     <meta property="og:description" content="Прямая связь между теми, кому нужна помощь, и теми, кто готов помочь. Никаких посредников, только честная карма.">
-    <meta property="og:image" content="https://bioapgreid.ru/assets/screen1.png">
+    <meta property="og:image" content="assets/a.png">
     <meta property="og:url" content="https://bioapgreid.ru/site/">
     <meta property="og:type" content="website">
     <meta property="og:locale" content="ru_RU">
@@ -31,7 +31,7 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Ангел Помощи – такси, разнорабочие, помощь в Казани">
     <meta name="twitter:description" content="Платформа прямой помощи без посредников. Присоединяйтесь!">
-    <meta name="twitter:image" content="https://bioapgreid.ru/assets/screen1.png">
+    <meta name="twitter:image" content="assets/a.png">
     
     <!-- Tailwind CSS -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
@@ -170,7 +170,7 @@
       "name": "Ангел Помощи",
       "description": "Платформа для заказа и оказания помощи в Казани и других городах. Услуги: такси, разнорабочие, ремонт, уборка и многое другое.",
       "url": "https://bioapgreid.ru/site/",
-      "logo": "https://bioapgreid.ru/assets/a.png",
+      "logo": "assets/a.png",
       "areaServed": {
         "@type": "City",
         "name": "Казань"
@@ -329,8 +329,8 @@
             <div class="video-portrait-container">
                 <video controls preload="metadata" controlsList="nodownload">
                     <!-- ИСПРАВЛЕН ПУТЬ: абсолютный от корня сайта -->
-                    <source src="/assets/ангел.mp4" type="video/mp4">
-                    Ваш браузер не поддерживает видео. <a href="/assets/ангел.mp4" class="text-yellow-400">Скачайте демо-ролик</a>
+                    <source src="assets/ангел.mp4" type="video/mp4">
+                    Ваш браузер не поддерживает видео. <a href="assets/ангел.mp4" class="text-yellow-400">Скачайте демо-ролик</a>
                 </video>
             </div>
             <p class="text-center text-sm mt-5 opacity-80">🎬 Интерфейс приложения, поиск помощника в Казани, система кармы — всё в демо-ролике (9:16)</p>
@@ -371,10 +371,12 @@
             const video = document.querySelector('video');
             if(video) {
                 video.addEventListener('error', function(e) {
-                    console.warn('Видео не загрузилось, проверьте путь: /assets/ангел.mp4');
+                    console.warn('Видео не загрузилось, проверьте путь: assets/ангел.mp4');
                 });
             }
         })();
     </script>
+</body>
+</html>
 </body>
 </html>
