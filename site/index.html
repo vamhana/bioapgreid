@@ -15,9 +15,9 @@
     <!-- Canonical – чтобы избежать дублей с корневой страницей -->
     <link rel="canonical" href="https://bioapgreid.ru/site/">
     
-    <!-- Favicon из assets в корне -->
-    <link rel="icon" type="image/png" href="../assets/a.png">
-    <link rel="shortcut icon" href="../assets/a.png">
+    <!-- Favicon – исправлен путь на абсолютный от корня сайта -->
+    <link rel="icon" type="image/png" href="/assets/a.png">
+    <link rel="shortcut icon" href="/assets/a.png">
     
     <!-- Open Graph / Social -->
     <meta property="og:title" content="Ангел Помощи – помощь в Казани: такси, разнорабочие и другие услуги">
@@ -98,27 +98,31 @@
             color: #000000;
             border-color: #FFD966;
         }
+        
+        /* ========= ИСПРАВЛЕНИЕ ВИДЕО 9:16 ========= */
         .video-portrait-container {
-            background: #000000;
+            aspect-ratio: 9 / 16;           /* жёстко задаём вертикальное соотношение */
+            max-width: 100%;
+            width: auto;
+            margin: 0 auto;
+            background-color: #000000;
             border-radius: 2rem;
             border: 2px solid #FFD966;
             box-shadow: 0 0 25px rgba(255, 217, 102, 0.4);
-            display: flex;
-            justify-content: center;
-            align-items: center;
             overflow: hidden;
-            max-width: 100%;
-            max-height: 75vh;
-            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .video-portrait-container video {
-            height: auto;
-            max-height: 75vh;
-            width: auto;
-            max-width: 100%;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;   /* видео вписывается без обрезания (возможны чёрные полосы) */
             display: block;
-            object-fit: contain;
         }
+        /* Если вы хотите, чтобы видео заполняло весь контейнер без чёрных полос – замените contain на cover */
+        /* ========================================= */
+        
         .custom-list {
             list-style: none;
             padding-left: 0;
@@ -317,15 +321,16 @@
         </div>
     </section>
 
-    <!-- ВИДЕО-БЛОК для вертикального 9:16 -->
+    <!-- ВИДЕО-БЛОК с исправленными путями и пропорциями -->
     <section id="video-demo" class="py-16 px-4">
         <div class="max-w-5xl mx-auto">
             <h2 class="text-4xl font-bold text-center mb-6 brand-font">Демонстрация приложения</h2>
             <p class="text-center text-yellow-200/80 mb-8 text-lg">Смотрите, как работает «Ангел Помощи» — вертикальный формат, все детали на экране</p>
             <div class="video-portrait-container">
                 <video controls preload="metadata" controlsList="nodownload">
-                    <source src="../assets/ангел.mp4" type="video/mp4">
-                    Ваш браузер не поддерживает видео. <a href="../assets/ангел.mp4" class="text-yellow-400">Скачайте демо-ролик</a>
+                    <!-- ИСПРАВЛЕН ПУТЬ: абсолютный от корня сайта -->
+                    <source src="/assets/ангел.mp4" type="video/mp4">
+                    Ваш браузер не поддерживает видео. <a href="/assets/ангел.mp4" class="text-yellow-400">Скачайте демо-ролик</a>
                 </video>
             </div>
             <p class="text-center text-sm mt-5 opacity-80">🎬 Интерфейс приложения, поиск помощника в Казани, система кармы — всё в демо-ролике (9:16)</p>
@@ -366,7 +371,7 @@
             const video = document.querySelector('video');
             if(video) {
                 video.addEventListener('error', function(e) {
-                    console.warn('Видео не загрузилось, проверьте путь: ../assets/ангел.mp4');
+                    console.warn('Видео не загрузилось, проверьте путь: /assets/ангел.mp4');
                 });
             }
         })();
