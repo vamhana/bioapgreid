@@ -22,14 +22,32 @@
             font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         }
 
+        /* ГЛАВНОЕ: блестящий шрифт + белый контур для всех заголовков и "оглавлений" */
         h1, h2, h3, .gold-text, .brand-font {
             font-family: 'Rurintania', 'Georgia', serif;
-            color: #FFD700;
+            /* Более яркий золотой цвет */
+            color: #FFEA80;
+            /* Белая обводка вокруг каждой буквы (для WebKit и стандарт) */
+            -webkit-text-stroke: 0.7px rgba(255, 255, 255, 0.75);
+            text-stroke: 0.7px rgba(255, 255, 255, 0.75);
+            /* Блестящее свечение для эффекта "сияющего металла" */
+            text-shadow: 0 0 8px #FFD700, 0 0 3px #FFF8C6;
             letter-spacing: 0.02em;
         }
 
+        /* Для самого главного заголовка (h1) усиливаем контур и свечение */
+        h1 {
+            -webkit-text-stroke: 1px rgba(255, 255, 255, 0.85);
+            text-stroke: 1px rgba(255, 255, 255, 0.85);
+            text-shadow: 0 0 14px #FFC107, 0 0 5px #FFE55C;
+        }
+
+        /* Чтобы обычный текст (параграфы, списки) не имел обводки и оставался читаемым */
         p, li, .text-gray-600, .text-gray-500, .text-gray-700 {
             color: #F5E6B8 !important;
+            -webkit-text-stroke: 0; /* отключаем обводку */
+            text-stroke: 0;
+            text-shadow: none;
         }
 
         .gold-card {
