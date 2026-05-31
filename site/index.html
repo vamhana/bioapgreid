@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    
+    <!-- Основные SEO-метатеги -->
+    <title>Ангел Помощи – вызов такси, разнорабочие, помощь в Казани | Прямые договорённости без комиссии</title>
+    <meta name="description" content="Платформа прямой помощи в Казани и других городах: такси, разнорабочие, ремонт, уборка. Никаких посредников и комиссий. Честная карма и прямые договорённости.">
+    <meta name="keywords" content="ангел помощи, помощь в казани, такси казань, разнорабочие казань, вызов мастера, помощь без посредников, карма">
+    <meta name="author" content="Ангел Помощи">
+    <meta name="geo.placename" content="Казань, Россия">
+    <meta name="geo.region" content="RU-TA">
+    
+    <!-- Canonical – чтобы избежать дублей с корневой страницей -->
+    <link rel="canonical" href="https://bioapgreid.ru/site/">
+    
+    <!-- Favicon – исправлен путь на абсолютный от корня сайта -->
+    <link rel="icon" type="image/png" href="assets/a.png">
+    <link rel="shortcut icon" href="assets/a.png">
+    
+    <!-- Open Graph / Social -->
+    <meta property="og:title" content="Ангел Помощи – помощь в Казани: такси, разнорабочие и другие услуги">
+    <meta property="og:description" content="Прямая связь между теми, кому нужна помощь, и теми, кто готов помочь. Никаких посредников, только честная карма.">
+    <meta property="og:image" content="assets/a.png">
+    <meta property="og:url" content="https://bioapgreid.ru/site/">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="ru_RU">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Ангел Помощи – такси, разнорабочие, помощь в Казани">
+    <meta name="twitter:description" content="Платформа прямой помощи без посредников. Присоединяйтесь!">
+    <meta name="twitter:image" content="assets/a.png">
+    
+    <!-- Tailwind CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    
+    <style>
+        @font-face {
+            font-family: 'Rurintania';
+            src: url('../fonts/ofont.ru_Country Western Swing.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+        body {
+            background-color: #000000;
+            color: #FFD966;
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+        h1, h2, h3, .gold-text, .brand-font {
+            font-family: 'Rurintania', 'Georgia', serif;
+            color: #FFD700;
+            letter-spacing: 0.02em;
+        }
+        p, li, .text-gray-600, .text-gray-500, .text-gray-700 {
+            color: #F5E6B8 !important;
+        }
+        .gold-card {
+            background-color: #0a0a0a;
+            border: 1px solid #FFD966;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 25px -5px rgba(255, 217, 102, 0.15), 0 0 0 1px rgba(255, 217, 102, 0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .gold-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 30px -12px rgba(255, 217, 102, 0.25);
+            border-color: #FFD700;
+        }
+        .btn-gold {
+            background-color: #FFD700;
+            color: #000000;
+            font-weight: bold;
+            padding: 0.75rem 2rem;
+            border-radius: 9999px;
+            transition: all 0.25s ease;
+            border: none;
+            box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+        }
+        .btn-gold:hover {
+            background-color: #FFC107;
+            transform: scale(1.02);
+            box-shadow: 0 8px 20px rgba(255, 215, 0, 0.5);
+        }
+        .btn-outline-gold {
+            background-color: transparent;
+            border: 2px solid #FFD966;
+            color: #FFD966;
+            font-weight: 600;
+            padding: 0.7rem 1.8rem;
+            border-radius: 9999px;
+            transition: all 0.2s;
+        }
+        .btn-outline-gold:hover {
+            background-color: #FFD966;
+            color: #000000;
+            border-color: #FFD966;
+        }
+        
+        /* ========= ИСПРАВЛЕНИЕ ВИДЕО 9:16 ========= */
+        .video-portrait-container {
+            max-width: 100%;
+            width: auto;
+            max-height: 90vh;           /* не выше экрана */
+            margin: 0 auto;
+            background-color: #000000;
+            border-radius: 2rem;
+            border: 2px solid #FFD966;
+            box-shadow: 0 0 25px rgba(255, 217, 102, 0.4);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .video-portrait-container video {
+            width: 100%;
+            height: auto;
+            object-fit: contain;       /* или cover – если нужно без полей */
+            display: block;
+        }
+        /* Если вы хотите, чтобы видео заполняло весь контейнер без чёрных полос – замените contain на cover */
+        /* ========================================= */
+        
+        .custom-list {
+            list-style: none;
+            padding-left: 0;
+        }
+        .custom-list li {
+            padding-left: 1.8rem;
+            position: relative;
+            margin-bottom: 0.6rem;
+        }
+        .custom-list li::before {
+            content: "✨";
+            position: absolute;
+            left: 0;
+            color: #FFD966;
+        }
+        .karma-badge {
+            background: #1f1a0c;
+            border: 1px solid #FFD966;
+            border-radius: 1rem;
+            text-align: center;
+            padding: 0.3rem 0;
+            font-weight: 500;
+        }
+        footer a {
+            color: #FFD966;
+            text-decoration: underline;
+        }
+        footer a:hover {
+            color: #FFC107;
+        }
+        section {
+            background-color: transparent;
+        }
+        .hero-bg {
+            background: radial-gradient(circle at 10% 30%, #0a0f1f, #000000);
+            border-bottom: 1px solid #FFD966;
+        }
+    </style>
+    
+    <!-- Schema.org разметка (LocalBusiness с указанием Казани) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "LocalBusiness",
+      "name": "Ангел Помощи",
+      "description": "Платформа для заказа и оказания помощи в Казани и других городах. Услуги: такси, разнорабочие, ремонт, уборка и многое другое.",
+      "url": "https://bioapgreid.ru/site/",
+      "logo": "assets/a.png",
+      "areaServed": {
+        "@type": "City",
+        "name": "Казань"
+      },
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Казань",
+        "addressRegion": "Татарстан",
+        "addressCountry": "RU"
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.9",
+        "ratingCount": "120"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "RUB"
+      }
+    }
+    </script>
+</head>
+<body class="font-sans antialiased">
+
+    <!-- Hero-секция -->
+    <section class="hero-bg py-16 md:py-24 px-4">
+        <div class="max-w-5xl mx-auto text-center">
+            <div class="gold-card p-6 md:p-8 mb-10 text-left md:text-center">
+                <p class="text-lg md:text-xl leading-relaxed mb-4 italic">
+                    «В наше время (как и в предыдущие времена) одни оказывают услуги — <span class="font-bold text-yellow-300">помощники</span>, 
+                    другие ими пользуются — <span class="font-bold text-yellow-300">потребители</span>. 
+                    Но появились «умники», которые встают прокладкой между ними и берут определённую маржу. 
+                    В итоге или потребитель переплачивает, или помощник недополучает.»
+                </p>
+                <p class="text-2xl md:text-3xl font-bold brand-font mt-4 text-yellow-400">
+                    Мы предлагаем прямую связь между ними, минуя бюрократические и денежные проволочки.
+                </p>
+            </div>
+            
+            <h1 class="text-5xl md:text-7xl font-bold mb-5 brand-font tracking-wider">
+                Ангел Помощи
+            </h1>
+            <p class="text-xl md:text-2xl mb-6 font-medium">
+                Прямая помощь в любых жизненных ситуациях.<br>
+                <span class="text-yellow-300">Помощники — подписка, Потребители — разовый взнос.</span>
+            </p>
+            
+            <!-- Дополнительный блок с ключевыми словами (видимый и для SEO) -->
+            <div class="flex flex-wrap justify-center gap-3 text-sm md:text-base mb-6">
+                <span class="bg-yellow-900/30 px-3 py-1 rounded-full">🚖 Такси Казань</span>
+                <span class="bg-yellow-900/30 px-3 py-1 rounded-full">🔧 Разнорабочие</span>
+                <span class="bg-yellow-900/30 px-3 py-1 rounded-full">🛠️ Ремонт и уборка</span>
+                <span class="bg-yellow-900/30 px-3 py-1 rounded-full">🤝 Помощь без посредников</span>
+            </div>
+            
+            <div class="flex flex-wrap justify-center gap-4">
+                <a href="#download" class="btn-gold text-lg md:text-xl inline-block">📱 Скачать приложение</a>
+                <a href="#video-demo" class="btn-outline-gold text-lg inline-block">🎬 Смотреть демо</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Преимущества -->
+    <section class="py-16 px-4 max-w-6xl mx-auto">
+        <h2 class="text-3xl md:text-4xl font-bold text-center mb-8 brand-font">Почему выбирают «Ангел Помощи» в Казани?</h2>
+        <div class="grid md:grid-cols-3 gap-8">
+            <div class="gold-card p-8 text-center">
+                <div class="text-5xl mb-4">🤝✨</div>
+                <h3 class="text-2xl font-bold mb-3 brand-font">Честная оплата</h3>
+                <p class="leading-relaxed">Платформа <span class="text-yellow-300 font-semibold">не берёт процент</span> с заказов.<br>
+                <span class="font-semibold text-yellow-300">Помощник</span> — подписка на 30 дней.<br>
+                <span class="font-semibold text-yellow-300">Потребитель</span> — разовый взнос ~1000 😇.<br>
+                Никаких скрытых платежей.</p>
+            </div>
+            <div class="gold-card p-8 text-center">
+                <div class="text-5xl mb-4">📍🌟</div>
+                <h3 class="text-2xl font-bold mb-3 brand-font">Всегда рядом</h3>
+                <p class="leading-relaxed">Приложение показывает ближайшего свободного помощника в Казани с рейтингом и отзывами. Вызывайте помощь в один клик – будь то такси, разнорабочий или мастер.</p>
+            </div>
+            <div class="gold-card p-8 text-center">
+                <div class="text-5xl mb-4">⭐⚖️</div>
+                <h3 class="text-2xl font-bold mb-3 brand-font">Система кармы</h3>
+                <p class="leading-relaxed">Честные отзывы и репутация. Хорошие видят хороших, плохие — плохих. Клеймо за неоплату и взаимная оценка.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Как это работает -->
+    <section class="py-16 px-4">
+        <div class="max-w-4xl mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-12 brand-font border-b-2 border-yellow-600 inline-block w-full pb-2">Как это работает</h2>
+            <div class="space-y-8 mt-8">
+                <div class="gold-card p-6 flex flex-col md:flex-row items-start gap-4">
+                    <div class="flex-shrink-0 w-14 h-14 rounded-full bg-yellow-600 text-black flex items-center justify-center text-2xl font-black">1</div>
+                    <div>
+                        <h3 class="text-2xl font-bold mb-2 brand-font">При регистрации выберите роль</h3>
+                        <p class="text-lg">Потребитель, которому нужна помощь (например, такси до аэропорта или разнорабочий на дачу), или Помощник, готовый помогать и зарабатывать в Казани.</p>
+                    </div>
+                </div>
+                <div class="gold-card p-6 flex flex-col md:flex-row items-start gap-4">
+                    <div class="flex-shrink-0 w-14 h-14 rounded-full bg-yellow-600 text-black flex items-center justify-center text-2xl font-black">2</div>
+                    <div>
+                        <h3 class="text-2xl font-bold mb-2 brand-font">Сформируйте договор и начните поиск</h3>
+                        <p class="text-lg">Укажите услугу (например, «перевезти мебель» или «помочь с уборкой»), точку назначения и дождитесь подбора ближайшего свободного помощника.</p>
+                    </div>
+                </div>
+                <div class="gold-card p-6 flex flex-col md:flex-row items-start gap-4">
+                    <div class="flex-shrink-0 w-14 h-14 rounded-full bg-yellow-600 text-black flex items-center justify-center text-2xl font-black">3</div>
+                    <div>
+                        <h3 class="text-2xl font-bold mb-2 brand-font">Договоритесь напрямую</h3>
+                        <p class="text-lg">Звонок, окончательная цена — всё решается между вами. Платформа не вмешивается в сделку. Никаких комиссий, только честные договорённости.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Правила и карма -->
+    <section class="py-16 px-4 max-w-6xl mx-auto">
+        <h2 class="text-4xl font-bold text-center mb-12 brand-font">Правила и карма</h2>
+        <div class="grid md:grid-cols-2 gap-8">
+            <div class="gold-card p-6">
+                <h3 class="text-2xl font-bold mb-4 brand-font text-yellow-400">📜 Основные правила</h3>
+                <ul class="custom-list space-y-2 text-base">
+                    <li>Уважайте других — оценка обоюдная.</li>
+                    <li>Отказ от предложенного помощника/заказа = –3 кармы.</li>
+                    <li>Потребитель закрыл подписанный договор первым = –5 кармы.</li>
+                    <li>5★ = +2 кармы, 3-4★ = +1, 1-2★ = –2.</li>
+                    <li>После сделки обязательно оценить партнёра (в течение 2 минут).</li>
+                    <li>🔴 Клеймо за неоплату — все помощники видят и могут отказаться без штрафа.</li>
+                </ul>
+            </div>
+            <div class="gold-card p-6">
+                <h3 class="text-2xl font-bold mb-4 brand-font text-yellow-400">📊 Группировка по карме</h3>
+                <p class="mb-3">Диапазоны кармы и видимость только своей группы:</p>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm mb-4">
+                    <div class="karma-badge bg-red-900/40">-1000 … -16</div>
+                    <div class="karma-badge bg-orange-900/40">-15 … -1</div>
+                    <div class="karma-badge bg-gray-700/50">0 … +15</div>
+                    <div class="karma-badge bg-green-900/40">+16 … +1000</div>
+                </div>
+                <p class="text-sm italic">Каждая группа видит участников с таким же уровнем кармы.</p>
+                <div class="mt-4 p-3 border border-yellow-600/50 rounded-lg bg-black/30">
+                    <p class="text-sm">✨ <strong>Совет:</strong> Высокая карма открывает доступ к более надёжным помощникам и заказчикам в Казани.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ВИДЕО-БЛОК с исправленными путями и пропорциями -->
+    <section id="video-demo" class="py-16 px-4">
+        <div class="max-w-5xl mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-6 brand-font">Демонстрация приложения</h2>
+            <p class="text-center text-yellow-200/80 mb-8 text-lg">Смотрите, как работает «Ангел Помощи» — вертикальный формат, все детали на экране</p>
+            <div class="video-portrait-container">
+                <video controls preload="metadata" controlsList="nodownload">
+                    <!-- ИСПРАВЛЕН ПУТЬ: абсолютный от корня сайта -->
+                    <source src="assets/ангел.mp4" type="video/mp4">
+                    Ваш браузер не поддерживает видео. <a href="assets/ангел.mp4" class="text-yellow-400">Скачайте демо-ролик</a>
+                </video>
+            </div>
+            <p class="text-center text-sm mt-5 opacity-80">🎬 Интерфейс приложения, поиск помощника в Казани, система кармы — всё в демо-ролике (9:16)</p>
+        </div>
+    </section>
+
+    <!-- Скачать -->
+    <section id="download" class="py-20 px-4 text-center border-t border-yellow-700/50 bg-gradient-to-b from-black to-gray-900">
+        <div class="max-w-3xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold mb-6 brand-font">Готовы стать Ангелом или найти помощь в Казани?</h2>
+            <div class="gold-card p-6 md:p-8 mb-8">
+                <p class="text-xl md:text-2xl mb-2"><span class="font-bold text-yellow-300">Помощникам</span> — подписка на 30 дней.</p>
+                <p class="text-xl md:text-2xl mb-4"><span class="font-bold text-yellow-300">Заказчикам</span> — разовый взнос ~1000 😇 для подтверждения серьёзности намерений.</p>
+                <p class="text-lg">Больше никаких скрытых платежей. Только прямая помощь и честная карма.</p>
+                <p class="text-md mt-3 text-yellow-200/70">Услуги: такси, разнорабочие, ремонт, уборка, переезды и всё, что нужно жителям Казани.</p>
+            </div>
+            <a href="https://bioapgreid.store/docs/app-release.apk" class="btn-gold text-xl md:text-2xl py-4 px-10 inline-block">⬇️ Скачать APK</a>
+            <p class="mt-5 text-sm opacity-75">Версия 1.0.10 для Android (совместимо с 8.0+)</p>
+        </div>
+    </section>
+
+    <!-- Подвал -->
+    <footer class="py-10 border-t border-yellow-800/50">
+        <div class="max-w-5xl mx-auto text-center px-4">
+            <div class="flex flex-wrap justify-center gap-6 text-sm mb-6">
+                <a href="mailto:contact@bioapgreid.ru" class="hover:text-yellow-300 transition">✉️ contact@bioapgreid.ru</a>
+                <span class="text-yellow-600/60">⚖️ Прямые договорённости — наша философия</span>
+            </div>
+            <p class="text-sm opacity-70">© 2026 Ангел Помощи. Все права защищены. Сделано для честной взаимопомощи.</p>
+            <p class="text-xs mt-2 text-yellow-700/50">🌟 «Помощь без посредников — естественный шаг человечества»</p>
+            <!-- Скрытый текст для SEO (не влияет на юзеров) -->
+            <p class="hidden" aria-hidden="true">Казань, такси, разнорабочие, ангел помощи, прямая помощь, без комиссии, вызов мастера, уборка, ремонт, помощь рядом.</p>
+        </div>
+    </footer>
+
+    <script>
+        (function() {
+            const video = document.querySelector('video');
+            if(video) {
+                video.addEventListener('error', function(e) {
+                    console.warn('Видео не загрузилось, проверьте путь: assets/ангел.mp4');
+                });
+            }
+        })();
+    </script>
+</body>
+</html>
+</body>
+</html>
