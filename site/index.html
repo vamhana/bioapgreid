@@ -99,11 +99,11 @@
             border-color: #FFD966;
         }
         
-        /* ========= ИСПРАВЛЕНИЕ ВИДЕО 9:16 ========= */
+        /* ========= ВИДЕО 9:16 ========= */
         .video-portrait-container {
             max-width: 100%;
             width: auto;
-            max-height: 90vh;           /* не выше экрана */
+            max-height: 90vh;
             margin: 0 auto;
             background-color: #000000;
             border-radius: 2rem;
@@ -117,11 +117,9 @@
         .video-portrait-container video {
             width: 100%;
             height: auto;
-            object-fit: contain;       /* или cover – если нужно без полей */
+            object-fit: contain;
             display: block;
         }
-        /* Если вы хотите, чтобы видео заполняло весь контейнер без чёрных полос – замените contain на cover */
-        /* ========================================= */
         
         .custom-list {
             list-style: none;
@@ -160,9 +158,26 @@
             background: radial-gradient(circle at 10% 30%, #0a0f1f, #000000);
             border-bottom: 1px solid #FFD966;
         }
+        /* Стиль для ссылки VK */
+        .vk-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background-color: rgba(255, 217, 102, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            transition: all 0.2s;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .vk-link:hover {
+            background-color: rgba(255, 217, 102, 0.25);
+            color: #FFD700;
+            transform: translateY(-1px);
+        }
     </style>
     
-    <!-- Schema.org разметка (LocalBusiness с указанием Казани) -->
+    <!-- Schema.org разметка -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -219,7 +234,6 @@
                 <span class="text-yellow-300">Помощники — подписка, Потребители — разовый взнос.</span>
             </p>
             
-            <!-- Дополнительный блок с ключевыми словами (видимый и для SEO) -->
             <div class="flex flex-wrap justify-center gap-3 text-sm md:text-base mb-6">
                 <span class="bg-yellow-900/30 px-3 py-1 rounded-full">🚖 Такси Казань</span>
                 <span class="bg-yellow-900/30 px-3 py-1 rounded-full">🔧 Разнорабочие</span>
@@ -230,6 +244,13 @@
             <div class="flex flex-wrap justify-center gap-4">
                 <a href="#download" class="btn-gold text-lg md:text-xl inline-block">📱 Скачать приложение</a>
                 <a href="#video-demo" class="btn-outline-gold text-lg inline-block">🎬 Смотреть демо</a>
+                <!-- Ссылка на ВК в hero (дополнительно, для заметности) -->
+                <a href="https://vk.com/bioapgreid" target="_blank" rel="noopener noreferrer" class="vk-link text-base md:text-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="#FFD966" class="inline-block">
+                        <path d="M21.579 6.855c.14-.465 0-.804-.662-.804h-2.193c-.558 0-.813.295-.953.619 0 0-1.115 2.719-2.695 4.482-.51.51-.742.673-1.02.673-.14 0-.341-.163-.341-.627V6.855c0-.558-.161-.804-.626-.804h-3.46c-.348 0-.558.258-.558.504 0 .528.79.65.87 2.136v3.228c0 .707-.128.836-.408.836-.742 0-2.546-2.725-3.617-5.843-.21-.6-.422-.84-.983-.84H4.386c-.626 0-.75.295-.75.619 0 .58.742 3.458 3.457 7.265 1.812 2.621 4.363 4.041 6.686 4.041 1.394 0 1.565-.313 1.565-.855v-1.974c0-.626.134-.75.58-.75.33 0 .895.165 2.218 1.434 1.508 1.508 1.758 2.186 2.608 2.186h2.193c.626 0 .94-.313.758-.93-.196-.613-.904-1.5-1.842-2.553-.51-.603-1.276-1.254-1.508-1.578-.325-.419-.232-.604 0-.977 0 0 2.667-3.759 2.945-5.035z"/>
+                    </svg>
+                    VK сообщество
+                </a>
             </div>
         </div>
     </section>
@@ -321,14 +342,13 @@
         </div>
     </section>
 
-    <!-- ВИДЕО-БЛОК с исправленными путями и пропорциями -->
+    <!-- ВИДЕО-БЛОК -->
     <section id="video-demo" class="py-16 px-4">
         <div class="max-w-5xl mx-auto">
             <h2 class="text-4xl font-bold text-center mb-6 brand-font">Демонстрация приложения</h2>
             <p class="text-center text-yellow-200/80 mb-8 text-lg">Смотрите, как работает «Ангел Помощи» — вертикальный формат, все детали на экране</p>
             <div class="video-portrait-container">
                 <video controls preload="metadata" controlsList="nodownload">
-                    <!-- ИСПРАВЛЕН ПУТЬ: абсолютный от корня сайта -->
                     <source src="assets/ангел.mp4" type="video/mp4">
                     Ваш браузер не поддерживает видео. <a href="assets/ангел.mp4" class="text-yellow-400">Скачайте демо-ролик</a>
                 </video>
@@ -337,7 +357,7 @@
         </div>
     </section>
 
-    <!-- Скачать -->
+    <!-- Скачать + ссылка на сообщество VK -->
     <section id="download" class="py-20 px-4 text-center border-t border-yellow-700/50 bg-gradient-to-b from-black to-gray-900">
         <div class="max-w-3xl mx-auto">
             <h2 class="text-4xl md:text-5xl font-bold mb-6 brand-font">Готовы стать Ангелом или найти помощь в Казани?</h2>
@@ -347,21 +367,36 @@
                 <p class="text-lg">Больше никаких скрытых платежей. Только прямая помощь и честная карма.</p>
                 <p class="text-md mt-3 text-yellow-200/70">Услуги: такси, разнорабочие, ремонт, уборка, переезды и всё, что нужно жителям Казани.</p>
             </div>
-            <a href="https://bioapgreid.store/docs/app-release.apk" class="btn-gold text-xl md:text-2xl py-4 px-10 inline-block">⬇️ Скачать APK</a>
+            <div class="flex flex-wrap justify-center gap-5 items-center">
+                <a href="https://bioapgreid.store/docs/app-release.apk" class="btn-gold text-xl md:text-2xl py-4 px-10 inline-block">⬇️ Скачать APK</a>
+                <!-- Явная ссылка на VK сообщество в блоке загрузки (кнопка) -->
+                <a href="https://vk.com/bioapgreid" target="_blank" rel="noopener noreferrer" class="btn-outline-gold text-xl py-4 px-8 inline-flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" class="inline-block">
+                        <path d="M21.579 6.855c.14-.465 0-.804-.662-.804h-2.193c-.558 0-.813.295-.953.619 0 0-1.115 2.719-2.695 4.482-.51.51-.742.673-1.02.673-.14 0-.341-.163-.341-.627V6.855c0-.558-.161-.804-.626-.804h-3.46c-.348 0-.558.258-.558.504 0 .528.79.65.87 2.136v3.228c0 .707-.128.836-.408.836-.742 0-2.546-2.725-3.617-5.843-.21-.6-.422-.84-.983-.84H4.386c-.626 0-.75.295-.75.619 0 .58.742 3.458 3.457 7.265 1.812 2.621 4.363 4.041 6.686 4.041 1.394 0 1.565-.313 1.565-.855v-1.974c0-.626.134-.75.58-.75.33 0 .895.165 2.218 1.434 1.508 1.508 1.758 2.186 2.608 2.186h2.193c.626 0 .94-.313.758-.93-.196-.613-.904-1.5-1.842-2.553-.51-.603-1.276-1.254-1.508-1.578-.325-.419-.232-.604 0-.977 0 0 2.667-3.759 2.945-5.035z"/>
+                    </svg>
+                    VK Сообщество
+                </a>
+            </div>
             <p class="mt-5 text-sm opacity-75">Версия 1.0.10 для Android (совместимо с 8.0+)</p>
         </div>
     </section>
 
-    <!-- Подвал -->
+    <!-- Подвал с ссылкой на ВК -->
     <footer class="py-10 border-t border-yellow-800/50">
         <div class="max-w-5xl mx-auto text-center px-4">
-            <div class="flex flex-wrap justify-center gap-6 text-sm mb-6">
+            <div class="flex flex-wrap justify-center gap-6 text-sm mb-6 items-center">
                 <a href="mailto:contact@bioapgreid.ru" class="hover:text-yellow-300 transition">✉️ contact@bioapgreid.ru</a>
+                <!-- Основная ссылка на сообщество ВКонтакте в подвале -->
+                <a href="https://vk.com/bioapgreid" target="_blank" rel="noopener noreferrer" class="hover:text-yellow-300 transition flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#FFD966" class="inline-block">
+                        <path d="M21.579 6.855c.14-.465 0-.804-.662-.804h-2.193c-.558 0-.813.295-.953.619 0 0-1.115 2.719-2.695 4.482-.51.51-.742.673-1.02.673-.14 0-.341-.163-.341-.627V6.855c0-.558-.161-.804-.626-.804h-3.46c-.348 0-.558.258-.558.504 0 .528.79.65.87 2.136v3.228c0 .707-.128.836-.408.836-.742 0-2.546-2.725-3.617-5.843-.21-.6-.422-.84-.983-.84H4.386c-.626 0-.75.295-.75.619 0 .58.742 3.458 3.457 7.265 1.812 2.621 4.363 4.041 6.686 4.041 1.394 0 1.565-.313 1.565-.855v-1.974c0-.626.134-.75.58-.75.33 0 .895.165 2.218 1.434 1.508 1.508 1.758 2.186 2.608 2.186h2.193c.626 0 .94-.313.758-.93-.196-.613-.904-1.5-1.842-2.553-.51-.603-1.276-1.254-1.508-1.578-.325-.419-.232-.604 0-.977 0 0 2.667-3.759 2.945-5.035z"/>
+                    </svg>
+                    Ангел ПОМОЩИ | Официальное сообщество
+                </a>
                 <span class="text-yellow-600/60">⚖️ Прямые договорённости — наша философия</span>
             </div>
             <p class="text-sm opacity-70">© 2026 Ангел Помощи. Все права защищены. Сделано для честной взаимопомощи.</p>
             <p class="text-xs mt-2 text-yellow-700/50">🌟 «Помощь без посредников — естественный шаг человечества»</p>
-            <!-- Скрытый текст для SEO (не влияет на юзеров) -->
             <p class="hidden" aria-hidden="true">Казань, такси, разнорабочие, ангел помощи, прямая помощь, без комиссии, вызов мастера, уборка, ремонт, помощь рядом.</p>
         </div>
     </footer>
@@ -376,7 +411,5 @@
             }
         })();
     </script>
-</body>
-</html>
 </body>
 </html>
